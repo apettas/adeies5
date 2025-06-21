@@ -132,32 +132,61 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const startDateInput = document.getElementById('{{ form.start_date.id_for_label }}');
-    const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
-    const daysCalculation = document.getElementById('days-calculation');
-    const totalDaysSpan = document.getElementById('total-days');
-    
-    function calculateDays() {
-        const startDate = new Date(startDateInput.value);
-        const endDate = new Date(endDateInput.value);
+$(document).ready(function() {
+    // Wait for jQuery and datepicker to be ready
+    setTimeout(function() {
+        const startDateInput = $('#{{ form.start_date.id_for_label }}')[0];
+        const endDateInput = $('#{{ form.end_date.id_for_label }}')[0];
+        const daysCalculation = $('#days-calculation')[0];
+        const totalDaysSpan = $('#total-days')[0];
         
-        if (startDate && endDate && startDate <= endDate) {
-            const timeDiff = endDate.getTime() - startDate.getTime();
-            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+        // Μετατροπή DD/MM/YYYY σε Date object
+        function parseGreekDate(dateString) {
+            console.log('Parsing date:', dateString); // Debug log
+            if (!dateString) return null;
+            const parts = dateString.split('/');
+            if (parts.length !== 3) return null;
             
-            totalDaysSpan.textContent = daysDiff;
-            daysCalculation.style.display = 'block';
-        } else {
-            daysCalculation.style.display = 'none';
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-based
+            const year = parseInt(parts[2], 10);
+            
+            return new Date(year, month, day);
         }
-    }
-    
-    startDateInput.addEventListener('change', calculateDays);
-    endDateInput.addEventListener('change', calculateDays);
-    
-    // Υπολογισμός κατά την αρχικοποίηση
-    calculateDays();
+        
+        function calculateDays() {
+            console.log('Calculating days...'); // Debug log
+            console.log('Start date value:', startDateInput.value); // Debug log
+            console.log('End date value:', endDateInput.value); // Debug log
+            
+            const startDate = parseGreekDate(startDateInput.value);
+            const endDate = parseGreekDate(endDateInput.value);
+            
+            if (startDate && endDate && startDate <= endDate) {
+                const timeDiff = endDate.getTime() - startDate.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                
+                console.log('Days calculated:', daysDiff); // Debug log
+                totalDaysSpan.textContent = daysDiff;
+                daysCalculation.style.display = 'block';
+            } else {
+                console.log('Cannot calculate days'); // Debug log
+                daysCalculation.style.display = 'none';
+            }
+        }
+        
+        // Use jQuery events
+        $(startDateInput).on('change', calculateDays);
+        $(endDateInput).on('change', calculateDays);
+        
+        // Also listen for datepicker events
+        $(startDateInput).on('changeDate', calculateDays);
+        $(endDateInput).on('changeDate', calculateDays);
+        
+        // Υπολογισμός κατά την αρχικοποίηση
+        calculateDays();
+        
+    }, 500); // Small delay to ensure datepicker is initialized
 });
 </script>
 {% endblock %}

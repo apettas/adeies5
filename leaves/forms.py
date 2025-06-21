@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import LeaveRequest, LeaveType
+from .widgets import GreekDateInput
 from datetime import datetime
 
 
@@ -12,16 +13,8 @@ class LeaveRequestForm(forms.ModelForm):
         model = LeaveRequest
         fields = ['leave_type', 'start_date', 'end_date', 'description']
         widgets = {
-            'start_date': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control',
-                'min': timezone.now().date().strftime('%Y-%m-%d')
-            }),
-            'end_date': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control',
-                'min': timezone.now().date().strftime('%Y-%m-%d')
-            }),
+            'start_date': GreekDateInput(),
+            'end_date': GreekDateInput(),
             'leave_type': forms.Select(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={
                 'class': 'form-control',
