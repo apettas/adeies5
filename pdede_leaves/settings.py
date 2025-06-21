@@ -134,3 +134,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Private media για κρυπτογραφημένα αρχεία
+PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'

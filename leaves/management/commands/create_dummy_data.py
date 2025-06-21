@@ -36,37 +36,24 @@ class Command(BaseCommand):
         main_direction, created = Department.objects.get_or_create(
             code='PDEDE',
             defaults={
-                'name': 'Περιφερειακή Διεύθυνση Εκπαίδευσης Δυτικής Ελλάδας',
-                'department_type': 'DIRECTION'
-            }
-        )
-        
-        # Αυτοτελής Διεύθυνση
-        autonomous_direction, created = Department.objects.get_or_create(
-            code='AUT_DIR',
-            defaults={
-                'name': 'Αυτοτελής Διεύθυνση',
-                'department_type': 'AUTONOMOUS_DIRECTION',
-                'parent_department': main_direction
+                'name': 'Περιφερειακή Διεύθυνση Εκπαίδευσης Δυτικής Ελλάδας'
             }
         )
         
         # Τμήματα
         departments_data = [
-            ('TMIMA_A', 'Τμήμα Α', 'DEPARTMENT'),
-            ('TMIMA_B', 'Τμήμα Β', 'DEPARTMENT'),
-            ('TMIMA_C', 'Τμήμα Γ', 'DEPARTMENT'),
-            ('TMIMA_D', 'Τμήμα Δ', 'DEPARTMENT'),
-            ('GRAF_NOM', 'Γραφείο Νομικής', 'OFFICE'),
+            ('TMIMA_A', 'Τμήμα Α'),
+            ('TMIMA_B', 'Τμήμα Β'),
+            ('TMIMA_C', 'Τμήμα Γ'),
+            ('TMIMA_D', 'Τμήμα Δ'),
+            ('GRAF_NOM', 'Γραφείο Νομικής'),
         ]
         
-        for code, name, dept_type in departments_data:
+        for code, name in departments_data:
             Department.objects.get_or_create(
                 code=code,
                 defaults={
-                    'name': name,
-                    'department_type': dept_type,
-                    'parent_department': autonomous_direction
+                    'name': name
                 }
             )
         
@@ -77,23 +64,21 @@ class Command(BaseCommand):
         self.stdout.write('Δημιουργία τύπων αδειών...')
         
         leave_types_data = [
-            ('REGULAR', 'Κανονική Άδεια', 'Ετήσια κανονική άδεια', 25, False),
-            ('SICK', 'Άδεια Ασθενείας', 'Άδεια για λόγους υγείας', None, True),
-            ('MATERNITY', 'Άδεια Μητρότητας', 'Άδεια μητρότητας', 119, True),
-            ('PATERNITY', 'Άδεια Πατρότητας', 'Άδεια πατρότητας', 14, True),
-            ('SPECIAL', 'Ειδική Άδεια', 'Ειδική άδεια για προσωπικούς λόγους', 6, False),
-            ('STUDY', 'Εκπαιδευτική Άδεια', 'Άδεια για εκπαιδευτικούς σκοπούς', None, True),
+            ('Κανονική Άδεια', 'Ετήσια κανονική άδεια', 25, False),
+            ('Άδεια Ασθενείας', 'Άδεια για λόγους υγείας', 30, True),
+            ('Άδεια Μητρότητας', 'Άδεια μητρότητας', 119, True),
+            ('Άδεια Πατρότητας', 'Άδεια πατρότητας', 14, True),
+            ('Ειδική Άδεια', 'Ειδική άδεια για προσωπικούς λόγους', 6, True),
+            ('Εκπαιδευτική Άδεια', 'Άδεια για εκπαιδευτικούς σκοπούς', 30, True),
         ]
         
-        for code, name, description, max_days, requires_docs in leave_types_data:
+        for name, description, max_days, requires_approval in leave_types_data:
             LeaveType.objects.get_or_create(
-                code=code,
+                name=name,
                 defaults={
-                    'name': name,
                     'description': description,
-                    'max_days_per_year': max_days,
-                    'requires_documents': requires_docs,
-                    'logic_handler': 'default'
+                    'max_days': max_days,
+                    'requires_approval': requires_approval,
                 }
             )
         
@@ -230,8 +215,8 @@ class Command(BaseCommand):
         
         # Τύποι αδειών
         try:
-            regular_leave = LeaveType.objects.get(code='REGULAR')
-            sick_leave = LeaveType.objects.get(code='SICK')
+            regular_leave = LeaveType.objects.get(name='Κανονική Άδεια')
+            sick_leave = LeaveType.objects.get(name='Άδεια Ασθενείας')
         except LeaveType.DoesNotExist:
             self.stdout.write(self.style.WARNING('Δεν βρέθηκαν τύποι αδειών'))
             return
@@ -241,7 +226,7 @@ class Command(BaseCommand):
         end_date = start_date + timedelta(days=4)
         
         request1, created = LeaveRequest.objects.get_or_create(
-            employee=employee_d,
+            user=employee_d,
             leave_type=regular_leave,
             start_date=start_date,
             end_date=end_date,
@@ -256,14 +241,14 @@ class Command(BaseCommand):
         end_date2 = start_date2 + timedelta(days=9)
         
         request2, created = LeaveRequest.objects.get_or_create(
-            employee=employee_a,
+            user=employee_d,
             leave_type=regular_leave,
             start_date=start_date2,
             end_date=end_date2,
             defaults={
                 'description': 'Καλοκαιρινή άδεια',
                 'status': 'APPROVED_MANAGER',
-                'manager_approved_by': User.objects.get(username='manager.a'),
+                'manager_approved_by': manager_d,
                 'manager_comments': 'Εγκρίθηκε'
             }
         )
@@ -273,7 +258,7 @@ class Command(BaseCommand):
         end_date3 = start_date3 + timedelta(days=2)
         
         request3, created = LeaveRequest.objects.get_or_create(
-            employee=employee_d,
+            user=employee_d,
             leave_type=sick_leave,
             start_date=start_date3,
             end_date=end_date3,

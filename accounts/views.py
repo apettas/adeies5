@@ -58,16 +58,16 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             from leaves.models import LeaveRequest
             
             if user.role == 'employee':
-                context['my_requests_count'] = LeaveRequest.objects.filter(employee=user).count()
+                context['my_requests_count'] = LeaveRequest.objects.filter(user=user).count()
                 context['pending_requests_count'] = LeaveRequest.objects.filter(
-                    employee=user,
+                    user=user,
                     status__in=['SUBMITTED', 'APPROVED_MANAGER']
                 ).count()
                 
             elif user.is_department_manager():
                 subordinates = user.get_subordinates()
                 context['pending_approvals'] = LeaveRequest.objects.filter(
-                    employee__in=subordinates,
+                    user__in=subordinates,
                     status='SUBMITTED'
                 ).count()
                 

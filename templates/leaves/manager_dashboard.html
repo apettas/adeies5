@@ -79,8 +79,8 @@
                                 {% for request in leave_requests %}
                                 <tr>
                                     <td>
-                                        <strong>{{ request.employee.full_name }}</strong>
-                                        <br><small class="text-muted">{{ request.employee.employee_id }}</small>
+                                        <strong>{{ request.user.full_name }}</strong>
+                                        <br><small class="text-muted">{{ request.user.employee_id }}</small>
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
@@ -136,7 +136,7 @@
                                             <form method="post" action="{% url 'leaves:approve_leave_request' request.pk %}">
                                                 {% csrf_token %}
                                                 <div class="modal-body">
-                                                    <p><strong>Υπάλληλος:</strong> {{ request.employee.full_name }}</p>
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
                                                     <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
                                                     <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
                                                     <p><strong>Ημέρες:</strong> {{ request.total_days }}</p>
@@ -168,7 +168,7 @@
                                             <form method="post" action="{% url 'leaves:reject_leave_request' request.pk %}">
                                                 {% csrf_token %}
                                                 <div class="modal-body">
-                                                    <p><strong>Υπάλληλος:</strong> {{ request.employee.full_name }}</p>
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
                                                     <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
                                                     <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
                                                     

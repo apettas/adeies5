@@ -79,8 +79,8 @@
                                 {% for request in leave_requests %}
                                 <tr>
                                     <td>
-                                        <strong>{{ request.employee.full_name }}</strong>
-                                        <br><small class="text-muted">{{ request.employee.department.name }}</small>
+                                        <strong>{{ request.user.full_name }}</strong>
+                                        <br><small class="text-muted">{{ request.user.department.name }}</small>
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
@@ -132,7 +132,7 @@
                                             <form method="post" action="{% url 'leaves:complete_leave_request' request.pk %}">
                                                 {% csrf_token %}
                                                 <div class="modal-body">
-                                                    <p><strong>Υπάλληλος:</strong> {{ request.employee.full_name }}</p>
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
                                                     <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
                                                     <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
                                                     
@@ -169,7 +169,7 @@
                                             <form method="post" action="{% url 'leaves:reject_leave_request_by_handler' request.pk %}">
                                                 {% csrf_token %}
                                                 <div class="modal-body">
-                                                    <p><strong>Υπάλληλος:</strong> {{ request.employee.full_name }}</p>
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
                                                     <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
                                                     
                                                     <div class="mb-3">

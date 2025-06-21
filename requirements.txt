@@ -9,3 +9,4 @@ crispy-bootstrap5==2024.2
 django-extensions==3.2.3
 whitenoise==6.6.0
 gunicorn==21.2.0
+pycryptodome==3.19.0

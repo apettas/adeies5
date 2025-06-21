@@ -23,4 +23,8 @@ urlpatterns = [
     
     # Detail view
     path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='leave_request_detail'),
+    
+    # Secure file handling
+    path('files/<int:file_id>/', views.serve_secure_file, name='serve_secure_file'),
+    path('files/<int:file_id>/delete/', views.delete_secure_file, name='delete_secure_file'),
 ]

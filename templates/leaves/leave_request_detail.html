@@ -37,11 +37,11 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <strong>Υπάλληλος:</strong>
-                        <p>{{ leave_request.employee.full_name }}</p>
+                        <p>{{ leave_request.user.full_name }}</p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong>Τμήμα:</strong>
-                        <p>{{ leave_request.employee.department.name|default:"Δεν έχει ανατεθεί" }}</p>
+                        <p>{{ leave_request.user.department.name|default:"Δεν έχει ανατεθεί" }}</p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong>Τύπος Άδειας:</strong>
@@ -104,6 +104,58 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Συνημένα Αρχεία -->
+        {% if leave_request.attachments.exists %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-paperclip"></i> Συνημένα Αρχεία</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for attachment in leave_request.attachments.all %}
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center p-3 border rounded">
+                            <div class="flex-shrink-0 me-3">
+                                {% if attachment.file_extension == 'pdf' %}
+                                    <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+                                {% elif attachment.file_extension in 'jpg,jpeg,png' %}
+                                    <i class="bi bi-file-earmark-image-fill text-primary fs-2"></i>
+                                {% else %}
+                                    <i class="bi bi-file-earmark-fill text-secondary fs-2"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ attachment.original_filename }}</h6>
+                                <small class="text-muted">
+                                    {{ attachment.file_size|filesizeformat }} •
+                                    Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
+                                    {% if attachment.uploaded_by != leave_request.user %}
+                                        <br>από {{ attachment.uploaded_by.full_name }}
+                                    {% endif %}
+                                </small>
+                                <div class="mt-2">
+                                    <a href="{{ attachment.get_absolute_url }}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       target="_blank">
+                                        <i class="bi bi-download"></i> Λήψη
+                                    </a>
+                                    {% if user == attachment.uploaded_by or user.is_leave_handler %}
+                                        <a href="{% url 'leaves:delete_secure_file' attachment.id %}"
+                                           class="btn btn-sm btn-outline-danger ms-2"
+                                           onclick="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το αρχείο;')">
+                                            <i class="bi bi-trash"></i> Διαγραφή
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
     
     <div class="col-lg-4">
@@ -120,7 +172,7 @@
                     </div>
                     <div class="flex-grow-1 ms-3">
                         <h6 class="mb-1">Υποβολή Αίτησης</h6>
-                        <p class="mb-1 text-muted small">{{ leave_request.employee.full_name }}</p>
+                        <p class="mb-1 text-muted small">{{ leave_request.user.full_name }}</p>
                         <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
                     </div>
                 </div>

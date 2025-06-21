@@ -1,13 +1,27 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import LeaveRequest, LeaveType
+from .models import LeaveRequest, LeaveType, SecureFile
 from .widgets import GreekDateInput
+from .crypto_utils import SecureFileHandler
 from datetime import datetime
+
+
 
 
 class LeaveRequestForm(forms.ModelForm):
     """Φόρμα αίτησης άδειας"""
+    
+    # Πεδίο για επισύναψη αρχείου
+    attachment = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.pdf,.jpg,.jpeg,.png'
+        }),
+        label='Επισυνάπτομενο Αρχείο',
+        help_text='Επιτρεπτοί τύποι: PDF, JPG, PNG. Μέγιστο μέγεθος: 10MB'
+    )
     
     class Meta:
         model = LeaveRequest
@@ -65,6 +79,21 @@ class LeaveRequestForm(forms.ModelForm):
                 raise ValidationError('Η άδεια δεν μπορεί να υπερβαίνει τις 365 ημέρες.')
         
         return cleaned_data
+    
+    def clean_attachment(self):
+        """Επικύρωση αρχείου"""
+        file_obj = self.cleaned_data.get('attachment')
+        
+        if not file_obj:
+            return None
+        
+        # Επικύρωση αρχείου
+        is_valid, error_message = SecureFileHandler.validate_file(file_obj)
+        
+        if not is_valid:
+            raise ValidationError(f'Αρχείο "{file_obj.name}": {error_message}')
+        
+        return file_obj
 
 
 class ApproveRejectForm(forms.Form):

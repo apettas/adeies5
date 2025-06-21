@@ -1,21 +1,37 @@
+import os
+import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.utils import timezone
-from datetime import datetime, timedelta
+from django.contrib.contenttypes.fields import GenericRelation
+from notifications.models import Notification
 
 User = get_user_model()
 
 
-class LeaveType(models.Model):
-    """Τύποι Αδειών"""
+class Department(models.Model):
+    """Τμήμα/Υπηρεσία"""
+    name = models.CharField('Όνομα Τμήματος', max_length=200)
+    code = models.CharField('Κωδικός Τμήματος', max_length=50, unique=True)
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
-    name = models.CharField('Όνομα Τύπου Άδειας', max_length=100)
-    code = models.CharField('Κωδικός', max_length=20, unique=True)
+    class Meta:
+        verbose_name = 'Τμήμα'
+        verbose_name_plural = 'Τμήματα'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class LeaveType(models.Model):
+    """Τύπος άδειας"""
+    name = models.CharField('Όνομα Τύπου', max_length=100)
     description = models.TextField('Περιγραφή', blank=True)
-    max_days_per_year = models.PositiveIntegerField('Μέγιστες Ημέρες/Έτος', null=True, blank=True)
-    requires_documents = models.BooleanField('Απαιτεί Δικαιολογητικά', default=False)
-    logic_handler = models.CharField('Χειριστής Λογικής', max_length=50, default='default')
+    max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', default=30)
+    requires_approval = models.BooleanField('Απαιτεί Έγκριση', default=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
@@ -28,188 +44,278 @@ class LeaveType(models.Model):
         return self.name
 
 
+def secure_file_path(instance, filename):
+    """Δημιουργία ασφαλούς path για αρχείο"""
+    # Δημιουργία UUID για το αρχείο
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    
+    # Δημιουργία path με το ID της αίτησης
+    return os.path.join('private_uploads', 'leave_requests', str(instance.leave_request.id), filename)
+
+
+class SecureFile(models.Model):
+    """Κρυπτογραφημένο αρχείο"""
+    
+    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png']
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    
+    leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='attachments')
+    original_filename = models.CharField('Αρχικό Όνομα Αρχείου', max_length=255)
+    file_path = models.CharField('Διαδρομή Αρχείου', max_length=500)
+    file_size = models.PositiveIntegerField('Μέγεθος Αρχείου (bytes)')
+    content_type = models.CharField('Τύπος Περιεχομένου', max_length=100)
+    encryption_key = models.CharField('Κλειδί Κρυπτογράφησης', max_length=64)  # AES-256 key in hex
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_files')
+    uploaded_at = models.DateTimeField('Ημερομηνία Αποστολής', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Ασφαλές Αρχείο'
+        verbose_name_plural = 'Ασφαλή Αρχεία'
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return f"{self.original_filename} - {self.leave_request}"
+    
+    @property
+    def file_extension(self):
+        """Επιστρέφει την επέκταση του αρχείου"""
+        return self.original_filename.split('.')[-1].lower()
+    
+    def get_absolute_url(self):
+        """URL για το secure download του αρχείου"""
+        from django.urls import reverse
+        return reverse('leaves:serve_secure_file', kwargs={'file_id': self.pk})
+
+
 class LeaveRequest(models.Model):
-    """Αιτήσεις Αδειών"""
+    """Αίτηση άδειας"""
     
     STATUS_CHOICES = [
+        ('DRAFT', 'Προσχέδιο'),
         ('SUBMITTED', 'Υποβλήθηκε'),
         ('APPROVED_MANAGER', 'Εγκρίθηκε από Προϊστάμενο'),
+        ('REJECTED_MANAGER', 'Απορρίφθηκε από Προϊστάμενο'),
         ('FOR_PROTOCOL_PDEDE', 'Για Πρωτόκολλο ΠΔΕΔΕ'),
         ('UNDER_PROCESSING', 'Προς Επεξεργασία'),
-        ('APPROVED', 'Εγκρίθηκε'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
-        ('REJECTED_MANAGER', 'Απορρίφθηκε από Προϊστάμενο'),
         ('REJECTED_OPERATOR', 'Απορρίφθηκε από Χειριστή'),
     ]
     
-    # Βασικά στοιχεία αίτησης
-    employee = models.ForeignKey(User, on_delete=models.CASCADE, 
-                               verbose_name='Υπάλληλος', related_name='leave_requests')
-    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, 
-                                 verbose_name='Τύπος Άδειας')
-    
-    # Ημερομηνίες άδειας
+    # Βασικά πεδία
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='leave_requests', verbose_name='Χρήστης')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, verbose_name='Τύπος Άδειας')
     start_date = models.DateField('Ημερομηνία Έναρξης')
     end_date = models.DateField('Ημερομηνία Λήξης')
-    total_days = models.PositiveIntegerField('Συνολικές Ημέρες', default=0)
-    
-    # Περιγραφή/Αιτιολογία
     description = models.TextField('Περιγραφή/Αιτιολογία', blank=True)
     
-    # Κατάσταση και workflow
-    status = models.CharField('Κατάσταση', max_length=30, choices=STATUS_CHOICES, default='SUBMITTED')
-    protocol_number = models.CharField('Αριθμός Πρωτοκόλλου', max_length=50, blank=True)
+    # Στάτους και ημερομηνίες
+    status = models.CharField('Κατάσταση', max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    submitted_at = models.DateTimeField('Ημερομηνία Υποβολής', null=True, blank=True)
     
-    # Εγκρίσεις και επεξεργασία
-    manager_approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                          related_name='manager_approvals',
-                                          verbose_name='Εγκρίθηκε από Προϊστάμενο')
+    # Έγκριση από προϊστάμενο
+    manager_approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                                          related_name='approved_leaves', verbose_name='Εγκρίθηκε από Προϊστάμενο')
     manager_approved_at = models.DateTimeField('Ημερομηνία Έγκρισης Προϊσταμένου', null=True, blank=True)
     manager_comments = models.TextField('Σχόλια Προϊσταμένου', blank=True)
     
+    # Επεξεργασία από χειριστή
+    protocol_number = models.CharField('Αριθμός Πρωτοκόλλου', max_length=100, blank=True)
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                   related_name='processed_requests',
-                                   verbose_name='Επεξεργάστηκε από')
+                                   related_name='processed_leaves', verbose_name='Επεξεργάστηκε από')
     processed_at = models.DateTimeField('Ημερομηνία Επεξεργασίας', null=True, blank=True)
     processing_comments = models.TextField('Σχόλια Επεξεργασίας', blank=True)
     
-    # Χρονικές σφραγίδες
-    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
-    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    # Ολοκλήρωση
+    completed_at = models.DateTimeField('Ημερομηνία Ολοκλήρωσης', null=True, blank=True)
     
     # Απόρριψη
     rejected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                  related_name='rejected_requests',
-                                  verbose_name='Απορρίφθηκε από')
+                                  related_name='rejected_leaves', verbose_name='Απορρίφθηκε από')
     rejected_at = models.DateTimeField('Ημερομηνία Απόρριψης', null=True, blank=True)
-    rejection_reason = models.TextField('Αιτιολογία Απόρριψης', blank=True)
+    rejection_reason = models.TextField('Λόγος Απόρριψης', blank=True)
+    
+    # Notifications
+    notifications = GenericRelation(Notification)
     
     class Meta:
         verbose_name = 'Αίτηση Άδειας'
         verbose_name_plural = 'Αιτήσεις Αδειών'
         ordering = ['-created_at']
+        permissions = [
+            ('can_approve_leave', 'Μπορεί να εγκρίνει άδειες'),
+            ('can_process_leave', 'Μπορεί να επεξεργαστεί άδειες'),
+        ]
     
     def __str__(self):
-        return f"{self.employee.full_name} - {self.leave_type.name} ({self.start_date.strftime('%d/%m/%Y')} - {self.end_date.strftime('%d/%m/%Y')})"
-    
-    def clean(self):
-        """Επικύρωση δεδομένων"""
-        if self.start_date and self.end_date:
-            if self.start_date > self.end_date:
-                raise ValidationError('Η ημερομηνία έναρξης δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας λήξης.')
-            
-            if self.start_date < timezone.now().date():
-                raise ValidationError('Η ημερομηνία έναρξης δεν μπορεί να είναι στο παρελθόν.')
-    
-    def save(self, *args, **kwargs):
-        # Υπολογισμός συνολικών ημερών
-        if self.start_date and self.end_date:
-            delta = self.end_date - self.start_date
-            self.total_days = delta.days + 1  # +1 για να συμπεριλάβουμε και τις δύο ημερομηνίες
-        
-        super().save(*args, **kwargs)
+        return f"{self.user.full_name} - {self.leave_type.name} ({self.start_date} - {self.end_date})"
     
     @property
-    def status_display_greek(self):
-        """Επιστρέφει την κατάσταση στα ελληνικά"""
-        status_dict = dict(self.STATUS_CHOICES)
-        return status_dict.get(self.status, self.status)
+    def total_days(self):
+        """Υπολογισμός συνολικών ημερών άδειας"""
+        if self.start_date and self.end_date:
+            return (self.end_date - self.start_date).days + 1
+        return 0
+    
+    @property
+    def can_be_edited(self):
+        """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί"""
+        return self.status in ['DRAFT', 'SUBMITTED']
     
     @property
     def can_be_approved_by_manager(self):
-        """Μπορεί να εγκριθεί από προϊστάμενο"""
-        return self.status == 'SUBMITTED'
-    
-    @property
-    def can_be_rejected_by_manager(self):
-        """Μπορεί να απορριφθεί από προϊστάμενο"""
+        """Ελέγχει αν η αίτηση μπορεί να εγκριθεί από προϊστάμενο"""
         return self.status == 'SUBMITTED'
     
     @property
     def can_be_processed(self):
-        """Μπορεί να επεξεργαστεί από χειριστή"""
-        return self.status == 'APPROVED_MANAGER'
-    
-    @property
-    def can_be_completed(self):
-        """Μπορεί να ολοκληρωθεί"""
-        return self.status in ['APPROVED_MANAGER', 'UNDER_PROCESSING']
+        """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί από χειριστή"""
+        return self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']
     
     @property
     def is_pending(self):
-        """Είναι σε εκκρεμότητα"""
+        """Ελέγχει αν η αίτηση είναι εκκρεμής"""
         return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
     
     @property
     def is_completed(self):
-        """Έχει ολοκληρωθεί"""
+        """Ελέγχει αν η αίτηση έχει ολοκληρωθεί"""
         return self.status == 'COMPLETED'
     
     @property
     def is_rejected(self):
-        """Έχει απορριφθεί"""
+        """Ελέγχει αν η αίτηση έχει απορριφθεί"""
         return self.status in ['REJECTED_MANAGER', 'REJECTED_OPERATOR']
+    
+    def submit(self):
+        """Υποβολή αίτησης"""
+        if self.status == 'DRAFT':
+            self.status = 'SUBMITTED'
+            self.submitted_at = timezone.now()
+            self.save()
+            return True
+        return False
     
     def approve_by_manager(self, manager, comments=''):
         """Έγκριση από προϊστάμενο"""
-        if not self.can_be_approved_by_manager:
-            raise ValidationError('Αυτή η αίτηση δεν μπορεί να εγκριθεί από προϊστάμενο.')
-        
-        self.status = 'APPROVED_MANAGER'
-        self.manager_approved_by = manager
-        self.manager_approved_at = timezone.now()
-        self.manager_comments = comments
-        self.save()
+        if self.can_be_approved_by_manager:
+            self.status = 'APPROVED_MANAGER'
+            self.manager_approved_by = manager
+            self.manager_approved_at = timezone.now()
+            self.manager_comments = comments
+            self.save()
+            return True
+        return False
     
-    def reject_by_manager(self, manager, reason=''):
+    def reject_by_manager(self, manager, reason):
         """Απόρριψη από προϊστάμενο"""
-        if not self.can_be_rejected_by_manager:
-            raise ValidationError('Αυτή η αίτηση δεν μπορεί να απορριφθεί από προϊστάμενο.')
-        
-        self.status = 'REJECTED_MANAGER'
-        self.rejected_by = manager
-        self.rejected_at = timezone.now()
-        self.rejection_reason = reason
-        self.save()
+        if self.can_be_approved_by_manager:
+            self.status = 'REJECTED_MANAGER'
+            self.rejected_by = manager
+            self.rejected_at = timezone.now()
+            self.rejection_reason = reason
+            self.save()
+            return True
+        return False
+    
+    def move_to_protocol(self):
+        """Μεταφορά για πρωτόκολλο ΠΔΕΔΕ"""
+        if self.status == 'APPROVED_MANAGER':
+            self.status = 'FOR_PROTOCOL_PDEDE'
+            self.save()
+            return True
+        return False
+    
+    def start_processing(self, handler, protocol_number='', comments=''):
+        """Έναρξη επεξεργασίας από χειριστή"""
+        if self.can_be_processed:
+            self.status = 'UNDER_PROCESSING'
+            self.processed_by = handler
+            self.processed_at = timezone.now()
+            if protocol_number:
+                self.protocol_number = protocol_number
+            self.processing_comments = comments
+            self.save()
+            return True
+        return False
+    
+    def complete(self):
+        """Ολοκλήρωση αίτησης"""
+        if self.status == 'UNDER_PROCESSING':
+            self.status = 'COMPLETED'
+            self.completed_at = timezone.now()
+            self.save()
+            return True
+        return False
     
     def complete_by_handler(self, handler, comments=''):
-        """Ολοκλήρωση από χειριστή"""
-        if not self.can_be_completed:
-            raise ValidationError('Αυτή η αίτηση δεν μπορεί να ολοκληρωθεί.')
-        
-        self.status = 'COMPLETED'
-        self.processed_by = handler
-        self.processed_at = timezone.now()
-        self.processing_comments = comments
-        self.save()
+        """Ολοκλήρωση αίτησης από χειριστή"""
+        if self.status == 'UNDER_PROCESSING':
+            self.status = 'COMPLETED'
+            self.completed_at = timezone.now()
+            if comments:
+                self.processing_comments = comments
+            self.save()
+            return True
+        return False
     
-    def reject_by_handler(self, handler, reason=''):
+    def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""
-        if not self.can_be_processed:
-            raise ValidationError('Αυτή η αίτηση δεν μπορεί να απορριφθεί από χειριστή.')
+        if self.status in ['FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
+            self.status = 'REJECTED_OPERATOR'
+            self.rejected_by = operator
+            self.rejected_at = timezone.now()
+            self.rejection_reason = reason
+            self.save()
+            return True
+        return False
+    
+    def get_status_display_class(self):
+        """CSS κλάση για το status badge"""
+        status_classes = {
+            'DRAFT': 'secondary',
+            'SUBMITTED': 'warning',
+            'APPROVED_MANAGER': 'info',
+            'REJECTED_MANAGER': 'danger',
+            'FOR_PROTOCOL_PDEDE': 'secondary',
+            'UNDER_PROCESSING': 'primary',
+            'COMPLETED': 'success',
+            'REJECTED_OPERATOR': 'danger',
+        }
+        return status_classes.get(self.status, 'secondary')
+    
+    def can_user_view(self, user):
+        """Ελέγχει αν ο χρήστης μπορεί να δει την αίτηση"""
+        # Ο ιδιοκτήτης μπορεί πάντα να δει
+        if self.user == user:
+            return True
         
-        self.status = 'REJECTED_OPERATOR'
-        self.rejected_by = handler
-        self.rejected_at = timezone.now()
-        self.rejection_reason = reason
-        self.save()
-
-
-class LeaveRequestDocument(models.Model):
-    """Δικαιολογητικά Αιτήσεων Αδειών"""
+        # Οι προϊστάμενοι μπορούν να δουν αιτήσεις του τμήματός τους
+        if user.is_department_manager and self.user.department == user.department:
+            return True
+        
+        # Οι χειριστές μπορούν να δουν όλες τις αιτήσεις
+        if user.is_leave_handler:
+            return True
+        
+        return False
     
-    leave_request = models.ForeignKey(LeaveRequest, on_delete=models.CASCADE, 
-                                    related_name='documents',
-                                    verbose_name='Αίτηση Άδειας')
-    document = models.FileField('Αρχείο', upload_to='leave_documents/%Y/%m/')
-    description = models.CharField('Περιγραφή', max_length=200, blank=True)
-    uploaded_at = models.DateTimeField('Ημερομηνία Μεταφόρτωσης', auto_now_add=True)
-    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, 
-                                  verbose_name='Μεταφορτώθηκε από')
-    
-    class Meta:
-        verbose_name = 'Δικαιολογητικό Άδειας'
-        verbose_name_plural = 'Δικαιολογητικά Αδειών'
-    
-    def __str__(self):
-        return f"{self.leave_request} - {self.description or 'Δικαιολογητικό'}"
+    def get_next_actions(self, user):
+        """Επιστρέφει τις επόμενες δυνατές ενέργειες για τον χρήστη"""
+        actions = []
+        
+        if self.user == user and self.can_be_edited:
+            actions.append('edit')
+        
+        if user.is_department_manager and self.user.department == user.department and self.can_be_approved_by_manager:
+            actions.extend(['approve', 'reject'])
+        
+        if user.is_leave_handler and self.can_be_processed:
+            actions.extend(['process', 'reject'])
+        
+        if user.is_leave_handler and self.status == 'UNDER_PROCESSING':
+            actions.append('complete')
+        
+        return actions
