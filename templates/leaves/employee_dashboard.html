@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Οι Αιτήσεις μου - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-circle"></i> Οι Αιτήσεις μου</h2>
+            <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Νέα Αίτηση
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Στατιστικά -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-light">
+            <div class="card-body">
+                <i class="bi bi-list-ul fs-3 text-primary"></i>
+                <h5 class="mt-2">{{ total_requests }}</h5>
+                <small class="text-muted">Συνολικές Αιτήσεις</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-clock fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ pending_requests }}</h5>
+                <small class="text-muted">Εκκρεμούν</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-success bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-check-circle fs-3 text-success"></i>
+                <h5 class="mt-2">{{ completed_requests }}</h5>
+                <small class="text-muted">Ολοκληρώθηκαν</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-danger bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-x-circle fs-3 text-danger"></i>
+                <h5 class="mt-2">{{ rejected_requests }}</h5>
+                <small class="text-muted">Απορρίφθηκαν</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Λίστα Αιτήσεων -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-check"></i> Λίστα Αιτήσεων</h5>
+            </div>
+            <div class="card-body">
+                {% if leave_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Τύπος Άδειας</th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
+                                    <th>Κατάσταση</th>
+                                    <th>Ημερομηνία Υποβολής</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in leave_requests %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ request.leave_type.name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="date-greek">
+                                            {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'SUBMITTED' %}
+                                            <span class="badge bg-warning">Υποβλήθηκε</span>
+                                        {% elif request.status == 'APPROVED_MANAGER' %}
+                                            <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
+                                        {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                            <span class="badge bg-secondary">Για Πρωτόκολλο ΠΔΕΔΕ</span>
+                                        {% elif request.status == 'UNDER_PROCESSING' %}
+                                            <span class="badge bg-primary">Προς Επεξεργασία</span>
+                                        {% elif request.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">Ολοκληρώθηκε</span>
+                                        {% elif request.status == 'REJECTED_MANAGER' %}
+                                            <span class="badge bg-danger">Απορρίφθηκε από Προϊστάμενο</span>
+                                        {% elif request.status == 'REJECTED_OPERATOR' %}
+                                            <span class="badge bg-danger">Απορρίφθηκε από Χειριστή</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="date-greek">{{ request.created_at|date:"d/m/Y H:i" }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'leaves:leave_request_detail' request.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Προβολή
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">Πρώτη</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Σελίδα {{ page_obj.number }} από {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Τελευταία</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Δεν έχετε υποβάλει καμία αίτηση άδειας</h5>
+                        <p class="text-muted">Κάντε κλικ στο κουμπί "Νέα Αίτηση" για να υποβάλετε την πρώτη σας αίτηση.</p>
+                        <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Νέα Αίτηση
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

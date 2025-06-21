@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    
+    <!-- Custom CSS -->
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            min-width: 18px;
+            text-align: center;
+        }
+        
+        .status-badge {
+            font-size: 0.875rem;
+        }
+        
+        .card-hover:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+            transition: all 0.2s;
+        }
+        
+        .date-greek {
+            font-family: monospace;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'leaves:dashboard_redirect' %}">
+                <i class="bi bi-calendar-check"></i> ΠΔΕΔΕ - Σύστημα Αδειών
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                {% if user.is_authenticated %}
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:dashboard_redirect' %}">
+                            <i class="bi bi-house"></i> Αρχική
+                        </a>
+                    </li>
+                    
+                    {% if user.role == 'employee' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:create_leave_request' %}">
+                            <i class="bi bi-plus-circle"></i> Νέα Αίτηση
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if user.is_department_manager %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:manager_dashboard' %}">
+                            <i class="bi bi-clipboard-check"></i> Εγκρίσεις
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if user.is_leave_handler %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:handler_dashboard' %}">
+                            <i class="bi bi-gear"></i> Επεξεργασία
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" 
+                           role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-bell"></i>
+                            <span id="notification-count" class="notification-badge d-none">0</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;">
+                            <li><h6 class="dropdown-header">Ειδοποιήσεις</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <div id="notification-list">
+                                <li><span class="dropdown-item-text text-muted">Φόρτωση...</span></li>
+                            </div>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-center" href="{% url 'notifications:notification_list' %}">
+                                    Προβολή όλων
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ user.full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><span class="dropdown-item-text">{{ user.get_role_display }}</span></li>
+                            <li><span class="dropdown-item-text text-muted">{{ user.department.name|default:"Χωρίς τμήμα" }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
+                                <i class="bi bi-box-arrow-right"></i> Αποσύνδεση
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mt-3" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Φόρτωση ειδοποιήσεων
+        function loadNotifications() {
+            fetch('{% url "notifications:api_recent_notifications" %}')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    const notificationCount = document.getElementById('notification-count');
+                    
+                    if (data.unread_count > 0) {
+                        notificationCount.textContent = data.unread_count;
+                        notificationCount.classList.remove('d-none');
+                    } else {
+                        notificationCount.classList.add('d-none');
+                    }
+                    
+                    if (data.notifications.length > 0) {
+                        notificationList.innerHTML = data.notifications.map(notification => `
+                            <li>
+                                <a class="dropdown-item ${notification.is_read ? '' : 'fw-bold'}" 
+                                   href="#" onclick="markAsRead(${notification.id})">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-bold">${notification.title}</div>
+                                            <small class="text-muted">${notification.message}</small>
+                                            <br><small class="text-muted">${notification.created_at}</small>
+                                        </div>
+                                        <span class="badge ${notification.badge_class}">${notification.type}</span>
+                                    </div>
+                                </a>
+                            </li>
+                        `).join('');
+                    } else {
+                        notificationList.innerHTML = '<li><span class="dropdown-item-text text-muted">Δεν υπάρχουν ειδοποιήσεις</span></li>';
+                    }
+                });
+        }
+        
+        function markAsRead(notificationId) {
+            fetch(`/notifications/mark-read/${notificationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(() => {
+                loadNotifications();
+            });
+        }
+        
+        // Φόρτωση ειδοποιήσεων κατά την αρχικοποίηση
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if user.is_authenticated %}
+            loadNotifications();
+            // Ανανέωση κάθε 30 δευτερόλεπτα
+            setInterval(loadNotifications, 30000);
+            {% endif %}
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

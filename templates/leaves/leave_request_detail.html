@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}Λεπτομέρειες Αίτησης - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-file-text"></i> Λεπτομέρειες Αίτησης</h2>
+            <div>
+                {% if user.role == 'employee' %}
+                    <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Επιστροφή
+                    </a>
+                {% elif user.is_department_manager %}
+                    <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Επιστροφή
+                    </a>
+                {% elif user.is_leave_handler %}
+                    <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Επιστροφή
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Βασικά Στοιχεία Αίτησης -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Βασικά Στοιχεία</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Υπάλληλος:</strong>
+                        <p>{{ leave_request.employee.full_name }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Τμήμα:</strong>
+                        <p>{{ leave_request.employee.department.name|default:"Δεν έχει ανατεθεί" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Τύπος Άδειας:</strong>
+                        <p><span class="badge bg-secondary fs-6">{{ leave_request.leave_type.name }}</span></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Κατάσταση:</strong>
+                        <p>
+                            {% if leave_request.status == 'SUBMITTED' %}
+                                <span class="badge bg-warning fs-6">Υποβλήθηκε</span>
+                            {% elif leave_request.status == 'APPROVED_MANAGER' %}
+                                <span class="badge bg-info fs-6">Εγκρίθηκε από Προϊστάμενο</span>
+                            {% elif leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                <span class="badge bg-secondary fs-6">Για Πρωτόκολλο ΠΔΕΔΕ</span>
+                            {% elif leave_request.status == 'UNDER_PROCESSING' %}
+                                <span class="badge bg-primary fs-6">Προς Επεξεργασία</span>
+                            {% elif leave_request.status == 'COMPLETED' %}
+                                <span class="badge bg-success fs-6">Ολοκληρώθηκε</span>
+                            {% elif leave_request.status == 'REJECTED_MANAGER' %}
+                                <span class="badge bg-danger fs-6">Απορρίφθηκε από Προϊστάμενο</span>
+                            {% elif leave_request.status == 'REJECTED_OPERATOR' %}
+                                <span class="badge bg-danger fs-6">Απορρίφθηκε από Χειριστή</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ημερομηνία Έναρξης:</strong>
+                        <p class="date-greek">{{ leave_request.start_date|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ημερομηνία Λήξης:</strong>
+                        <p class="date-greek">{{ leave_request.end_date|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Συνολικές Ημέρες:</strong>
+                        <p><span class="badge bg-info fs-6">{{ leave_request.total_days }} ημέρες</span></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ημερομηνία Υποβολής:</strong>
+                        <p class="date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+                
+                {% if leave_request.description %}
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Περιγραφή/Αιτιολογία:</strong>
+                        <p class="mt-2">{{ leave_request.description }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if leave_request.protocol_number %}
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Αριθμός Πρωτοκόλλου:</strong>
+                        <p class="mt-2"><span class="badge bg-dark fs-6">{{ leave_request.protocol_number }}</span></p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Timeline/Ιστορικό -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history"></i> Ιστορικό Αίτησης</h5>
+            </div>
+            <div class="card-body">
+                <!-- Υποβολή -->
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-primary"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Υποβολή Αίτησης</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.employee.full_name }}</p>
+                        <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
+                    </div>
+                </div>
+                
+                <!-- Έγκριση/Απόρριψη Προϊσταμένου -->
+                {% if leave_request.manager_approved_by %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-success"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Έγκριση Προϊσταμένου</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.manager_approved_by.full_name }}</p>
+                        <small class="text-muted date-greek">{{ leave_request.manager_approved_at|date:"d/m/Y H:i" }}</small>
+                        {% if leave_request.manager_comments %}
+                            <p class="mt-1 small"><em>"{{ leave_request.manager_comments }}"</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% elif leave_request.rejected_by and leave_request.status == 'REJECTED_MANAGER' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-danger"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Απόρριψη από Προϊστάμενο</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.rejected_by.full_name }}</p>
+                        <small class="text-muted date-greek">{{ leave_request.rejected_at|date:"d/m/Y H:i" }}</small>
+                        {% if leave_request.rejection_reason %}
+                            <p class="mt-1 small text-danger"><em>"{{ leave_request.rejection_reason }}"</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Επεξεργασία/Ολοκλήρωση -->
+                {% if leave_request.processed_by %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-success"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Ολοκλήρωση</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.processed_by.full_name }}</p>
+                        <small class="text-muted date-greek">{{ leave_request.processed_at|date:"d/m/Y H:i" }}</small>
+                        {% if leave_request.processing_comments %}
+                            <p class="mt-1 small"><em>"{{ leave_request.processing_comments }}"</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% elif leave_request.rejected_by and leave_request.status == 'REJECTED_OPERATOR' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-danger"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Απόρριψη από Χειριστή</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.rejected_by.full_name }}</p>
+                        <small class="text-muted date-greek">{{ leave_request.rejected_at|date:"d/m/Y H:i" }}</small>
+                        {% if leave_request.rejection_reason %}
+                            <p class="mt-1 small text-danger"><em>"{{ leave_request.rejection_reason }}"</em></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Επόμενο βήμα -->
+                {% if leave_request.status == 'SUBMITTED' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Αναμένει έγκριση προϊσταμένου</h6>
+                    </div>
+                </div>
+                {% elif leave_request.status == 'APPROVED_MANAGER' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Αναμένει επεξεργασία</h6>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

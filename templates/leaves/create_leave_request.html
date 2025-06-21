@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Νέα Αίτηση Άδειας - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-plus-circle"></i> Νέα Αίτηση Άδειας</h2>
+            <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-plus"></i> Στοιχεία Αίτησης</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Τύπος Άδειας -->
+                    <div class="mb-3">
+                        <label for="{{ form.leave_type.id_for_label }}" class="form-label">
+                            <i class="bi bi-tag"></i> {{ form.leave_type.label }}
+                        </label>
+                        {{ form.leave_type }}
+                        {% if form.leave_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.leave_type.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Ημερομηνίες -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.start_date.id_for_label }}" class="form-label">
+                                <i class="bi bi-calendar"></i> {{ form.start_date.label }}
+                            </label>
+                            {{ form.start_date }}
+                            {% if form.start_date.help_text %}
+                                <div class="form-text">{{ form.start_date.help_text }}</div>
+                            {% endif %}
+                            {% if form.start_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.start_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.end_date.id_for_label }}" class="form-label">
+                                <i class="bi bi-calendar-check"></i> {{ form.end_date.label }}
+                            </label>
+                            {{ form.end_date }}
+                            {% if form.end_date.help_text %}
+                                <div class="form-text">{{ form.end_date.help_text }}</div>
+                            {% endif %}
+                            {% if form.end_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.end_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Υπολογισμός ημερών -->
+                    <div class="mb-3">
+                        <div class="alert alert-info" id="days-calculation" style="display: none;">
+                            <i class="bi bi-calculator"></i>
+                            <strong>Συνολικές ημέρες άδειας:</strong> <span id="total-days">0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Περιγραφή -->
+                    <div class="mb-4">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">
+                            <i class="bi bi-textarea-t"></i> {{ form.description.label }}
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors.0 }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Non-field errors -->
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Κουμπιά -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-outline-secondary me-md-2">
+                            <i class="bi bi-x-circle"></i> Ακύρωση
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Υποβολή Αίτησης
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Οδηγίες -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6><i class="bi bi-info-circle"></i> Οδηγίες</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Επιλέξτε τον τύπο άδειας που επιθυμείτε</li>
+                    <li>Οι ημερομηνίες πρέπει να είναι στο μέλλον</li>
+                    <li>Η ημερομηνία έναρξης δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας λήξης</li>
+                    <li>Προσθέστε προαιρετική περιγραφή ή αιτιολογία για την άδειά σας</li>
+                    <li>Μετά την υποβολή, η αίτησή σας θα σταλεί στον προϊστάμενό σας για έγκριση</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('{{ form.start_date.id_for_label }}');
+    const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
+    const daysCalculation = document.getElementById('days-calculation');
+    const totalDaysSpan = document.getElementById('total-days');
+    
+    function calculateDays() {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        
+        if (startDate && endDate && startDate <= endDate) {
+            const timeDiff = endDate.getTime() - startDate.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+            
+            totalDaysSpan.textContent = daysDiff;
+            daysCalculation.style.display = 'block';
+        } else {
+            daysCalculation.style.display = 'none';
+        }
+    }
+    
+    startDateInput.addEventListener('change', calculateDays);
+    endDateInput.addEventListener('change', calculateDays);
+    
+    // Υπολογισμός κατά την αρχικοποίηση
+    calculateDays();
+});
+</script>
+{% endblock %}
