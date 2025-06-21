@@ -14,7 +14,7 @@ from notifications.utils import create_notification
 
 
 class EmployeeDashboardView(LoginRequiredMixin, ListView):
-    """Dashboard για Υπάλληλο - Προβολή των αιτήσεών του"""
+    """Dashboard για όλους τους ρόλους - Προβολή των προσωπικών αιτήσεων"""
     model = LeaveRequest
     template_name = 'leaves/employee_dashboard.html'
     context_object_name = 'leave_requests'
@@ -49,21 +49,45 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     model = LeaveRequest
     form_class = LeaveRequestForm
     template_name = 'leaves/create_leave_request.html'
-    success_url = reverse_lazy('leaves:employee_dashboard')
+    def get_success_url(self):
+        """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""
+        user = self.request.user
+        if user.is_leave_handler():
+            return reverse_lazy('leaves:handler_dashboard')
+        elif user.is_department_manager():
+            return reverse_lazy('leaves:manager_dashboard')
+        else:
+            return reverse_lazy('leaves:employee_dashboard')
     
     def form_valid(self, form):
         form.instance.employee = self.request.user
         form.instance.status = 'SUBMITTED'
         response = super().form_valid(form)
         
-        # Αποστολή ειδοποίησης στον προϊστάμενο
-        if self.request.user.manager:
+        # Αποστολή ειδοποίησης στον προϊστάμενο (αν υπάρχει)
+        user = self.request.user
+        if user.manager:
             create_notification(
-                user=self.request.user.manager,
+                user=user.manager,
                 title="Νέα Αίτηση Άδειας",
-                message=f"Ο/Η {self.request.user.full_name} υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
+                message=f"Ο/Η {user.full_name} υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
                 related_object=self.object
             )
+        elif user.is_department_manager() or user.is_leave_handler():
+            # Για προϊσταμένους και χειριστές αδειών που δεν έχουν manager,
+            # στέλνουμε ειδοποίηση στον διαχειριστή ή άλλον ανώτερο
+            try:
+                from accounts.models import User
+                admins = User.objects.filter(role='admin').first()
+                if admins:
+                    create_notification(
+                        user=admins,
+                        title="Νέα Αίτηση Άδειας - Στέλεχος",
+                        message=f"Ο/Η {user.full_name} ({user.get_role_display()}) υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
+                        related_object=self.object
+                    )
+            except Exception:
+                pass  # Σιωπηλή αποτυχία αν δεν υπάρχει διαχειριστής
         
         messages.success(self.request, 'Η αίτησή σας υποβλήθηκε επιτυχώς!')
         return response
@@ -84,8 +108,22 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Αιτήσεις των υφισταμένων που περιμένουν έγκριση
         subordinates = self.request.user.get_subordinates()
+        employees_to_include = list(subordinates)
+        
+        # Αν ο χρήστης είναι ο ανώτερος προϊστάμενος, προσθέτουμε και αιτήσεις
+        # από άλλους προϊσταμένους/χειριστές που δεν έχουν manager
+        if self.request.user.is_department_manager():
+            from accounts.models import User
+            orphan_managers = User.objects.filter(
+                Q(role='manager') | Q(role='handler'),
+                manager__isnull=True,
+                department=self.request.user.department
+            ).exclude(pk=self.request.user.pk)
+            
+            employees_to_include.extend(list(orphan_managers))
+        
         return LeaveRequest.objects.filter(
-            employee__in=subordinates,
+            employee__in=employees_to_include,
             status='SUBMITTED'
         ).select_related('employee', 'leave_type').order_by('-created_at')
     
