@@ -90,7 +90,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
             # στέλνουμε ειδοποίηση στον διαχειριστή ή άλλον ανώτερο
             try:
                 from accounts.models import User
-                admins = User.objects.filter(role='admin').first()
+                admins = User.objects.filter(roles__code='administrator').first()
                 if admins:
                     create_notification(
                         user=admins,
@@ -180,13 +180,13 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
         # από άλλους προϊσταμένους/χειριστές που δεν έχουν manager
         if self.request.user.is_department_manager:
             from accounts.models import User
-            orphan_managers = User.objects.filter(
-                Q(role='manager') | Q(role='handler'),
-                manager__isnull=True,
+            # Προσθήκη άλλων managers/handlers του ίδιου τμήματος
+            other_department_users = User.objects.filter(
+                Q(roles__code='department_manager') | Q(roles__code='leave_handler'),
                 department=self.request.user.department
-            ).exclude(pk=self.request.user.pk)
+            ).exclude(pk=self.request.user.pk).distinct()
             
-            employees_to_include.extend(list(orphan_managers))
+            employees_to_include.extend(list(other_department_users))
         
         return LeaveRequest.objects.filter(
             user__in=employees_to_include,
@@ -231,7 +231,7 @@ def approve_leave_request(request, pk):
             
             # Ειδοποίηση στους χειριστές αδειών
             from accounts.models import User
-            leave_handlers = User.objects.filter(role='leave_handler', is_active=True)
+            leave_handlers = User.objects.filter(roles__code='leave_handler', is_active=True).distinct()
             for handler in leave_handlers:
                 create_notification(
                     user=handler,
@@ -364,8 +364,8 @@ class UsersListView(LoginRequiredMixin, ListView):
             context.update({
                 'total_users': User.objects.count(),
                 'active_users': User.objects.filter(is_active=True).count(),
-                'employees': User.objects.filter(role='employee').count(),
-                'managers': User.objects.filter(role='department_manager').count(),
+                'employees': User.objects.filter(roles__code='employee').distinct().count(),
+                'managers': User.objects.filter(roles__code='department_manager').distinct().count(),
                 'user_role': 'handler'
             })
         elif self.request.user.is_department_manager:
@@ -378,8 +378,8 @@ class UsersListView(LoginRequiredMixin, ListView):
                 context.update({
                     'total_users': department_users.count(),
                     'active_users': department_users.filter(is_active=True).count(),
-                    'employees': department_users.filter(role='employee').count(),
-                    'managers': department_users.filter(role='department_manager').count(),
+                    'employees': department_users.filter(roles__code='employee').distinct().count(),
+                    'managers': department_users.filter(roles__code='department_manager').distinct().count(),
                     'user_role': 'manager',
                     'department_name': self.request.user.department.name
                 })

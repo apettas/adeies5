@@ -6,8 +6,16 @@
 <div class="row mt-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Καλώς ήρθες, {{ user_full_name }}!</h2>
-            <span class="badge bg-secondary fs-6">{{ user.get_role_display }}</span>
+            <h2>Καλώς ήρθες, {{ user.full_name }}!</h2>
+            <div>
+                {% if user_roles %}
+                    {% for role in user.roles.all %}
+                    <span class="badge bg-primary me-1">{{ role.name }}</span>
+                    {% endfor %}
+                {% else %}
+                <span class="badge bg-secondary">Χωρίς ρόλο</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -18,18 +26,18 @@
             <div class="card-body">
                 <i class="bi bi-building fs-1 text-primary mb-3"></i>
                 <h5 class="card-title">Τμήμα</h5>
-                <p class="card-text">{{ department_name }}</p>
+                <p class="card-text">{{ user.department.name|default:"Χωρίς τμήμα" }}</p>
             </div>
         </div>
     </div>
     
-    {% if user_role == 'employee' %}
+    {% if user.is_employee %}
     <div class="col-md-4 mb-3">
         <div class="card text-center card-hover">
             <div class="card-body">
                 <i class="bi bi-calendar-check fs-1 text-success mb-3"></i>
                 <h5 class="card-title">Οι Αιτήσεις μου</h5>
-                <p class="card-text">{{ my_requests_count }} συνολικά</p>
+                <p class="card-text">{{ my_requests_count|default:0 }} συνολικά</p>
                 <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-success">Προβολή</a>
             </div>
         </div>
@@ -40,7 +48,7 @@
             <div class="card-body">
                 <i class="bi bi-clock fs-1 text-warning mb-3"></i>
                 <h5 class="card-title">Εκκρεμούν</h5>
-                <p class="card-text">{{ pending_requests_count }} αιτήσεις</p>
+                <p class="card-text">{{ pending_requests_count|default:0 }} αιτήσεις</p>
                 <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-primary">Νέα Αίτηση</a>
             </div>
         </div>
@@ -53,7 +61,7 @@
             <div class="card-body">
                 <i class="bi bi-clipboard-check fs-1 text-info mb-3"></i>
                 <h5 class="card-title">Προς Έγκριση</h5>
-                <p class="card-text">{{ pending_approvals }} αιτήσεις</p>
+                <p class="card-text">{{ pending_approvals|default:0 }} αιτήσεις</p>
                 <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-info">Εγκρίσεις</a>
             </div>
         </div>
@@ -66,8 +74,32 @@
             <div class="card-body">
                 <i class="bi bi-gear fs-1 text-secondary mb-3"></i>
                 <h5 class="card-title">Προς Επεξεργασία</h5>
-                <p class="card-text">{{ pending_processing }} αιτήσεις</p>
+                <p class="card-text">{{ pending_processing|default:0 }} αιτήσεις</p>
                 <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">Επεξεργασία</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if user.is_administrator %}
+    <div class="col-md-4 mb-3">
+        <div class="card text-center card-hover">
+            <div class="card-body">
+                <i class="bi bi-people-fill fs-1 text-danger mb-3"></i>
+                <h5 class="card-title">Διαχείριση Χρηστών</h5>
+                <p class="card-text">Ρόλοι & Τμήματα</p>
+                <a href="{% url 'accounts:manage_roles' %}" class="btn btn-danger">Διαχείριση</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center card-hover">
+            <div class="card-body">
+                <i class="bi bi-shield-check fs-1 text-dark mb-3"></i>
+                <h5 class="card-title">Admin Panel</h5>
+                <p class="card-text">Django Administration</p>
+                <a href="/admin/" class="btn btn-dark" target="_blank">Άνοιγμα</a>
             </div>
         </div>
     </div>
@@ -81,33 +113,63 @@
                 <h5><i class="bi bi-info-circle"></i> Οδηγίες Χρήσης</h5>
             </div>
             <div class="card-body">
-                {% if user_role == 'employee' %}
+                {% if user.is_employee %}
                 <h6>Ως Υπάλληλος μπορείτε:</h6>
                 <ul>
                     <li>Να υποβάλλετε νέες αιτήσεις άδειας</li>
                     <li>Να παρακολουθείτε την κατάσταση των αιτήσεών σας</li>
                     <li>Να λαμβάνετε ειδοποιήσεις για τις αιτήσεις σας</li>
                 </ul>
-                {% elif user.is_department_manager %}
+                {% endif %}
+                
+                {% if user.is_department_manager %}
                 <h6>Ως Προϊστάμενος μπορείτε:</h6>
                 <ul>
                     <li>Να εγκρίνετε ή να απορρίπτετε αιτήσεις των υφισταμένων σας</li>
                     <li>Να προσθέτετε σχόλια στις εγκρίσεις/απορρίψεις</li>
-                    <li>Να παρακολουθείτε τις αιτήσεις του τμήματός σας</li>
+                    <li>Να παρακολουθείτε τις αιτήσεις του τμήματός σας και των υποτμημάτων</li>
+                    <li>Να βλέπετε λίστα χρηστών της ιεραρχίας σας</li>
                 </ul>
-                {% elif user.is_leave_handler %}
+                {% endif %}
+                
+                {% if user.is_leave_handler %}
                 <h6>Ως Χειριστής Αδειών μπορείτε:</h6>
                 <ul>
                     <li>Να επεξεργάζεστε αιτήσεις που έχουν εγκριθεί από προϊσταμένους</li>
                     <li>Να προσθέτετε αριθμούς πρωτοκόλλου</li>
                     <li>Να ολοκληρώνετε ή να απορρίπτετε αιτήσεις</li>
+                    <li>Να βλέπετε όλους τους χρήστες και το ιστορικό τους</li>
                 </ul>
+                {% endif %}
+                
+                {% if user.is_administrator %}
+                <h6>Ως Διαχειριστής μπορείτε:</h6>
+                <ul>
+                    <li>Να διαχειρίζεστε ρόλους χρηστών</li>
+                    <li>Να μετακινείτε χρήστες μεταξύ τμημάτων</li>
+                    <li>Να έχετε πρόσβαση στο Django Admin Panel</li>
+                    <li>Να διαχειρίζεστε τη συνολική λειτουργία του συστήματος</li>
+                </ul>
+                {% endif %}
+                
+                {% if not user.roles.exists %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Προσοχή:</strong> Δεν έχετε ανατεθεί κάποιος ρόλος. Επικοινωνήστε με τον διαχειριστή.
+                </div>
                 {% endif %}
                 
                 <div class="alert alert-info mt-3">
                     <i class="bi bi-lightbulb"></i>
                     <strong>Συμβουλή:</strong> Χρησιμοποιήστε το κουδούνι στην επάνω δεξιά γωνία για να δείτε τις ειδοποιήσεις σας.
                 </div>
+                
+                {% if user.roles.count > 1 %}
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-star"></i>
+                    <strong>Πολλαπλοί Ρόλοι:</strong> Έχετε {{ user.roles.count }} ρόλους και μπορείτε να χρησιμοποιήσετε όλες τις αντίστοιχες λειτουργίες.
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

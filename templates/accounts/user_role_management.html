@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Διαχείριση Ρόλων Χρηστών{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users-cog"></i> Διαχείριση Ρόλων Χρηστών</h2>
+                <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Επιστροφή
+                </a>
+            </div>
+
+            <!-- Φίλτρα -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="filter-department" class="form-label">Φίλτρο Τμήματος:</label>
+                            <select id="filter-department" class="form-select">
+                                <option value="">Όλα τα τμήματα</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filter-role" class="form-label">Φίλτρο Ρόλου:</label>
+                            <select id="filter-role" class="form-select">
+                                <option value="">Όλοι οι ρόλοι</option>
+                                {% for role in all_roles %}
+                                <option value="{{ role.code }}">{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="search-user" class="form-label">Αναζήτηση Χρήστη:</label>
+                            <input type="text" id="search-user" class="form-control" placeholder="Όνομα ή username...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Πίνακας Χρηστών -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="users-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Όνομα</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Τμήμα</th>
+                                    <th>Ρόλοι</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr data-user-id="{{ user.id }}" 
+                                    data-department-id="{{ user.department.id|default:'' }}"
+                                    data-roles="{% for role in user.roles.all %}{{ role.code }} {% endfor %}"
+                                    data-search-text="{{ user.full_name|lower }} {{ user.username|lower }}">
+                                    <td>
+                                        <strong>{{ user.full_name }}</strong>
+                                        {% if user.is_superuser %}
+                                        <span class="badge bg-danger ms-2">Superuser</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm department-select" 
+                                                data-user-id="{{ user.id }}"
+                                                {% if user.is_superuser %}disabled{% endif %}>
+                                            <option value="">Χωρίς τμήμα</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.id }}" 
+                                                    {% if user.department.id == dept.id %}selected{% endif %}>
+                                                {{ dept.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div class="role-badges" data-user-id="{{ user.id }}">
+                                            {% for role in user.roles.all %}
+                                            <span class="badge bg-primary me-1 role-badge" data-role-code="{{ role.code }}">
+                                                {{ role.name }}
+                                                {% if not user.is_superuser %}
+                                                <button type="button" class="btn-close btn-close-white btn-sm ms-1 remove-role" 
+                                                        data-user-id="{{ user.id }}" 
+                                                        data-role-code="{{ role.code }}"
+                                                        title="Αφαίρεση ρόλου"></button>
+                                                {% endif %}
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if not user.is_superuser %}
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                    type="button" data-bs-toggle="dropdown">
+                                                <i class="fas fa-plus"></i> Ρόλος
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                {% for role in all_roles %}
+                                                <li>
+                                                    <a class="dropdown-item add-role" href="#" 
+                                                       data-user-id="{{ user.id }}" 
+                                                       data-role-code="{{ role.code }}">
+                                                        {{ role.name }}
+                                                    </a>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">Προστατευμένος</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast για μηνύματα -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="message-toast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto">Ενημέρωση</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+
+<style>
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+.btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+.table td {
+    vertical-align: middle;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Φίλτρα
+    const departmentFilter = document.getElementById('filter-department');
+    const roleFilter = document.getElementById('filter-role');
+    const searchInput = document.getElementById('search-user');
+    
+    // Εφαρμογή φίλτρων
+    function applyFilters() {
+        const selectedDepartment = departmentFilter.value;
+        const selectedRole = roleFilter.value;
+        const searchText = searchInput.value.toLowerCase();
+        
+        document.querySelectorAll('#users-table tbody tr').forEach(row => {
+            const departmentId = row.dataset.departmentId;
+            const userRoles = row.dataset.roles;
+            const searchableText = row.dataset.searchText;
+            
+            let showRow = true;
+            
+            // Φίλτρο τμήματος
+            if (selectedDepartment && departmentId !== selectedDepartment) {
+                showRow = false;
+            }
+            
+            // Φίλτρο ρόλου
+            if (selectedRole && !userRoles.includes(selectedRole)) {
+                showRow = false;
+            }
+            
+            // Φίλτρο αναζήτησης
+            if (searchText && !searchableText.includes(searchText)) {
+                showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+    }
+    
+    departmentFilter.addEventListener('change', applyFilters);
+    roleFilter.addEventListener('change', applyFilters);
+    searchInput.addEventListener('input', applyFilters);
+    
+    // Toast helper
+    function showToast(message, isSuccess = true) {
+        const toast = document.getElementById('message-toast');
+        const toastBody = toast.querySelector('.toast-body');
+        const toastHeader = toast.querySelector('.toast-header');
+        
+        toastBody.textContent = message;
+        toastHeader.className = `toast-header ${isSuccess ? 'bg-success text-white' : 'bg-danger text-white'}`;
+        
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+    }
+    
+    // Ανάθεση ρόλου
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-role')) {
+            e.preventDefault();
+            const userId = e.target.dataset.userId;
+            const roleCode = e.target.dataset.roleCode;
+            
+            fetch('{% url "accounts:assign_role" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `user_id=${userId}&role_code=${roleCode}&action=add`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Απλή λύση - reload σελίδας
+                } else {
+                    showToast(data.error, false);
+                }
+            });
+        }
+    });
+    
+    // Αφαίρεση ρόλου
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-role')) {
+            const userId = e.target.dataset.userId;
+            const roleCode = e.target.dataset.roleCode;
+            
+            fetch('{% url "accounts:assign_role" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `user_id=${userId}&role_code=${roleCode}&action=remove`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Απλή λύση - reload σελίδας
+                } else {
+                    showToast(data.error, false);
+                }
+            });
+        }
+    });
+    
+    // Αλλαγή τμήματος
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('department-select')) {
+            const userId = e.target.dataset.userId;
+            const departmentId = e.target.value;
+            
+            fetch('{% url "accounts:update_department" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `user_id=${userId}&department_id=${departmentId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message);
+                    // Ενημέρωση dataset για φίλτρα
+                    const row = e.target.closest('tr');
+                    row.dataset.departmentId = departmentId;
+                } else {
+                    showToast(data.error, false);
+                    // Επαναφορά προηγούμενης επιλογής
+                    e.target.selectedIndex = 0;
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

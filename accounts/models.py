@@ -41,16 +41,30 @@ class Department(models.Model):
         
         return sub_departments
 
+    def get_department_manager(self):
+        """Επιστρέφει τον προϊστάμενο του τμήματος"""
+        return self.users.filter(roles__code='department_manager').first()
+
+
+class Role(models.Model):
+    """Μοντέλο για τους ρόλους χρηστών"""
+    
+    code = models.CharField('Κωδικός Ρόλου', max_length=30, unique=True)
+    name = models.CharField('Όνομα Ρόλου', max_length=100)
+    description = models.TextField('Περιγραφή', blank=True)
+    is_active = models.BooleanField('Ενεργός', default=True)
+    
+    class Meta:
+        verbose_name = 'Ρόλος'
+        verbose_name_plural = 'Ρόλοι'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
 
 class User(AbstractUser):
     """Επεκτεταμένο μοντέλο χρήστη"""
-    
-    USER_ROLES = [
-        ('employee', 'Υπάλληλος'),
-        ('department_manager', 'Προϊστάμενος Τμήματος'),
-        ('leave_handler', 'Χειριστής Αδειών'),
-        ('administrator', 'Διαχειριστής'),
-    ]
     
     # Προσωπικά στοιχεία
     first_name = models.CharField('Όνομα', max_length=50)
@@ -61,10 +75,8 @@ class User(AbstractUser):
     # Υπηρεσιακά στοιχεία
     employee_id = models.CharField('Αριθμός Μητρώου', max_length=20, unique=True, blank=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
-                                 verbose_name='Τμήμα')
-    role = models.CharField('Ρόλος', max_length=20, choices=USER_ROLES, default='employee')
-    manager = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
-                              verbose_name='Προϊστάμενος')
+                                 verbose_name='Τμήμα', related_name='users')
+    roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
     
     # Ημερομηνίες
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
@@ -90,22 +102,63 @@ class User(AbstractUser):
     
     @property
     def is_department_manager(self):
-        return self.role == 'department_manager'
+        return self.roles.filter(code='department_manager').exists()
     
     @property
     def is_leave_handler(self):
-        return self.role == 'leave_handler'
+        return self.roles.filter(code='leave_handler').exists()
     
     @property
     def is_administrator(self):
-        return self.role == 'administrator'
+        return self.roles.filter(code='administrator').exists()
+    
+    @property
+    def is_employee(self):
+        return self.roles.filter(code='employee').exists()
+    
+    @property
+    def manager(self):
+        """Επιστρέφει τον προϊστάμενο βάσει του τμήματος"""
+        if self.department:
+            return self.department.get_department_manager()
+        return None
     
     def can_approve_leaves(self):
         """Μπορεί να εγκρίνει αιτήσεις αδειών"""
-        return self.role in ['department_manager', 'leave_handler', 'administrator']
+        return self.roles.filter(code__in=['department_manager', 'leave_handler', 'administrator']).exists()
     
     def get_subordinates(self):
         """Επιστρέφει τους υφισταμένους του χρήστη"""
-        if self.is_department_manager:
-            return User.objects.filter(manager=self, is_active=True)
+        if self.is_department_manager and self.department:
+            # Χρήστες από το ίδιο τμήμα που δεν είναι προϊστάμενοι
+            return User.objects.filter(
+                department=self.department,
+                is_active=True
+            ).exclude(roles__code='department_manager')
         return User.objects.none()
+
+    def get_role_names(self):
+        """Επιστρέφει τα ονόματα των ρόλων του χρήστη"""
+        return ', '.join(self.roles.values_list('name', flat=True))
+
+    def add_role(self, role_code):
+        """Προσθέτει ρόλο στον χρήστη"""
+        try:
+            role = Role.objects.get(code=role_code)
+            self.roles.add(role)
+            return True
+        except Role.DoesNotExist:
+            return False
+
+    def remove_role(self, role_code):
+        """Αφαιρεί ρόλο από τον χρήστη"""
+        try:
+            role = Role.objects.get(code=role_code)
+            self.roles.remove(role)
+            return True
+        except Role.DoesNotExist:
+            return False
+
+    def has_role(self, role_code):
+        """Ελέγχει αν ο χρήστης έχει συγκεκριμένο ρόλο"""
+        return self.roles.filter(code=role_code).exists()
