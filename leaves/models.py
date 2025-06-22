@@ -252,9 +252,11 @@ class LeaveRequest(models.Model):
     
     def complete_by_handler(self, handler, comments=''):
         """Ολοκλήρωση αίτησης από χειριστή"""
-        if self.status == 'UNDER_PROCESSING':
+        if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
+            self.processed_by = handler
+            self.processed_at = timezone.now()
             if comments:
                 self.processing_comments = comments
             self.save()
@@ -266,6 +268,17 @@ class LeaveRequest(models.Model):
         if self.status in ['FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
             self.status = 'REJECTED_OPERATOR'
             self.rejected_by = operator
+            self.rejected_at = timezone.now()
+            self.rejection_reason = reason
+            self.save()
+            return True
+        return False
+    
+    def reject_by_handler(self, handler, reason):
+        """Απόρριψη από χειριστή"""
+        if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
+            self.status = 'REJECTED_OPERATOR'
+            self.rejected_by = handler
             self.rejected_at = timezone.now()
             self.rejection_reason = reason
             self.save()

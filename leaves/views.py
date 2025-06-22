@@ -15,6 +15,9 @@ from .models import LeaveRequest, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
 from notifications.utils import create_notification
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class EmployeeDashboardView(LoginRequiredMixin, ListView):
@@ -56,7 +59,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""
         user = self.request.user
-        if user.is_leave_handler():
+        if user.is_leave_handler:
             return reverse_lazy('leaves:handler_dashboard')
         elif user.is_department_manager():
             return reverse_lazy('leaves:manager_dashboard')
@@ -295,7 +298,7 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
     paginate_by = 10
     
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_leave_handler():
+        if not request.user.is_leave_handler:
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -321,10 +324,76 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
         return context
 
 
+class UsersListView(LoginRequiredMixin, ListView):
+    """Λίστα όλων των χρηστών για χειριστή αδειών"""
+    model = User
+    template_name = 'leaves/users_list.html'
+    context_object_name = 'users'
+    paginate_by = 20
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_leave_handler:
+            raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        return User.objects.select_related('department').order_by('last_name', 'first_name')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Στατιστικά
+        context.update({
+            'total_users': User.objects.count(),
+            'active_users': User.objects.filter(is_active=True).count(),
+            'employees': User.objects.filter(role='employee').count(),
+            'managers': User.objects.filter(role='department_manager').count(),
+        })
+        
+        return context
+
+
+class UserLeaveHistoryView(LoginRequiredMixin, ListView):
+    """Ιστορικό αδειών συγκεκριμένου χρήστη"""
+    model = LeaveRequest
+    template_name = 'leaves/user_leave_history.html'
+    context_object_name = 'leave_requests'
+    paginate_by = 10
+    
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_leave_handler:
+            raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return LeaveRequest.objects.filter(user_id=user_id).select_related(
+            'leave_type', 'manager_approved_by', 'processed_by', 'rejected_by'
+        ).order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user_id = self.kwargs['user_id']
+        user = get_object_or_404(User, pk=user_id)
+        context['selected_user'] = user
+        
+        # Στατιστικά για αυτόν τον χρήστη
+        all_requests = LeaveRequest.objects.filter(user=user)
+        context.update({
+            'total_requests': all_requests.count(),
+            'completed_requests': all_requests.filter(status='COMPLETED').count(),
+            'pending_requests': all_requests.filter(status__in=['SUBMITTED', 'APPROVED_MANAGER', 'UNDER_PROCESSING']).count(),
+            'rejected_requests': all_requests.filter(status__in=['REJECTED_MANAGER', 'REJECTED_OPERATOR']).count(),
+            'total_days_used': sum(req.total_days for req in all_requests.filter(status='COMPLETED')),
+        })
+        
+        return context
+
+
 @login_required
 def complete_leave_request(request, pk):
     """Ολοκλήρωση αίτησης από χειριστή αδειών"""
-    if not request.user.is_leave_handler():
+    if not request.user.is_leave_handler:
         raise PermissionDenied("Δεν έχετε δικαίωμα ολοκλήρωσης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
@@ -360,7 +429,7 @@ def complete_leave_request(request, pk):
 @login_required
 def reject_leave_request_by_handler(request, pk):
     """Απόρριψη αίτησης από χειριστή αδειών"""
-    if not request.user.is_leave_handler():
+    if not request.user.is_leave_handler:
         raise PermissionDenied("Δεν έχετε δικαίωμα απόρριψης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
@@ -401,7 +470,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         can_view = (
             obj.user == user or  # Ο ίδιος ο αιτών
             (user.is_department_manager() and obj.user.manager == user) or  # Ο προϊστάμενός του
-            user.is_leave_handler() or  # Χειριστής αδειών
+            user.is_leave_handler or  # Χειριστής αδειών
             user.is_administrator()  # Διαχειριστής
         )
         

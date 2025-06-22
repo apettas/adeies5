@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}Ιστορικό Αδειών {{ selected_user.full_name }} - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar-event"></i> Ιστορικό Αδειών</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{% url 'leaves:users_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή στη Λίστα
+                </a>
+                <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-gear"></i> Dashboard
+                </a>
+                <span class="badge bg-secondary fs-6">Χειριστής Αδειών</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Πληροφορίες Χρήστη -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Όνομα:</strong> {{ selected_user.full_name }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Email:</strong> {{ selected_user.email }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Τμήμα:</strong> 
+                        {% if selected_user.department %}
+                            {{ selected_user.department.name }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Ρόλος:</strong>
+                        {% if selected_user.role == 'employee' %}
+                            <span class="badge bg-info">Υπάλληλος</span>
+                        {% elif selected_user.role == 'department_manager' %}
+                            <span class="badge bg-warning">Προϊστάμενος</span>
+                        {% elif selected_user.role == 'leave_handler' %}
+                            <span class="badge bg-primary">Χειριστής Αδειών</span>
+                        {% elif selected_user.role == 'administrator' %}
+                            <span class="badge bg-danger">Διαχειριστής</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Στατιστικά -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-primary bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-calendar-plus fs-3 text-primary"></i>
+                <h5 class="mt-2">{{ total_requests }}</h5>
+                <small class="text-muted">Συνολικές Αιτήσεις</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-success bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-check-circle fs-3 text-success"></i>
+                <h5 class="mt-2">{{ completed_requests }}</h5>
+                <small class="text-muted">Ολοκληρωμένες</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-clock fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ pending_requests }}</h5>
+                <small class="text-muted">Εκκρεμείς</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-info bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-calendar-week fs-3 text-info"></i>
+                <h5 class="mt-2">{{ total_days_used }}</h5>
+                <small class="text-muted">Συνολικές Ημέρες</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ιστορικό Αιτήσεων -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-list-task"></i> Ιστορικό Αιτήσεων Άδειας</h5>
+            </div>
+            <div class="card-body">
+                {% if leave_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Τύπος Άδειας</th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
+                                    <th>Κατάσταση</th>
+                                    <th>Υποβλήθηκε</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in leave_requests %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="date-greek">
+                                            {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ request.get_status_display_class }}">
+                                            {{ request.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if request.submitted_at %}
+                                            <span class="date-greek">{{ request.submitted_at|date:"d/m/Y H:i" }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'leaves:leave_request_detail' request.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Προβολή
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Σελίδα {{ page_obj.number }} από {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Δεν υπάρχουν αιτήσεις άδειας</h5>
+                        <p class="text-muted">Ο χρήστης δεν έχει υποβάλει ακόμα αιτήσεις άδειας.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

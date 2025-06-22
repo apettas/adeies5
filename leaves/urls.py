@@ -20,6 +20,8 @@ urlpatterns = [
     path('handler/', views.HandlerDashboardView.as_view(), name='handler_dashboard'),
     path('complete/<int:pk>/', views.complete_leave_request, name='complete_leave_request'),
     path('reject-handler/<int:pk>/', views.reject_leave_request_by_handler, name='reject_leave_request_by_handler'),
+    path('users/', views.UsersListView.as_view(), name='users_list'),
+    path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     
     # Detail view
     path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='leave_request_detail'),

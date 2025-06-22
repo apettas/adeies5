@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Λίστα Χρηστών - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-people"></i> Λίστα Χρηστών</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
+                </a>
+                <span class="badge bg-secondary fs-6">Χειριστής Αδειών</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Στατιστικά -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-primary bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-people fs-3 text-primary"></i>
+                <h5 class="mt-2">{{ total_users }}</h5>
+                <small class="text-muted">Σύνολο Χρηστών</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-success bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-person-check fs-3 text-success"></i>
+                <h5 class="mt-2">{{ active_users }}</h5>
+                <small class="text-muted">Ενεργοί Χρήστες</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-info bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-person-badge fs-3 text-info"></i>
+                <h5 class="mt-2">{{ employees }}</h5>
+                <small class="text-muted">Υπάλληλοι</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-person-gear fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ managers }}</h5>
+                <small class="text-muted">Προϊστάμενοι</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Λίστα Χρηστών -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-table"></i> Κατάλογος Χρηστών</h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Όνομα</th>
+                                    <th>Email</th>
+                                    <th>Τμήμα</th>
+                                    <th>Ρόλος</th>
+                                    <th>Κατάσταση</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.full_name }}</strong>
+                                        {% if user.employee_id %}
+                                        <br><small class="text-muted">Μητρώο: {{ user.employee_id }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ user.email }}
+                                        {% if user.phone %}
+                                        <br><small class="text-muted">{{ user.phone }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.department %}
+                                            <span class="badge bg-light text-dark">{{ user.department.name }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.role == 'employee' %}
+                                            <span class="badge bg-info">Υπάλληλος</span>
+                                        {% elif user.role == 'department_manager' %}
+                                            <span class="badge bg-warning">Προϊστάμενος</span>
+                                        {% elif user.role == 'leave_handler' %}
+                                            <span class="badge bg-primary">Χειριστής Αδειών</span>
+                                        {% elif user.role == 'administrator' %}
+                                            <span class="badge bg-danger">Διαχειριστής</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Ενεργός</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Ανενεργός</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'leaves:user_leave_history' user.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-calendar-event"></i> Ιστορικό Αδειών
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Σελίδα {{ page_obj.number }} από {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-people fs-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Δεν βρέθηκαν χρήστες</h5>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
