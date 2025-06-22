@@ -1,219 +1,971 @@
 {% extends 'base.html' %}
+{% load django_bootstrap5 %}
 
-{% block title %}Νέα Αίτηση Άδειας - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+{% block title %}Νέα Αίτηση Άδειας - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-plus-circle"></i> Νέα Αίτηση Άδειας</h2>
-            <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Επιστροφή
-            </a>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="bi bi-plus-circle"></i> Υποβολή Νέας Αίτησης Άδειας</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.leave_type.id_for_label }}" class="form-label">
+                                    <i class="bi bi-tag"></i> Τύπος Άδειας *
+                                </label>
+                                <select name="{{ form.leave_type.name }}" id="{{ form.leave_type.id_for_label }}" class="form-select" required>
+                                    <option value="">Επιλέξτε τύπο άδειας...</option>
+                                    {% for choice in form.leave_type.field.choices %}
+                                        <option value="{{ choice.0 }}" {% if form.leave_type.value == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    <i class="bi bi-chat-left-text"></i> {{ form.description.label }}
+                                </label>
+                                {{ form.description }}
+                                {% if form.description.help_text %}
+                                    <div class="form-text">{{ form.description.help_text }}</div>
+                                {% endif %}
+                                {% if form.description.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.description.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Periods Section -->
+                        <div class="mb-4">
+                            <div class="mb-3">
+                                <h5><i class="bi bi-calendar-range"></i> Διαστήματα Άδειας</h5>
+                            </div>
+                            
+                            <div id="periods-container"></div>
+                            
+                            <!-- Total Days Display -->
+                            <div id="days-calculation" class="alert alert-info mt-3" style="display: none;">
+                                <strong><i class="bi bi-calculator"></i> Συνολικές Ημέρες Άδειας: <span id="total-days">0</span></strong>
+                            </div>
+                            
+                            <!-- Add Period Button - Bottom Right -->
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="button" id="add-period-btn" class="btn btn-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Προσθήκη Διαστήματος
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hidden field for periods data -->
+                        <input type="hidden" name="{{ form.periods_data.name }}" id="{{ form.periods_data.id_for_label }}" value="{{ form.periods_data.value|default:'' }}">
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                <i class="bi bi-sticky"></i> Σημειώσεις (Προαιρετικό)
+                            </label>
+                            <textarea name="{{ form.notes.name }}" id="{{ form.notes.id_for_label }}" class="form-control" rows="3">{{ form.notes.value|default:'' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.attachment.id_for_label }}" class="form-label">
+                                <i class="bi bi-paperclip"></i> Επισύναψη Αρχείου (Προαιρετικό)
+                            </label>
+                            <input type="file" name="{{ form.attachment.name }}" id="{{ form.attachment.id_for_label }}" class="form-control">
+                            <div class="form-text">
+                                Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                            </div>
+                            
+                            <!-- File Preview -->
+                            <div id="file-preview" class="mt-3" style="display: none;">
+                                <h6><i class="bi bi-eye"></i> Προεπισκόπηση Αρχείων:</h6>
+                                <div id="file-list" class="list-group"></div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Υποβολή Αίτησης
+                                </button>
+                                <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary ms-2">
+                                    <i class="bi bi-arrow-left"></i> Ακύρωση
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Validation Errors -->
+    {% if form.errors %}
+    <div class="row justify-content-center mt-3">
+        <div class="col-md-10">
+            <div class="alert alert-danger">
+                <h6><i class="bi bi-exclamation-triangle"></i> Παρουσιάστηκαν σφάλματα:</h6>
+                <ul class="mb-0">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Help Text -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-10">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="card-title text-info">
+                        <i class="bi bi-info-circle"></i> Οδηγίες Υποβολής
+                    </h6>
+                    <ul class="mb-0">
+                        <li>Συμπληρώστε όλα τα υποχρεωτικά πεδία που σημειώνονται με αστερίσκο (*)</li>
+                        <li>Μπορείτε να προσθέσετε περισσότερα από ένα διαστήματα ημερομηνιών για την ίδια άδεια</li>
+                        <li>Οι ημερομηνίες πρέπει να είναι μελλοντικές (δεν μπορείτε αίτηση για παρελθούσες ημερομηνίες)</li>
+                        <li>Μετά την υποβολή, η αίτησή σας θα σταλεί στον προϊστάμενό σας για έγκριση</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <h5><i class="bi bi-calendar-plus"></i> Στοιχεία Αίτησης</h5>
+<!-- Period Template (Hidden) -->
+<div id="period-template" style="display: none;">
+    <div class="card mb-3 period-card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Διάστημα <span class="period-number">1</span></h6>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-period-btn">
+                    <i class="bi bi-trash"></i> Αφαίρεση
+                </button>
             </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-                    {% csrf_token %}
-                    
-                    <!-- Τύπος Άδειας -->
-                    <div class="mb-3">
-                        <label for="{{ form.leave_type.id_for_label }}" class="form-label">
-                            <i class="bi bi-tag"></i> {{ form.leave_type.label }}
-                        </label>
-                        {{ form.leave_type }}
-                        {% if form.leave_type.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.leave_type.errors.0 }}
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Ημερομηνίες -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.start_date.id_for_label }}" class="form-label">
-                                <i class="bi bi-calendar"></i> {{ form.start_date.label }}
-                            </label>
-                            {{ form.start_date }}
-                            {% if form.start_date.help_text %}
-                                <div class="form-text">{{ form.start_date.help_text }}</div>
-                            {% endif %}
-                            {% if form.start_date.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.start_date.errors.0 }}
-                                </div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.end_date.id_for_label }}" class="form-label">
-                                <i class="bi bi-calendar-check"></i> {{ form.end_date.label }}
-                            </label>
-                            {{ form.end_date }}
-                            {% if form.end_date.help_text %}
-                                <div class="form-text">{{ form.end_date.help_text }}</div>
-                            {% endif %}
-                            {% if form.end_date.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.end_date.errors.0 }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Υπολογισμός ημερών -->
-                    <div class="mb-3">
-                        <div class="alert alert-info" id="days-calculation" style="display: none;">
-                            <i class="bi bi-calculator"></i>
-                            <strong>Συνολικές ημέρες άδειας:</strong> <span id="total-days">0</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Περιγραφή -->
-                    <div class="mb-4">
-                        <label for="{{ form.description.id_for_label }}" class="form-label">
-                            <i class="bi bi-textarea-t"></i> {{ form.description.label }}
-                        </label>
-                        {{ form.description }}
-                        {% if form.description.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.description.errors.0 }}
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Επισυνάπτομενο Αρχείο -->
-                    <div class="mb-4">
-                        <label for="{{ form.attachment.id_for_label }}" class="form-label">
-                            <i class="bi bi-paperclip"></i> {{ form.attachment.label }}
-                        </label>
-                        {{ form.attachment }}
-                        {% if form.attachment.help_text %}
-                            <div class="form-text">{{ form.attachment.help_text }}</div>
-                        {% endif %}
-                        {% if form.attachment.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.attachment.errors.0 }}
-                            </div>
-                        {% endif %}
-                        
-                        <!-- File preview area -->
-                        <div id="file-preview" class="mt-3" style="display: none;">
-                            <h6><i class="bi bi-files"></i> Επιλεγμένα Αρχεία:</h6>
-                            <div id="file-list" class="list-group">
-                                <!-- Files will be listed here via JavaScript -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Non-field errors -->
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors.0 }}
-                        </div>
-                    {% endif %}
-                    
-                    <!-- Κουμπιά -->
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-outline-secondary me-md-2">
-                            <i class="bi bi-x-circle"></i> Ακύρωση
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle"></i> Υποβολή Αίτησης
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Οδηγίες -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h6><i class="bi bi-info-circle"></i> Οδηγίες</h6>
-            </div>
-            <div class="card-body">
-                <ul class="mb-0">
-                    <li>Επιλέξτε τον τύπο άδειας που επιθυμείτε</li>
-                    <li>Οι ημερομηνίες πρέπει να είναι στο μέλλον</li>
-                    <li>Η ημερομηνία έναρξης δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας λήξης</li>
-                    <li>Προσθέστε προαιρετική περιγραφή ή αιτιολογία για την άδειά σας</li>
-                    <li>Μετά την υποβολή, η αίτησή σας θα σταλεί στον προϊστάμενό σας για έγκριση</li>
-                </ul>
+            <div class="row">
+                <div class="col-md-5">
+                    <label class="form-label">
+                        <i class="bi bi-calendar"></i> Ημερομηνία Έναρξης
+                    </label>
+                    <input type="text" class="form-control greek-datepicker period-start-date" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">
+                        <i class="bi bi-calendar-check"></i> Ημερομηνία Λήξης
+                    </label>
+                    <input type="text" class="form-control greek-datepicker period-end-date" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ημέρες</label>
+                    <input type="text" class="form-control period-days" readonly>
+                </div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+/* jQuery UI Datepicker CSS Fixes για Bootstrap */
+.ui-datepicker {
+    z-index: 9999 !important;
+    font-size: 14px !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    border-radius: 4px !important;
+    padding: 0 !important;
+}
+
+.ui-datepicker-header {
+    background: #007bff !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px 4px 0 0 !important;
+    padding: 8px !important;
+}
+
+.ui-datepicker-title {
+    color: white !important;
+    font-weight: bold !important;
+}
+
+.ui-datepicker-prev,
+.ui-datepicker-next {
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+    cursor: pointer !important;
+}
+
+.ui-datepicker-prev:hover,
+.ui-datepicker-next:hover {
+    background: rgba(255,255,255,0.2) !important;
+    border-radius: 3px !important;
+}
+
+.ui-datepicker-calendar {
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+.ui-datepicker-calendar th,
+.ui-datepicker-calendar td {
+    padding: 4px !important;
+    text-align: center !important;
+    border: none !important;
+}
+
+.ui-datepicker-calendar th {
+    background: #f8f9fa !important;
+    font-weight: bold !important;
+    color: #495057 !important;
+}
+
+.ui-datepicker-calendar td a {
+    display: block !important;
+    padding: 6px !important;
+    text-decoration: none !important;
+    color: #495057 !important;
+    border-radius: 3px !important;
+}
+
+.ui-datepicker-calendar td a:hover {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.ui-datepicker-calendar .ui-state-active {
+    background: #007bff !important;
+    color: white !important;
+}
+
+.ui-datepicker-calendar .ui-state-highlight {
+    background: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.ui-datepicker-buttonpane {
+    background: #f8f9fa !important;
+    border-top: 1px solid #ddd !important;
+    padding: 8px !important;
+    text-align: center !important;
+    border-radius: 0 0 4px 4px !important;
+}
+
+.ui-datepicker-buttonpane button {
+    background: #007bff !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 12px !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+    margin: 0 4px !important;
+}
+
+.ui-datepicker-buttonpane button:hover {
+    background: #0056b3 !important;
+}
+
+/* Fix position and container issues */
+.ui-datepicker {
+    position: absolute !important;
+    display: block !important;
+    z-index: 99999 !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    clip: auto !important;
+    transform: none !important;
+}
+
+/* Ensure visibility and override any Bootstrap conflicts */
+.ui-datepicker.ui-widget {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+}
+
+/* Fix parent container issues */
+.period-card .col-md-5 {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* Force datepicker to appear above everything */
+.ui-datepicker-div {
+    position: absolute !important;
+    z-index: 99999 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Ensure input containers don't clip the datepicker */
+.form-group {
+    overflow: visible !important;
+}
+
+/* Additional aggressive datepicker visibility fixes */
+#ui-datepicker-div.ui-datepicker {
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 2px solid #007bff !important;
+    background: white !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important;
+}
+
+/* Force table structure to be visible */
+#ui-datepicker-div table.ui-datepicker-calendar {
+    display: table !important;
+    border-collapse: separate !important;
+    border-spacing: 1px !important;
+    width: 100% !important;
+}
+
+#ui-datepicker-div table.ui-datepicker-calendar tr {
+    display: table-row !important;
+}
+
+#ui-datepicker-div table.ui-datepicker-calendar td,
+#ui-datepicker-div table.ui-datepicker-calendar th {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    width: 30px !important;
+    height: 30px !important;
+    border: 1px solid #eee !important;
+}
+
+/* Force date links to be visible and clickable */
+#ui-datepicker-div table.ui-datepicker-calendar td a.ui-state-default {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding: 5px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    background: #fff !important;
+    border: 1px solid transparent !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+}
+
+/* Hover effects for date links */
+#ui-datepicker-div table.ui-datepicker-calendar td a.ui-state-default:hover {
+    background: #e6f3ff !important;
+    border-color: #007bff !important;
+    color: #007bff !important;
+}
+
+/* Header visibility */
+#ui-datepicker-div .ui-datepicker-header {
+    display: block !important;
+    visibility: visible !important;
+    background: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    padding: 10px !important;
+    position: relative !important;
+}
+
+/* Navigation buttons */
+#ui-datepicker-div .ui-datepicker-prev,
+#ui-datepicker-div .ui-datepicker-next {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    cursor: pointer !important;
+    padding: 5px !important;
+    color: #007bff !important;
+    text-decoration: none !important;
+}
+
+#ui-datepicker-div .ui-datepicker-prev {
+    left: 10px !important;
+}
+
+#ui-datepicker-div .ui-datepicker-next {
+    right: 10px !important;
+}
+
+/* Month/year title */
+#ui-datepicker-div .ui-datepicker-title {
+    display: block !important;
+    visibility: visible !important;
+    text-align: center !important;
+    font-weight: bold !important;
+    color: #333 !important;
+    margin: 0 40px !important;
+}
+
+.container-fluid, .container {
+    overflow: visible !important;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Wait for jQuery and datepicker to be ready
-    setTimeout(function() {
-        const startDateInput = $('#{{ form.start_date.id_for_label }}')[0];
-        const endDateInput = $('#{{ form.end_date.id_for_label }}')[0];
-        const daysCalculation = $('#days-calculation')[0];
-        const totalDaysSpan = $('#total-days')[0];
+    console.log('Initializing leave request form...');
+    console.log('jQuery UI datepicker available:', typeof $.datepicker);
+    
+    let periodCounter = 0;
+    const periodsContainer = $('#periods-container');
+    const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
+    const totalDaysSpan = $('#total-days');
+    const daysCalculation = $('#days-calculation');
+    
+    
+    // Skip jQuery UI setup - using custom Greek calendar instead
+    console.log('🗓️ Using custom Greek calendar system - no jQuery UI dependency');
+    
+    // Function to initialize custom Greek calendar (no jQuery UI dependency)
+    function initDatepicker(element) {
+        console.log('🗓️ Initializing custom Greek calendar for element:', element.attr('id'));
         
-        // Μετατροπή DD/MM/YYYY σε Date object
-        function parseGreekDate(dateString) {
-            console.log('Parsing date:', dateString); // Debug log
-            if (!dateString) return null;
-            const parts = dateString.split('/');
+        try {
+            // Check if already initialized
+            if (element.hasClass('custom-calendar-initialized') || element.data('custom-calendar')) {
+                console.log('Element already has custom calendar, skipping');
+                return;
+            }
+            
+            // Mark as initialized to prevent double initialization
+            element.addClass('custom-calendar-initialized');
+            element.data('custom-calendar', true);
+            
+            // Initialize custom calendar directly (no jQuery UI)
+            console.log('✅ Initializing custom Greek calendar');
+            initCustomCalendar(element);
+            
+        } catch (error) {
+            console.error('❌ Error initializing custom calendar:', error);
+            // Fall back to plain text input
+            element.addClass('datepicker-failed');
+            element.removeClass('custom-calendar-initialized');
+            element.removeData('custom-calendar');
+        }
+    }
+    
+    // Custom Greek Calendar Implementation
+    function initCustomCalendar(element) {
+        console.log('🗓️ Initializing custom Greek calendar for:', element.attr('id'));
+        
+        // Greek month names
+        const greekMonths = [
+            'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+            'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'
+        ];
+        
+        // Greek day names
+        const greekDays = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
+        
+        // Create calendar button
+        const calendarBtn = $('<button type="button" class="btn btn-outline-secondary ms-2 custom-calendar-btn">📅</button>');
+        element.after(calendarBtn);
+        
+        // Calendar popup container
+        let calendarPopup = null;
+        let selectedDate = null;
+        
+        // Format date to dd/mm/yyyy
+        function formatDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        
+        // Parse date from dd/mm/yyyy format
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
             if (parts.length !== 3) return null;
-            
             const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-based
+            const month = parseInt(parts[1], 10) - 1;
             const year = parseInt(parts[2], 10);
-            
             return new Date(year, month, day);
         }
         
-        function calculateDays() {
-            console.log('Calculating days...'); // Debug log
-            console.log('Start date value:', startDateInput.value); // Debug log
-            console.log('End date value:', endDateInput.value); // Debug log
+        // Create calendar HTML
+        function createCalendar(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDay = firstDay.getDay(); // 0 = Sunday
+            const daysInMonth = lastDay.getDate();
             
-            const startDate = parseGreekDate(startDateInput.value);
-            const endDate = parseGreekDate(endDateInput.value);
+            let html = `
+                <div class="custom-calendar-popup" style="
+                    position: absolute;
+                    z-index: 10000;
+                    background: white;
+                    border: 2px solid #007bff;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    padding: 15px;
+                    min-width: 280px;
+                    font-family: Arial, sans-serif;
+                ">
+                    <div class="calendar-header" style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 15px;
+                        padding-bottom: 10px;
+                        border-bottom: 1px solid #eee;
+                    ">
+                        <button type="button" class="prev-month btn btn-sm btn-outline-primary" style="width: 35px;">‹</button>
+                        <div class="month-year" style="
+                            font-weight: bold;
+                            font-size: 16px;
+                            color: #333;
+                        ">${greekMonths[month]} ${year}</div>
+                        <button type="button" class="next-month btn btn-sm btn-outline-primary" style="width: 35px;">›</button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="days-header" style="
+                            display: grid;
+                            grid-template-columns: repeat(7, 1fr);
+                            gap: 2px;
+                            margin-bottom: 5px;
+                        ">`;
             
-            if (startDate && endDate && startDate <= endDate) {
-                const timeDiff = endDate.getTime() - startDate.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+            // Add day headers
+            for (let i = 0; i < 7; i++) {
+                html += `<div style="
+                    text-align: center;
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: #666;
+                    padding: 5px;
+                ">${greekDays[i]}</div>`;
+            }
+            
+            html += `</div><div class="days-grid" style="
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 2px;
+            ">`;
+            
+            // Add empty cells for days before month starts
+            for (let i = 0; i < startDay; i++) {
+                html += '<div style="padding: 8px;"></div>';
+            }
+            
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month, day);
+                const isToday = new Date().toDateString() === currentDate.toDateString();
+                const isSelected = selectedDate && selectedDate.toDateString() === currentDate.toDateString();
                 
-                console.log('Days calculated:', daysDiff); // Debug log
-                totalDaysSpan.textContent = daysDiff;
-                daysCalculation.style.display = 'block';
-            } else {
-                console.log('Cannot calculate days'); // Debug log
-                daysCalculation.style.display = 'none';
+                let dayStyle = `
+                    padding: 8px;
+                    text-align: center;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    transition: all 0.2s;
+                `;
+                
+                if (isToday) {
+                    dayStyle += 'background-color: #e3f2fd; font-weight: bold;';
+                }
+                if (isSelected) {
+                    dayStyle += 'background-color: #007bff; color: white; font-weight: bold;';
+                }
+                
+                html += `<div class="calendar-day" data-day="${day}" style="${dayStyle}">${day}</div>`;
+            }
+            
+            html += `</div></div>
+                <div class="calendar-footer" style="
+                    margin-top: 15px;
+                    padding-top: 10px;
+                    border-top: 1px solid #eee;
+                    text-align: right;
+                ">
+                    <button type="button" class="btn btn-sm btn-secondary me-2 calendar-cancel">Ακύρωση</button>
+                    <button type="button" class="btn btn-sm btn-primary calendar-today">Σήμερα</button>
+                </div>
+            </div>`;
+            
+            return html;
+        }
+        
+        // Show calendar
+        function showCalendar() {
+            hideCalendar(); // Hide any existing calendar
+            
+            // Get current date from input or use today
+            const inputDate = parseDate(element.val()) || new Date();
+            selectedDate = parseDate(element.val());
+            
+            const year = inputDate.getFullYear();
+            const month = inputDate.getMonth();
+            
+            // Create and position calendar
+            const calendarHtml = createCalendar(year, month);
+            calendarPopup = $(calendarHtml);
+            
+            // Position relative to input
+            const inputOffset = element.offset();
+            calendarPopup.css({
+                'top': (inputOffset.top + element.outerHeight() + 5) + 'px',
+                'left': inputOffset.left + 'px'
+            });
+            
+            $('body').append(calendarPopup);
+            
+            // Add event listeners
+            setupCalendarEvents(year, month);
+            
+            console.log('📅 Custom calendar displayed');
+        }
+        
+        // Hide calendar
+        function hideCalendar() {
+            if (calendarPopup) {
+                calendarPopup.remove();
+                calendarPopup = null;
             }
         }
         
-        // Use jQuery events
-        $(startDateInput).on('change', calculateDays);
-        $(endDateInput).on('change', calculateDays);
+        // Setup calendar event listeners
+        function setupCalendarEvents(currentYear, currentMonth) {
+            // Day selection
+            calendarPopup.find('.calendar-day').on('click', function() {
+                const day = parseInt($(this).data('day'));
+                const selectedDate = new Date(currentYear, currentMonth, day);
+                const formattedDate = formatDate(selectedDate);
+                
+                element.val(formattedDate);
+                element.trigger('change');
+                hideCalendar();
+                
+                console.log('📅 Date selected:', formattedDate);
+            });
+            
+            // Month navigation
+            calendarPopup.find('.prev-month').on('click', function() {
+                let newMonth = currentMonth - 1;
+                let newYear = currentYear;
+                if (newMonth < 0) {
+                    newMonth = 11;
+                    newYear--;
+                }
+                showCalendarMonth(newYear, newMonth);
+            });
+            
+            calendarPopup.find('.next-month').on('click', function() {
+                let newMonth = currentMonth + 1;
+                let newYear = currentYear;
+                if (newMonth > 11) {
+                    newMonth = 0;
+                    newYear++;
+                }
+                showCalendarMonth(newYear, newMonth);
+            });
+            
+            // Today button
+            calendarPopup.find('.calendar-today').on('click', function() {
+                const today = new Date();
+                const formattedDate = formatDate(today);
+                element.val(formattedDate);
+                element.trigger('change');
+                hideCalendar();
+            });
+            
+            // Cancel button
+            calendarPopup.find('.calendar-cancel').on('click', function() {
+                hideCalendar();
+            });
+            
+            // Click outside to close
+            $(document).on('click.customCalendar', function(e) {
+                if (!calendarPopup.is(e.target) && calendarPopup.has(e.target).length === 0 &&
+                    !calendarBtn.is(e.target) && !element.is(e.target)) {
+                    hideCalendar();
+                    $(document).off('click.customCalendar');
+                }
+            });
+        }
         
-        // Also listen for datepicker events
-        $(startDateInput).on('changeDate', calculateDays);
-        $(endDateInput).on('changeDate', calculateDays);
+        // Show calendar for specific month
+        function showCalendarMonth(year, month) {
+            const calendarHtml = createCalendar(year, month);
+            const newCalendar = $(calendarHtml);
+            
+            // Position same as current calendar
+            newCalendar.css({
+                'top': calendarPopup.css('top'),
+                'left': calendarPopup.css('left')
+            });
+            
+            calendarPopup.replaceWith(newCalendar);
+            calendarPopup = newCalendar;
+            
+            setupCalendarEvents(year, month);
+        }
         
-        // Υπολογισμός κατά την αρχικοποίηση
-        calculateDays();
+        // Calendar button click
+        calendarBtn.on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (calendarPopup && calendarPopup.is(':visible')) {
+                hideCalendar();
+            } else {
+                showCalendar();
+            }
+        });
         
-    }, 500); // Small delay to ensure datepicker is initialized
+        // Input click also shows calendar
+        element.on('click', function(e) {
+            e.stopPropagation();
+            showCalendar();
+        });
+        
+        // Format input on blur
+        element.on('blur', function() {
+            const value = $(this).val().trim();
+            if (value) {
+                const date = parseDate(value);
+                if (date && !isNaN(date.getTime())) {
+                    $(this).val(formatDate(date));
+                    $(this).trigger('change');
+                }
+            }
+        });
+        
+        // Prevent typing in input - force calendar use
+        element.on('keydown', function(e) {
+            // Allow backspace, delete, tab, escape, enter
+            if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (e.keyCode === 65 && e.ctrlKey === true) ||
+                (e.keyCode === 67 && e.ctrlKey === true) ||
+                (e.keyCode === 86 && e.ctrlKey === true) ||
+                (e.keyCode === 88 && e.ctrlKey === true)) {
+                return;
+            }
+            // Stop the keypress
+            e.preventDefault();
+            showCalendar();
+        });
+        
+        console.log('✅ Custom Greek calendar initialized successfully');
+    }
+    
+    // Function to add a new period
+    function addPeriod() {
+        periodCounter++;
+        console.log('Adding period #' + periodCounter);
+        
+        const template = $('#period-template').html();
+        const periodHtml = template.replace(/period-number">1/g, `period-number">${periodCounter}`);
+        
+        const periodElement = $(periodHtml);
+        periodElement.attr('data-period-id', periodCounter);
+        
+        // Add event listeners for remove button
+        periodElement.find('.remove-period-btn').on('click', function() {
+            removePeriod(periodElement);
+        });
+        
+        // Add event listeners for date changes
+        periodElement.find('.period-start-date, .period-end-date').on('change', function() {
+            updatePeriodDays(periodElement);
+            updatePeriodsData();
+            calculateTotalDays();
+        });
+        
+        // Append to container
+        periodsContainer.append(periodElement);
+        
+        // Initialize datepickers with a small delay
+        setTimeout(function() {
+            const dateInputs = periodElement.find('.greek-datepicker');
+            console.log('Found', dateInputs.length, 'date inputs to initialize');
+            
+            dateInputs.each(function() {
+                initDatepicker($(this));
+            });
+        }, 200);
+        
+        updatePeriodsData();
+    }
+    
+    // Function to remove a period
+    function removePeriod(periodElement) {
+        // Don't allow removing the last period
+        if ($('.period-card').length <= 1) {
+            alert('Πρέπει να υπάρχει τουλάχιστον ένα διάστημα άδειας.');
+            return;
+        }
+        
+        periodElement.remove();
+        updatePeriodNumbers();
+        updatePeriodsData();
+        calculateTotalDays();
+    }
+    
+    // Function to update period numbers
+    function updatePeriodNumbers() {
+        $('.period-card').each(function(index) {
+            $(this).find('.period-number').text(index + 1);
+        });
+    }
+    
+    // Function to update period days calculation
+    function updatePeriodDays(periodElement) {
+        const startDate = periodElement.find('.period-start-date').val();
+        const endDate = periodElement.find('.period-end-date').val();
+        const daysField = periodElement.find('.period-days');
+        
+        if (startDate && endDate) {
+            let start, end;
+            
+            // Handle both Greek format (dd/mm/yyyy) and HTML5 format (yyyy-mm-dd)
+            if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // HTML5 format
+                start = new Date(startDate);
+            } else if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                // Greek format
+                const startParts = startDate.split('/');
+                start = new Date(startParts[2], startParts[1] - 1, startParts[0]);
+            } else {
+                daysField.val('Μη έγκυρο');
+                return;
+            }
+            
+            if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // HTML5 format
+                end = new Date(endDate);
+            } else if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                // Greek format
+                const endParts = endDate.split('/');
+                end = new Date(endParts[2], endParts[1] - 1, endParts[0]);
+            } else {
+                daysField.val('Μη έγκυρο');
+                return;
+            }
+            
+            if (start <= end) {
+                const timeDiff = end.getTime() - start.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                daysField.val(daysDiff);
+            } else {
+                daysField.val('Μη έγκυρο');
+            }
+        } else {
+            daysField.val('');
+        }
+    }
+    
+    // Function to calculate total days
+    function calculateTotalDays() {
+        let totalDays = 0;
+        let validPeriods = 0;
+        
+        $('.period-card').each(function() {
+            const daysValue = $(this).find('.period-days').val();
+            if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
+                totalDays += parseInt(daysValue);
+                validPeriods++;
+            }
+        });
+        
+        if (validPeriods > 0) {
+            totalDaysSpan.text(totalDays);
+            daysCalculation.show();
+        } else {
+            daysCalculation.hide();
+        }
+    }
+    
+    // Function to update periods data for form submission
+    function updatePeriodsData() {
+        const periods = [];
+        
+        $('.period-card').each(function() {
+            let startDate = $(this).find('.period-start-date').val();
+            let endDate = $(this).find('.period-end-date').val();
+            
+            if (startDate && endDate) {
+                // Handle both Greek format (dd/mm/yyyy) and HTML5 format (yyyy-mm-dd)
+                let isoStartDate, isoEndDate;
+                
+                if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    // HTML5 format - already in ISO format
+                    isoStartDate = startDate;
+                } else if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    // Greek format - convert to ISO
+                    const startParts = startDate.split('/');
+                    isoStartDate = `${startParts[2]}-${startParts[1].padStart(2, '0')}-${startParts[0].padStart(2, '0')}`;
+                } else {
+                    console.error('Unrecognized date format:', startDate);
+                    return;
+                }
+                
+                if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    // HTML5 format - already in ISO format
+                    isoEndDate = endDate;
+                } else if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    // Greek format - convert to ISO
+                    const endParts = endDate.split('/');
+                    isoEndDate = `${endParts[2]}-${endParts[1].padStart(2, '0')}-${endParts[0].padStart(2, '0')}`;
+                } else {
+                    console.error('Unrecognized date format:', endDate);
+                    return;
+                }
+                
+                periods.push({
+                    start_date: isoStartDate,
+                    end_date: isoEndDate
+                });
+            }
+        });
+        
+        periodsDataField.val(JSON.stringify(periods));
+    }
+    
+    // Add period button click handler
+    $('#add-period-btn').on('click', function() {
+        addPeriod();
+    });
     
     // File upload preview functionality
-    $('#{{ form.attachments.id_for_label }}').on('change', function() {
+    $('#{{ form.attachment.id_for_label }}').on('change', function() {
         const files = this.files;
         const filePreview = $('#file-preview');
         const fileList = $('#file-list');
@@ -257,6 +1009,216 @@ $(document).ready(function() {
         }
     });
     
+    // Load existing periods data if any (for form errors)
+    const existingData = periodsDataField.val();
+    if (existingData) {
+        try {
+            const periods = JSON.parse(existingData);
+            if (periods.length > 0) {
+                // Clear the default period
+                periodsContainer.empty();
+                periodCounter = 0;
+                
+                periods.forEach(function(period) {
+                    addPeriod();
+                    const lastPeriod = $('.period-card').last();
+                    
+                    // Convert ISO date format to Greek format for display
+                    const startDate = new Date(period.start_date);
+                    const endDate = new Date(period.end_date);
+                    
+                    const greekStartDate = startDate.getDate().toString().padStart(2, '0') + '/' +
+                                          (startDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                                          startDate.getFullYear();
+                    
+                    const greekEndDate = endDate.getDate().toString().padStart(2, '0') + '/' +
+                                        (endDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                                        endDate.getFullYear();
+                    
+                    lastPeriod.find('.period-start-date').val(greekStartDate);
+                    lastPeriod.find('.period-end-date').val(greekEndDate);
+                    updatePeriodDays(lastPeriod);
+                });
+                
+                calculateTotalDays();
+            }
+        } catch (e) {
+            console.log('Error parsing existing periods data:', e);
+        }
+    } else {
+        // Add the first period automatically
+        addPeriod();
+    }
+    
+    // Enhanced datepicker click/focus handler with HTML5 fallback
+    $(document).on('click focus', '.greek-datepicker', function(e) {
+        var $this = $(this);
+        console.log('🗓️ Greek datepicker clicked/focused:', $this.attr('id'));
+        
+        // If this datepicker has been marked as failed, switch to HTML5 fallback
+        if ($this.hasClass('datepicker-failed')) {
+            console.log('Switching to HTML5 date input fallback');
+            switchToHTML5DateInput($this);
+            return;
+        }
+        
+        // Ensure custom calendar is initialized first
+        if (!$this.hasClass('custom-calendar-initialized')) {
+            console.log('Custom calendar not initialized, initializing now...');
+            initDatepicker($this);
+            
+            // If initialization failed, switch to HTML5
+            if ($this.hasClass('datepicker-failed')) {
+                switchToHTML5DateInput($this);
+                return;
+            }
+        }
+        
+        // Custom calendar is already initialized via initDatepicker
+        // The click/focus handlers are set up in initCustomCalendar function
+        console.log('✅ Custom calendar ready for interaction');
     });
-    </script>
+    
+    // Function to switch to Greek formatted text input as fallback
+    function switchToHTML5DateInput($element) {
+        console.log('Converting to Greek formatted date input for reliable functionality');
+        
+        // Preserve existing date value
+        var currentValue = $element.val();
+        
+        // Remove custom calendar classes and data
+        $element.removeClass('custom-calendar-initialized greek-datepicker datepicker-failed')
+                .removeData('custom-calendar')
+                .off('.custom-calendar');
+        
+        // Remove any calendar buttons
+        $element.siblings('.custom-calendar-btn').remove();
+        
+        // Convert to text input with Greek formatting
+        $element.attr('type', 'text')
+                .addClass('greek-date-fallback')
+                .attr('placeholder', 'ΗΗ/ΜΜ/ΕΕΕΕ')
+                .attr('title', 'Εισάγετε ημερομηνία σε μορφή ΗΗ/ΜΜ/ΕΕΕΕ (π.χ. 25/12/2024)')
+                .attr('maxlength', '10')
+                .attr('pattern', '[0-9]{2}/[0-9]{2}/[0-9]{4}');
+        
+        // Keep existing value if it's already in Greek format
+        if (currentValue && currentValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            $element.val(currentValue);
+        } else if (currentValue && currentValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Convert from ISO format to Greek format
+            var parts = currentValue.split('-');
+            var greekFormat = parts[2] + '/' + parts[1] + '/' + parts[0];
+            $element.val(greekFormat);
+        }
+        
+        // Add input formatting for automatic slash insertion
+        $element.on('input.greekformat', function() {
+            var value = $(this).val().replace(/\D/g, ''); // Remove non-digits
+            var formatted = '';
+            
+            if (value.length > 0) {
+                formatted = value.substring(0, 2);
+                if (value.length > 2) {
+                    formatted += '/' + value.substring(2, 4);
+                    if (value.length > 4) {
+                        formatted += '/' + value.substring(4, 8);
+                    }
+                }
+            }
+            
+            if (formatted !== $(this).val()) {
+                $(this).val(formatted);
+            }
+        });
+        
+        // Add validation on blur
+        $element.on('blur.greekvalidation', function() {
+            var value = $(this).val().trim();
+            var $this = $(this);
+            
+            // Remove previous validation feedback
+            $this.removeClass('is-invalid is-valid');
+            $this.siblings('.invalid-feedback').remove();
+            
+            if (value === '') {
+                return; // Empty is allowed, will be caught by required validation
+            }
+            
+            // Check format
+            if (!value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                $this.addClass('is-invalid');
+                $this.after('<div class="invalid-feedback">Παρακαλώ εισάγετε ημερομηνία σε μορφή ΗΗ/ΜΜ/ΕΕΕΕ</div>');
+                return;
+            }
+            
+            // Validate actual date
+            var parts = value.split('/');
+            var day = parseInt(parts[0], 10);
+            var month = parseInt(parts[1], 10);
+            var year = parseInt(parts[2], 10);
+            
+            var testDate = new Date(year, month - 1, day);
+            if (testDate.getDate() !== day || testDate.getMonth() !== (month - 1) || testDate.getFullYear() !== year) {
+                $this.addClass('is-invalid');
+                $this.after('<div class="invalid-feedback">Μη έγκυρη ημερομηνία</div>');
+                return;
+            }
+            
+            // Valid date
+            $this.addClass('is-valid');
+        });
+        
+        // Add change handler for period calculations
+        $element.on('change.greekdatechange', function() {
+            var $this = $(this);
+            var periodRow = $this.closest('.period-row');
+            
+            // Trigger validation first
+            $this.trigger('blur.greekvalidation');
+            
+            // Update period days if validation passed
+            if (!$this.hasClass('is-invalid')) {
+                updatePeriodDays(periodRow);
+            }
+        });
+        
+        // Add visual styling for fallback
+        $element.css({
+            'background-color': '#fffacd',
+            'border-left': '3px solid #ffa500'
+        });
+        
+        console.log('✅ Successfully switched to Greek formatted date input');
+    }
+    
+    // Monitor for datepicker creation and immediately fix visibility
+    var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && (node.id === 'ui-datepicker-div' || $(node).hasClass('ui-datepicker'))) {
+                        console.log('Datepicker detected in DOM, applying visibility fix');
+                        setTimeout(function() {
+                            $(node).css({
+                                'position': 'absolute',
+                                'z-index': '99999',
+                                'display': 'block',
+                                'visibility': 'visible',
+                                'opacity': '1'
+                            });
+                        }, 10);
+                    }
+                });
+            }
+        });
+    });
+    
+    // Start observing
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+</script>
 {% endblock %}

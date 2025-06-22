@@ -44,6 +44,49 @@ class LeaveType(models.Model):
         return self.name
 
 
+class LeavePeriod(models.Model):
+    """Διάστημα άδειας - ένα τμήμα μιας αίτησης άδειας"""
+    
+    leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='periods', verbose_name='Αίτηση Άδειας')
+    start_date = models.DateField('Ημερομηνία Έναρξης')
+    end_date = models.DateField('Ημερομηνία Λήξης')
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Διάστημα Άδειας'
+        verbose_name_plural = 'Διαστήματα Αδειών'
+        ordering = ['start_date']
+    
+    def __str__(self):
+        return f"{self.start_date} - {self.end_date} ({self.days} ημέρες)"
+    
+    @property
+    def days(self):
+        """Υπολογισμός ημερών του διαστήματος"""
+        if self.start_date and self.end_date:
+            return (self.end_date - self.start_date).days + 1
+        return 0
+    
+    def clean(self):
+        """Επικύρωση δεδομένων"""
+        from django.core.exceptions import ValidationError
+        
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError('Η ημερομηνία έναρξης δεν μπορεί να είναι μεταγενέστερη της ημερομηνίας λήξης.')
+            
+            # Έλεγχος για επικάλυψη με άλλα διαστήματα της ίδιας αίτησης
+            if self.leave_request_id:
+                overlapping = LeavePeriod.objects.filter(
+                    leave_request=self.leave_request
+                ).exclude(pk=self.pk).filter(
+                    start_date__lte=self.end_date,
+                    end_date__gte=self.start_date
+                )
+                if overlapping.exists():
+                    raise ValidationError('Το διάστημα επικαλύπτεται με άλλο διάστημα της ίδιας αίτησης.')
+
+
 def secure_file_path(instance, filename):
     """Δημιουργία ασφαλούς path για αρχείο"""
     # Δημιουργία UUID για το αρχείο
@@ -105,8 +148,6 @@ class LeaveRequest(models.Model):
     # Βασικά πεδία
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='leave_requests', verbose_name='Χρήστης')
     leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, verbose_name='Τύπος Άδειας')
-    start_date = models.DateField('Ημερομηνία Έναρξης')
-    end_date = models.DateField('Ημερομηνία Λήξης')
     description = models.TextField('Περιγραφή/Αιτιολογία', blank=True)
     
     # Στάτους και ημερομηνίες
@@ -150,14 +191,30 @@ class LeaveRequest(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.full_name} - {self.leave_type.name} ({self.start_date} - {self.end_date})"
+        if self.start_date and self.end_date:
+            return f"{self.user.full_name} - {self.leave_type.name} ({self.start_date} - {self.end_date})"
+        return f"{self.user.full_name} - {self.leave_type.name} ({self.total_days} ημέρες)"
     
     @property
     def total_days(self):
-        """Υπολογισμός συνολικών ημερών άδειας"""
-        if self.start_date and self.end_date:
-            return (self.end_date - self.start_date).days + 1
-        return 0
+        """Υπολογισμός συνολικών ημερών άδειας από όλα τα διαστήματα"""
+        return sum(period.days for period in self.periods.all())
+
+    @property
+    def start_date(self):
+        """Πρώτη ημερομηνία έναρξης από όλα τα διαστήματα"""
+        periods = self.periods.all().order_by('start_date')
+        if periods:
+            return periods.first().start_date
+        return None
+
+    @property
+    def end_date(self):
+        """Τελευταία ημερομηνία λήξης από όλα τα διαστήματα"""
+        periods = self.periods.all().order_by('-end_date')
+        if periods:
+            return periods.first().end_date
+        return None
     
     @property
     def can_be_edited(self):

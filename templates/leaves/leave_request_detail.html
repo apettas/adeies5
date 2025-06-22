@@ -68,14 +68,6 @@
                         </p>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <strong>Ημερομηνία Έναρξης:</strong>
-                        <p class="date-greek">{{ leave_request.start_date|date:"d/m/Y" }}</p>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <strong>Ημερομηνία Λήξης:</strong>
-                        <p class="date-greek">{{ leave_request.end_date|date:"d/m/Y" }}</p>
-                    </div>
-                    <div class="col-md-6 mb-3">
                         <strong>Συνολικές Ημέρες:</strong>
                         <p><span class="badge bg-info fs-6">{{ leave_request.total_days }} ημέρες</span></p>
                     </div>
@@ -101,6 +93,55 @@
                         <p class="mt-2"><span class="badge bg-dark fs-6">{{ leave_request.protocol_number }}</span></p>
                     </div>
                 </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Διαστήματα Αδειών -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-range"></i> Διαστήματα Αδειών</h5>
+            </div>
+            <div class="card-body">
+                {% if leave_request.periods.exists %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Διάστημα</th>
+                                    <th>Ημερομηνία Έναρξης</th>
+                                    <th>Ημερομηνία Λήξης</th>
+                                    <th>Ημέρες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period in leave_request.periods.all %}
+                                <tr>
+                                    <td><strong>{{ forloop.counter }}</strong></td>
+                                    <td class="date-greek">{{ period.start_date|date:"d/m/Y" }}</td>
+                                    <td class="date-greek">{{ period.end_date|date:"d/m/Y" }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ period.days }} ημέρες
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <th colspan="3">Σύνολο</th>
+                                    <th>
+                                        <span class="badge bg-info fs-6">
+                                            {{ leave_request.total_days }} ημέρες
+                                        </span>
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">Δεν υπάρχουν διαστήματα αδειών.</p>
                 {% endif %}
             </div>
         </div>

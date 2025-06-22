@@ -1,5 +1,35 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+
+
+class UserManager(BaseUserManager):
+    """Custom user manager για email authentication"""
+    
+    def create_user(self, email, first_name, last_name, password=None, **extra_fields):
+        if not email:
+            raise ValueError('Το email είναι υποχρεωτικό')
+        
+        email = self.normalize_email(email)
+        user = self.model(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            **extra_fields
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+    
+    def create_superuser(self, email, first_name, last_name, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self.create_user(email, first_name, last_name, password, **extra_fields)
 
 
 class Department(models.Model):
@@ -73,7 +103,7 @@ class User(AbstractUser):
     phone = models.CharField('Τηλέφωνο', max_length=15, blank=True)
     
     # Υπηρεσιακά στοιχεία
-    employee_id = models.CharField('Αριθμός Μητρώου', max_length=20, unique=True, blank=True)
+    employee_id = models.CharField('Αριθμός Μητρώου', max_length=20, unique=True, blank=True, null=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='Τμήμα', related_name='users')
     roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
@@ -82,11 +112,13 @@ class User(AbstractUser):
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     
-    # Django fields
-    username = models.CharField('Όνομα Χρήστη', max_length=150, unique=True)
+    # Django fields - χρησιμοποιούμε email ως username για SSO
+    username = None  # Αφαιρούμε το username field εντελώς
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
     
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email', 'first_name', 'last_name']
+    # Custom manager
+    objects = UserManager()
     
     class Meta:
         verbose_name = 'Χρήστης'
