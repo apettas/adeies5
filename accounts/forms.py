@@ -37,22 +37,11 @@ class UserRegistrationForm(UserCreationForm):
         })
     )
     
-    employee_id = forms.CharField(
-        max_length=20,
-        required=False,
-        label='Αριθμός Μητρώου',
-        help_text='Προαιρετικό - Μπορείτε να το συμπληρώσετε αργότερα',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. 12345'
-        })
-    )
-    
     department = forms.ModelChoiceField(
         queryset=Department.objects.filter(is_active=True),
         required=True,
-        label='Τμήμα',
-        empty_label='Επιλέξτε Τμήμα',
+        label='Υπηρεσία Υπηρέτησης',
+        empty_label='Επιλέξτε Υπηρεσία Υπηρέτησης',
         widget=forms.Select(attrs={
             'class': 'form-control'
         })
@@ -100,7 +89,7 @@ class UserRegistrationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'employee_id',
+        fields = ('email', 'first_name', 'last_name',
                  'department', 'specialty', 'phone', 'address',
                  'password1', 'password2', 'terms_accepted')
 
@@ -135,22 +124,11 @@ class UserRegistrationForm(UserCreationForm):
                 )
         return email
 
-    def clean_employee_id(self):
-        employee_id = self.cleaned_data.get('employee_id')
-        if employee_id:
-            # Έλεγχος αν ο αριθμός μητρώου υπάρχει ήδη
-            if User.objects.filter(employee_id=employee_id).exists():
-                raise ValidationError(
-                    'Αυτός ο αριθμός μητρώου χρησιμοποιείται ήδη'
-                )
-        return employee_id
-
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        user.employee_id = self.cleaned_data.get('employee_id', '')
         user.department = self.cleaned_data['department']
         user.specialty = self.cleaned_data['specialty']
         user.phone = self.cleaned_data.get('phone', '')
