@@ -61,7 +61,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
         user = self.request.user
         if user.is_leave_handler:
             return reverse_lazy('leaves:handler_dashboard')
-        elif user.is_department_manager():
+        elif user.is_department_manager:
             return reverse_lazy('leaves:manager_dashboard')
         else:
             return reverse_lazy('leaves:employee_dashboard')
@@ -167,7 +167,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
     paginate_by = 10
     
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_department_manager():
+        if not request.user.is_department_manager:
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -178,7 +178,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
         
         # Αν ο χρήστης είναι ο ανώτερος προϊστάμενος, προσθέτουμε και αιτήσεις
         # από άλλους προϊσταμένους/χειριστές που δεν έχουν manager
-        if self.request.user.is_department_manager():
+        if self.request.user.is_department_manager:
             from accounts.models import User
             orphan_managers = User.objects.filter(
                 Q(role='manager') | Q(role='handler'),
@@ -214,7 +214,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
 @login_required
 def approve_leave_request(request, pk):
     """Έγκριση αίτησης από προϊστάμενο"""
-    if not request.user.is_department_manager():
+    if not request.user.is_department_manager:
         raise PermissionDenied("Δεν έχετε δικαίωμα έγκρισης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
@@ -259,7 +259,7 @@ def approve_leave_request(request, pk):
 @login_required
 def reject_leave_request(request, pk):
     """Απόρριψη αίτησης από προϊστάμενο"""
-    if not request.user.is_department_manager():
+    if not request.user.is_department_manager:
         raise PermissionDenied("Δεν έχετε δικαίωμα απόρριψης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
@@ -325,30 +325,73 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
 
 
 class UsersListView(LoginRequiredMixin, ListView):
-    """Λίστα όλων των χρηστών για χειριστή αδειών"""
+    """Λίστα χρηστών για χειριστή αδειών ή προϊστάμενο"""
     model = User
     template_name = 'leaves/users_list.html'
     context_object_name = 'users'
     paginate_by = 20
     
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_leave_handler:
+        if not (request.user.is_leave_handler or request.user.is_department_manager):
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        return User.objects.select_related('department').order_by('last_name', 'first_name')
+        if self.request.user.is_leave_handler:
+            # Χειριστής αδειών βλέπει όλους τους χρήστες
+            return User.objects.select_related('department').order_by('last_name', 'first_name')
+        elif self.request.user.is_department_manager:
+            # Προϊστάμενος βλέπει χρήστες του τμήματός του και όλων των υποτμημάτων
+            if self.request.user.department:
+                # Βρίσκω όλα τα τμήματα (το δικό του και όλα τα υποτμήματα)
+                all_departments = self.request.user.department.get_all_sub_departments()
+                
+                # Επιστρέφω χρήστες από όλα αυτά τα τμήματα
+                return User.objects.filter(
+                    department__in=all_departments
+                ).select_related('department').order_by('last_name', 'first_name')
+            else:
+                # Αν δεν έχει τμήμα, δεν βλέπει κανέναν
+                return User.objects.none()
+        return User.objects.none()
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Στατιστικά
-        context.update({
-            'total_users': User.objects.count(),
-            'active_users': User.objects.filter(is_active=True).count(),
-            'employees': User.objects.filter(role='employee').count(),
-            'managers': User.objects.filter(role='department_manager').count(),
-        })
+        # Στατιστικά ανάλογα με τον ρόλο
+        if self.request.user.is_leave_handler:
+            # Στατιστικά για όλους τους χρήστες
+            context.update({
+                'total_users': User.objects.count(),
+                'active_users': User.objects.filter(is_active=True).count(),
+                'employees': User.objects.filter(role='employee').count(),
+                'managers': User.objects.filter(role='department_manager').count(),
+                'user_role': 'handler'
+            })
+        elif self.request.user.is_department_manager:
+            # Στατιστικά για το τμήμα του προϊσταμένου και όλα τα υποτμήματα
+            if self.request.user.department:
+                # Βρίσκω όλα τα τμήματα (το δικό του και όλα τα υποτμήματα)
+                all_departments = self.request.user.department.get_all_sub_departments()
+                department_users = User.objects.filter(department__in=all_departments)
+                
+                context.update({
+                    'total_users': department_users.count(),
+                    'active_users': department_users.filter(is_active=True).count(),
+                    'employees': department_users.filter(role='employee').count(),
+                    'managers': department_users.filter(role='department_manager').count(),
+                    'user_role': 'manager',
+                    'department_name': self.request.user.department.name
+                })
+            else:
+                context.update({
+                    'total_users': 0,
+                    'active_users': 0,
+                    'employees': 0,
+                    'managers': 0,
+                    'user_role': 'manager',
+                    'department_name': 'Άγνωστο'
+                })
         
         return context
 
@@ -361,8 +404,22 @@ class UserLeaveHistoryView(LoginRequiredMixin, ListView):
     paginate_by = 10
     
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_leave_handler:
+        if not (request.user.is_leave_handler or request.user.is_department_manager):
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
+        
+        # Έλεγχος αν ο προϊστάμενος προσπαθεί να δει χρήστη εκτός της ιεραρχίας του
+        if request.user.is_department_manager:
+            user_id = self.kwargs['user_id']
+            target_user = get_object_or_404(User, pk=user_id)
+            
+            # Βρίσκω όλα τα τμήματα που ο προϊστάμενος μπορεί να δει
+            if request.user.department:
+                allowed_departments = request.user.department.get_all_sub_departments()
+                if target_user.department not in allowed_departments:
+                    raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης στο ιστορικό αυτού του χρήστη.")
+            else:
+                raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης στο ιστορικό αυτού του χρήστη.")
+        
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
@@ -385,6 +442,7 @@ class UserLeaveHistoryView(LoginRequiredMixin, ListView):
             'pending_requests': all_requests.filter(status__in=['SUBMITTED', 'APPROVED_MANAGER', 'UNDER_PROCESSING']).count(),
             'rejected_requests': all_requests.filter(status__in=['REJECTED_MANAGER', 'REJECTED_OPERATOR']).count(),
             'total_days_used': sum(req.total_days for req in all_requests.filter(status='COMPLETED')),
+            'user_role': 'handler' if self.request.user.is_leave_handler else 'manager'
         })
         
         return context
@@ -469,9 +527,9 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         # Έλεγχος δικαιωμάτων
         can_view = (
             obj.user == user or  # Ο ίδιος ο αιτών
-            (user.is_department_manager() and obj.user.manager == user) or  # Ο προϊστάμενός του
+            (user.is_department_manager and obj.user.manager == user) or  # Ο προϊστάμενός του
             user.is_leave_handler or  # Χειριστής αδειών
-            user.is_administrator()  # Διαχειριστής
+            user.is_administrator  # Διαχειριστής
         )
         
         if not can_view:

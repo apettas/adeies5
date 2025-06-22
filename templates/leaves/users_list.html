@@ -1,21 +1,53 @@
 {% extends 'base.html' %}
 
-{% block title %}Λίστα Χρηστών - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+{% block title %}
+{% if user_role == 'handler' %}
+Λίστα Χρηστών - Σύστημα Αδειών ΠΔΕΔΕ
+{% else %}
+Λίστα Χρηστών Τμήματος - Σύστημα Αδειών ΠΔΕΔΕ
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="row mt-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-people"></i> Λίστα Χρηστών</h2>
+            <h2>
+                <i class="bi bi-people"></i>
+                {% if user_role == 'handler' %}
+                Λίστα Χρηστών
+                {% else %}
+                Λίστα Χρηστών Τμήματος
+                {% endif %}
+            </h2>
             <div class="d-flex gap-2 align-items-center">
+                {% if user_role == 'handler' %}
                 <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
                     <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
                 </a>
                 <span class="badge bg-secondary fs-6">Χειριστής Αδειών</span>
+                {% else %}
+                <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
+                </a>
+                <span class="badge bg-warning fs-6">Προϊστάμενος Τμήματος</span>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+{% if user_role == 'manager' %}
+<!-- Πληροφορίες Τμήματος -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <strong>Τμήμα:</strong> {{ department_name }} - Εμφανίζονται μόνο οι χρήστες του τμήματός σας
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Στατιστικά -->
 <div class="row mb-4">

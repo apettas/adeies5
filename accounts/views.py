@@ -64,14 +64,14 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     status__in=['SUBMITTED', 'APPROVED_MANAGER']
                 ).count()
                 
-            elif user.is_department_manager():
+            elif user.is_department_manager:
                 subordinates = user.get_subordinates()
                 context['pending_approvals'] = LeaveRequest.objects.filter(
                     user__in=subordinates,
                     status='SUBMITTED'
                 ).count()
                 
-            elif user.is_leave_handler():
+            elif user.is_leave_handler:
                 context['pending_processing'] = LeaveRequest.objects.filter(
                     status='APPROVED_MANAGER'
                 ).count()

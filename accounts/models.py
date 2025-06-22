@@ -27,6 +27,19 @@ class Department(models.Model):
     
     def __str__(self):
         return self.name
+    
+    def get_all_sub_departments(self):
+        """Επιστρέφει όλα τα υποτμήματα (άμεσα και έμμεσα)"""
+        sub_departments = [self]  # Συμπεριλαμβάνω και το ίδιο το τμήμα
+        
+        # Βρίσκω τα άμεσα παιδιά
+        direct_children = Department.objects.filter(parent_department=self)
+        
+        # Για κάθε άμεσο παιδί, βρίσκω και τα δικά του παιδιά (αναδρομικά)
+        for child in direct_children:
+            sub_departments.extend(child.get_all_sub_departments())
+        
+        return sub_departments
 
 
 class User(AbstractUser):
@@ -75,12 +88,15 @@ class User(AbstractUser):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
     
+    @property
     def is_department_manager(self):
         return self.role == 'department_manager'
     
+    @property
     def is_leave_handler(self):
         return self.role == 'leave_handler'
     
+    @property
     def is_administrator(self):
         return self.role == 'administrator'
     
@@ -90,6 +106,6 @@ class User(AbstractUser):
     
     def get_subordinates(self):
         """Επιστρέφει τους υφισταμένους του χρήστη"""
-        if self.is_department_manager():
+        if self.is_department_manager:
             return User.objects.filter(manager=self, is_active=True)
         return User.objects.none()

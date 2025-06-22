@@ -11,10 +11,17 @@
                 <a href="{% url 'leaves:users_list' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Επιστροφή στη Λίστα
                 </a>
+                {% if user_role == 'handler' %}
                 <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
                     <i class="bi bi-gear"></i> Dashboard
                 </a>
                 <span class="badge bg-secondary fs-6">Χειριστής Αδειών</span>
+                {% else %}
+                <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-kanban"></i> Dashboard
+                </a>
+                <span class="badge bg-warning fs-6">Προϊστάμενος Τμήματος</span>
+                {% endif %}
             </div>
         </div>
     </div>

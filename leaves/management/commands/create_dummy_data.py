@@ -197,6 +197,42 @@ class Command(BaseCommand):
             employee_a.set_password('employee123')
             employee_a.save()
         
+        # Κορίνα Τολια - Υπάλληλος Τμήματος Δ
+        korina_tolia, created = User.objects.get_or_create(
+            username='k.tolia',
+            defaults={
+                'first_name': 'Κορίνα',
+                'last_name': 'Τολια',
+                'email': 'k.tolia@pdede.gov.gr',
+                'role': 'employee',
+                'department': tmima_d,
+                'manager': manager_d,
+                'employee_id': 'EMP003',
+                'phone': '2610-123459'
+            }
+        )
+        if created:
+            korina_tolia.set_password('123')
+            korina_tolia.save()
+        
+        # Κατερίνα Κορσιάνου - Υπάλληλος Τμήματος Α
+        katerina_korsiianou, created = User.objects.get_or_create(
+            username='k.korsiianou',
+            defaults={
+                'first_name': 'Κατερίνα',
+                'last_name': 'Κορσιάνου',
+                'email': 'k.korsiianou@pdede.gov.gr',
+                'role': 'employee',
+                'department': tmima_a,
+                'manager': manager_a,
+                'employee_id': 'EMP004',
+                'phone': '2610-123460'
+            }
+        )
+        if created:
+            katerina_korsiianou.set_password('123')
+            katerina_korsiianou.save()
+        
         self.stdout.write(self.style.SUCCESS('Χρήστες δημιουργήθηκαν!'))
 
     def create_sample_requests(self):
