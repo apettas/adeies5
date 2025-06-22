@@ -1,11 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse
 from .models import User, Role, Department
+from .forms import UserRegistrationForm
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -50,34 +53,110 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 
 def login_view(request):
-    """View για login"""
+    """Login view με έλεγχο registration status"""
     if request.user.is_authenticated:
         return redirect('accounts:dashboard')
     
-    from django.contrib.auth import authenticate, login
-    from django.contrib import messages
-    
     if request.method == 'POST':
-        username = request.POST.get('username')
+        email = request.POST.get('email')
         password = request.POST.get('password')
         
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, username=email, password=password)
         if user is not None:
-            login(request, user)
-            next_url = request.GET.get('next', 'accounts:dashboard')
-            return redirect(next_url)
+            # Έλεγχος αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα
+            if user.can_access_system():
+                login(request, user)
+                messages.success(request, f'Καλώς ήρθατε, {user.full_name}!')
+                return redirect('accounts:dashboard')
+            else:
+                # Ο χρήστης είναι PENDING ή REJECTED
+                if user.registration_status == 'PENDING':
+                    messages.warning(request, 
+                        'Η εγγραφή σας είναι σε εκκρεμότητα. Παρακαλώ περιμένετε την έγκριση από τον χειριστή αδειών.')
+                elif user.registration_status == 'REJECTED':
+                    messages.error(request, 
+                        'Η εγγραφή σας έχει απορριφθεί. Παρακαλώ επικοινωνήστε με το διαχειριστή.')
+                else:
+                    messages.error(request, 
+                        'Δεν έχετε δικαίωμα πρόσβασης στο σύστημα.')
         else:
-            messages.error(request, 'Λάθος όνομα χρήστη ή κωδικός.')
+            messages.error(request, 'Λάθος email ή κωδικός πρόσβασης.')
     
     return render(request, 'accounts/login.html')
 
 
-@login_required  
 def logout_view(request):
-    """View για logout"""
-    from django.contrib.auth import logout
+    """Logout view"""
     logout(request)
+    messages.info(request, 'Αποσυνδεθήκατε επιτυχώς.')
     return redirect('accounts:login')
+
+
+def register_view(request):
+    """Εγγραφή νέων χρηστών"""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        
+        # DEBUG: Εκτύπωση των δεδομένων που λαμβάνονται
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"DEBUG: POST data received: {request.POST}")
+        logger.error(f"DEBUG: Form data: {form.data}")
+        logger.error(f"DEBUG: Form is_valid: {form.is_valid()}")
+        
+        if not form.is_valid():
+            logger.error(f"DEBUG: Form errors: {form.errors}")
+        
+        if form.is_valid():
+            try:
+                user = form.save()
+                logger.error(f"DEBUG: User created successfully: {user.email}")
+                messages.success(request,
+                    f'Η εγγραφή σας ολοκληρώθηκε επιτυχώς! '
+                    f'Η αίτησή σας στάλθηκε για έγκριση. '
+                    f'Θα ενημερωθείτε όταν εγκριθεί η πρόσβασή σας στο σύστημα.')
+                return redirect('accounts:registration_pending')
+            except Exception as e:
+                logger.error(f"DEBUG: Error saving user: {e}")
+                messages.error(request, f'Σφάλμα κατά την εγγραφή: {e}')
+        else:
+            # Προσθήκη errors στα messages για debugging
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'accounts/register.html', {'form': form})
+
+
+def registration_pending_view(request):
+    """Σελίδα επιβεβαίωσης εγγραφής"""
+    return render(request, 'accounts/registration_pending.html')
+
+
+def registration_status_view(request):
+    """Έλεγχος κατάστασης εγγραφής"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)
+            context = {
+                'user': user,
+                'status_found': True
+            }
+        except User.DoesNotExist:
+            context = {
+                'status_found': False,
+                'email': email
+            }
+    else:
+        context = {'status_found': None}
+    
+    return render(request, 'accounts/registration_status.html', context)
 
 
 class UserRoleManagementView(LoginRequiredMixin, TemplateView):

@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}Έλεγχος Κατάστασης Εγγραφής - ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-search me-2"></i>
+                        Έλεγχος Κατάστασης Εγγραφής
+                    </h4>
+                    <p class="mb-0 mt-2 small">Ελέγξτε την πορεία της αίτησής σας</p>
+                </div>
+                <div class="card-body p-4">
+                    {% if status_found is None %}
+                        <!-- Initial form -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Εισάγετε το email σας για να ελέγξετε την κατάσταση της εγγραφής σας στο σύστημα.
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    Email
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="example@sch.gr" required>
+                                <div class="form-text">
+                                    Εισάγετε το email που χρησιμοποιήσατε κατά την εγγραφή
+                                </div>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-info">
+                                    <i class="fas fa-search me-1"></i>
+                                    Έλεγχος Κατάστασης
+                                </button>
+                            </div>
+                        </form>
+
+                    {% elif status_found %}
+                        <!-- User found - show status -->
+                        <div class="text-center mb-4">
+                            <h5 class="text-primary">
+                                <i class="fas fa-user me-2"></i>
+                                {{ user.first_name }} {{ user.last_name }}
+                            </h5>
+                            <p class="text-muted">{{ user.email }}</p>
+                        </div>
+
+                        {% if user.registration_status == 'PENDING' %}
+                            <div class="alert alert-warning text-center">
+                                <i class="fas fa-clock fa-2x mb-3"></i>
+                                <h5>🟡 Εκκρεμότητα Έγκρισης</h5>
+                                <p class="mb-0">
+                                    Η αίτηση εγγραφής σας είναι σε εκκρεμότητα και αναμένει έγκριση από τον χειριστή αδειών.
+                                </p>
+                            </div>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Λεπτομέρειες Αίτησης
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <strong>Ημερομηνία Υποβολής:</strong><br>
+                                            <span class="text-muted">{{ user.registration_date|date:"d/m/Y H:i" }}</span>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <strong>Κωδικός Υπαλλήλου:</strong><br>
+                                            <span class="text-muted">{{ user.employee_id|default:"Δεν έχει οριστεί" }}</span>
+                                        </div>
+                                    </div>
+                                    {% if user.specialty %}
+                                    <div class="row mt-2">
+                                        <div class="col-sm-6">
+                                            <strong>Ειδικότητα:</strong><br>
+                                            <span class="text-muted">{{ user.specialty.specialties_short }}</span>
+                                        </div>
+                                        {% if user.department %}
+                                        <div class="col-sm-6">
+                                            <strong>Τμήμα:</strong><br>
+                                            <span class="text-muted">{{ user.department.name }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    Τι μπορείτε να κάνετε;
+                                </h6>
+                                <ul class="mb-0">
+                                    <li>Περιμένετε την έγκριση (συνήθως 1-3 εργάσιμες ημέρες)</li>
+                                    <li>Επικοινωνήστε με τον χειριστή αδειών του τμήματός σας αν είναι επείγον</li>
+                                    <li>Ελέγξτε ξανά την κατάσταση σε λίγες ημέρες</li>
+                                </ul>
+                            </div>
+
+                        {% elif user.registration_status == 'APPROVED' %}
+                            <div class="alert alert-success text-center">
+                                <i class="fas fa-check-circle fa-2x mb-3"></i>
+                                <h5>✅ Εγκεκριμένη Εγγραφή</h5>
+                                <p class="mb-0">
+                                    Η εγγραφή σας έχει εγκριθεί! Μπορείτε να συνδεθείτε στο σύστημα.
+                                </p>
+                            </div>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-check me-1"></i>
+                                        Στοιχεία Έγκρισης
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <strong>Ημερομηνία Έγκρισης:</strong><br>
+                                            <span class="text-muted">{{ user.approval_date|date:"d/m/Y H:i" }}</span>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <strong>Εγκρίθηκε από:</strong><br>
+                                            <span class="text-muted">{{ user.approved_by.full_name|default:"Σύστημα" }}</span>
+                                        </div>
+                                    </div>
+                                    {% if user.approval_notes %}
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <strong>Σημειώσεις:</strong><br>
+                                            <span class="text-muted">{{ user.approval_notes }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="d-grid mt-3">
+                                <a href="{% url 'accounts:login' %}" class="btn btn-success">
+                                    <i class="fas fa-sign-in-alt me-1"></i>
+                                    Σύνδεση στο Σύστημα
+                                </a>
+                            </div>
+
+                        {% elif user.registration_status == 'REJECTED' %}
+                            <div class="alert alert-danger text-center">
+                                <i class="fas fa-times-circle fa-2x mb-3"></i>
+                                <h5>❌ Απορριφθείσα Εγγραφή</h5>
+                                <p class="mb-0">
+                                    Η αίτηση εγγραφής σας έχει απορριφθεί.
+                                </p>
+                            </div>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-times me-1"></i>
+                                        Στοιχεία Απόρριψης
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <strong>Ημερομηνία Απόρριψης:</strong><br>
+                                            <span class="text-muted">{{ user.approval_date|date:"d/m/Y H:i" }}</span>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <strong>Απορρίφθηκε από:</strong><br>
+                                            <span class="text-muted">{{ user.approved_by.full_name|default:"Σύστημα" }}</span>
+                                        </div>
+                                    </div>
+                                    {% if user.approval_notes %}
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <strong>Λόγος Απόρριψης:</strong><br>
+                                            <span class="text-muted">{{ user.approval_notes }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning mt-3">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-question-circle me-1"></i>
+                                    Τι μπορείτε να κάνετε;
+                                </h6>
+                                <ul class="mb-0">
+                                    <li>Επικοινωνήστε με τον χειριστή αδειών του τμήματός σας για διευκρινίσεις</li>
+                                    <li>Διορθώστε τα προβλήματα που αναφέρθηκαν και υποβάλετε νέα αίτηση</li>
+                                    <li>Επικοινωνήστε με τον διαχειριστή συστήματος αν πιστεύετε ότι υπήρξε λάθος</li>
+                                </ul>
+                            </div>
+
+                            <div class="d-grid mt-3">
+                                <a href="{% url 'accounts:register' %}" class="btn btn-primary">
+                                    <i class="fas fa-user-plus me-1"></i>
+                                    Νέα Αίτηση Εγγραφής
+                                </a>
+                            </div>
+                        {% endif %}
+
+                        <div class="text-center mt-4">
+                            <a href="{% url 'accounts:registration_status' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-search me-1"></i>
+                                Έλεγχος Άλλου Email
+                            </a>
+                        </div>
+
+                    {% else %}
+                        <!-- User not found -->
+                        <div class="alert alert-warning text-center">
+                            <i class="fas fa-user-times fa-2x mb-3"></i>
+                            <h5>Δεν βρέθηκε εγγραφή</h5>
+                            <p class="mb-0">
+                                Δεν βρέθηκε χρήστης με το email: <strong>{{ email }}</strong>
+                            </p>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                Πιθανοί λόγοι:
+                            </h6>
+                            <ul class="mb-0">
+                                <li>Δεν έχετε υποβάλει ακόμα αίτηση εγγραφής</li>
+                                <li>Χρησιμοποιήσατε διαφορετικό email κατά την εγγραφή</li>
+                                <li>Πληκτρολογικό λάθος στο email</li>
+                            </ul>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6 mb-2">
+                                <a href="{% url 'accounts:register' %}" class="btn btn-primary w-100">
+                                    <i class="fas fa-user-plus me-1"></i>
+                                    Νέα Εγγραφή
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-outline-info w-100" onclick="window.history.back();">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    Δοκιμή Ξανά
+                                </button>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <div class="text-center mt-4">
+                        <a href="{% url 'accounts:login' %}" class="btn btn-link">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Πίσω στη Σύνδεση
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Section -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-life-ring me-1"></i>
+                        Χρειάζεστε Βοήθεια;
+                    </h6>
+                    <p class="card-text small">
+                        Αν αντιμετωπίζετε προβλήματα ή έχετε ερωτήσεις σχετικά με την εγγραφή σας, 
+                        μπορείτε να επικοινωνήσετε με:
+                    </p>
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <div class="border rounded p-2 mb-2">
+                                <i class="fas fa-user-shield text-primary"></i>
+                                <small class="d-block"><strong>Χειριστή Αδειών</strong></small>
+                                <small class="text-muted">Του τμήματός σας</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-2 mb-2">
+                                <i class="fas fa-tools text-secondary"></i>
+                                <small class="d-block"><strong>Τεχνική Υποστήριξη</strong></small>
+                                <small class="text-muted">ΠΔΕΔΕ</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus on email field if it exists
+    const emailField = document.getElementById('email');
+    if (emailField) {
+        emailField.focus();
+    }
+    
+    // Auto-refresh functionality for pending status (optional)
+    {% if status_found and user.registration_status == 'PENDING' %}
+    // Show auto-refresh option for pending registrations
+    const alertElement = document.querySelector('.alert-warning');
+    if (alertElement) {
+        const refreshButton = document.createElement('button');
+        refreshButton.className = 'btn btn-sm btn-outline-warning mt-2';
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt me-1"></i> Ανανέωση Κατάστασης';
+        refreshButton.onclick = function() {
+            location.reload();
+        };
+        alertElement.appendChild(refreshButton);
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}
