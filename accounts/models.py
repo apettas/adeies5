@@ -93,8 +93,44 @@ class Role(models.Model):
         return self.name
 
 
+class Specialty(models.Model):
+    """Μοντέλο για τις ειδικότητες χρηστών"""
+    
+    specialties_full = models.CharField('Πλήρης Ειδικότητα', max_length=200, unique=True)
+    specialties_short = models.CharField('Σύντομη Ειδικότητα', max_length=50)
+    is_active = models.BooleanField('Ενεργή', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Ειδικότητα'
+        verbose_name_plural = 'Ειδικότητες'
+        ordering = ['specialties_short', 'specialties_full']
+    
+    def __str__(self):
+        return self.specialties_full
+    
+    def save(self, *args, **kwargs):
+        """Αυτόματη εξαγωγή του σύντομου κωδικού από το πλήρες όνομα"""
+        if self.specialties_full and not self.specialties_short:
+            # Εξαγωγή μέχρι την πρώτη παύλα (-)
+            if ' - ' in self.specialties_full:
+                self.specialties_short = self.specialties_full.split(' - ')[0].strip()
+            else:
+                self.specialties_short = self.specialties_full[:10]  # Fallback
+        super().save(*args, **kwargs)
+
+
 class User(AbstractUser):
     """Επεκτεταμένο μοντέλο χρήστη"""
+    
+    USER_CATEGORIES = [
+        ('ADMINISTRATIVE', 'Διοικητικοί'),
+        ('EDUCATIONAL', 'Εκπαιδευτικοί'),
+        ('SUBSTITUTE', 'Αναπληρωτές'),
+        ('SDEU_SUPPORT', 'Κέντρο Στήριξης ΣΔΕΥ'),
+        ('EDUCATION_DIRECTOR', 'Δ/ντές Εκπαίδευσης'),
+        ('OTHER', 'Άλλο'),
+    ]
     
     # Προσωπικά στοιχεία
     first_name = models.CharField('Όνομα', max_length=50)
@@ -107,6 +143,10 @@ class User(AbstractUser):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='Τμήμα', related_name='users')
     roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
+    user_category = models.CharField('Κατηγορία Χρήστη', max_length=20, choices=USER_CATEGORIES,
+                                   default='OTHER', blank=True)
+    specialty = models.ForeignKey(Specialty, on_delete=models.SET_NULL, null=True, blank=True,
+                                verbose_name='Ειδικότητα', related_name='users')
     
     # Ημερομηνίες
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
@@ -194,3 +234,7 @@ class User(AbstractUser):
     def has_role(self, role_code):
         """Ελέγχει αν ο χρήστης έχει συγκεκριμένο ρόλο"""
         return self.roles.filter(code=role_code).exists()
+
+    def get_user_category_display(self):
+        """Επιστρέφει την ελληνική ονομασία της κατηγορίας χρήστη"""
+        return dict(self.USER_CATEGORIES).get(self.user_category, self.user_category)
