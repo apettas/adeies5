@@ -29,8 +29,8 @@ class UserRegistrationForm(UserCreationForm):
     
     email = forms.EmailField(
         required=True,
-        label='Email (Θεσμικό)',
-        help_text='Χρησιμοποιήστε το θεσμικό σας email που καταλήγει σε @sch.gr',
+        label='Email (προσωπικό Υπηρεσιακό)',
+        help_text='Χρησιμοποιήστε το προσωπικό υπηρεσιακό σας email που καταλήγει σε @sch.gr',
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
             'placeholder': 'example@sch.gr'
@@ -114,7 +114,7 @@ class UserRegistrationForm(UserCreationForm):
             # Έλεγχος αν το email καταλήγει σε @sch.gr
             if not email.endswith('@sch.gr'):
                 raise ValidationError(
-                    'Το email πρέπει να είναι θεσμικό και να καταλήγει σε @sch.gr'
+                    'Το email πρέπει να είναι προσωπικό υπηρεσιακό και να καταλήγει σε @sch.gr'
                 )
             
             # Έλεγχος αν το email υπάρχει ήδη

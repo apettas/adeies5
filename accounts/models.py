@@ -214,11 +214,11 @@ class User(AbstractUser):
     
     @property
     def is_department_manager(self):
-        return self.roles.filter(code='department_manager').exists()
+        return self.roles.filter(code='MANAGER').exists()
     
     @property
     def is_leave_handler(self):
-        return self.roles.filter(code='leave_handler').exists()
+        return self.roles.filter(code='HR_OFFICER').exists()
     
     @property
     def is_administrator(self):
@@ -226,7 +226,7 @@ class User(AbstractUser):
     
     @property
     def is_employee(self):
-        return self.roles.filter(code='employee').exists()
+        return self.roles.filter(code='EMPLOYEE').exists()
     
     @property
     def manager(self):
@@ -237,7 +237,7 @@ class User(AbstractUser):
     
     def can_approve_leaves(self):
         """Μπορεί να εγκρίνει αιτήσεις αδειών"""
-        return self.roles.filter(code__in=['department_manager', 'leave_handler', 'administrator']).exists()
+        return self.roles.filter(code__in=['MANAGER', 'HR_OFFICER', 'administrator']).exists()
     
     def get_subordinates(self):
         """Επιστρέφει τους υφισταμένους του χρήστη"""
@@ -246,7 +246,7 @@ class User(AbstractUser):
             return User.objects.filter(
                 department=self.department,
                 is_active=True
-            ).exclude(roles__code='department_manager')
+            ).exclude(roles__code='MANAGER')
         return User.objects.none()
 
     def get_role_names(self):

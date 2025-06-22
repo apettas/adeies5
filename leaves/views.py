@@ -95,7 +95,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                     create_notification(
                         user=admins,
                         title="Νέα Αίτηση Άδειας - Στέλεχος",
-                        message=f"Ο/Η {user.full_name} ({user.get_role_display()}) υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
+                        message=f"Ο/Η {user.full_name} ({user.get_role_names()}) υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
                         related_object=self.object
                     )
             except Exception:
@@ -182,7 +182,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             from accounts.models import User
             # Προσθήκη άλλων managers/handlers του ίδιου τμήματος
             other_department_users = User.objects.filter(
-                Q(roles__code='department_manager') | Q(roles__code='leave_handler'),
+                Q(roles__code='MANAGER') | Q(roles__code='HR_OFFICER'),
                 department=self.request.user.department
             ).exclude(pk=self.request.user.pk).distinct()
             
@@ -213,14 +213,28 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
 
 @login_required
 def approve_leave_request(request, pk):
-    """Έγκριση αίτησης από προϊστάμενο"""
-    if not request.user.is_department_manager:
+    """Έγκριση αίτησης από προϊστάμενο ή υπεύθυνο προσωπικού"""
+    if not request.user.can_approve_leaves():
         raise PermissionDenied("Δεν έχετε δικαίωμα έγκρισης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    # Έλεγχος αν ο χρήστης είναι ο προϊστάμενος του αιτούντα
-    if leave_request.user.manager != request.user:
+    # Έλεγχος δικαιωμάτων έγκρισης
+    can_approve = False
+    
+    if request.user.is_leave_handler:
+        # Υπεύθυνοι προσωπικού μπορούν να εγκρίνουν όλες τις αιτήσεις
+        can_approve = True
+    elif request.user.is_department_manager:
+        # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις από το ίδιο τμήμα ή υφισταμένων
+        if request.user.department and leave_request.user.department:
+            # Έλεγχος αν είναι από το ίδιο τμήμα
+            can_approve = (request.user.department.id == leave_request.user.department.id)
+        # Ή αν είναι ο καθορισμένος manager του χρήστη
+        if not can_approve and leave_request.user.manager:
+            can_approve = (leave_request.user.manager == request.user)
+    
+    if not can_approve:
         raise PermissionDenied("Δεν μπορείτε να εγκρίνετε αυτή την αίτηση.")
     
     if request.method == 'POST':
@@ -231,7 +245,7 @@ def approve_leave_request(request, pk):
             
             # Ειδοποίηση στους χειριστές αδειών
             from accounts.models import User
-            leave_handlers = User.objects.filter(roles__code='leave_handler', is_active=True).distinct()
+            leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
             for handler in leave_handlers:
                 create_notification(
                     user=handler,
