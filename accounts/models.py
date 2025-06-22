@@ -9,6 +9,11 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('Το email είναι υποχρεωτικό')
         
+        # Για νέους χρήστες, default κατάσταση είναι PENDING και inactive
+        # εκτός αν ρητά καθορίζεται διαφορετικά
+        extra_fields.setdefault('registration_status', 'PENDING')
+        extra_fields.setdefault('is_active', False)
+        
         email = self.normalize_email(email)
         user = self.model(
             email=email,
@@ -23,6 +28,10 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, first_name, last_name, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
+        
+        # Superusers bypass registration approval workflow
+        extra_fields.setdefault('registration_status', 'APPROVED')
+        extra_fields.setdefault('is_active', True)
         
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
@@ -132,6 +141,12 @@ class User(AbstractUser):
         ('OTHER', 'Άλλο'),
     ]
     
+    REGISTRATION_STATUS_CHOICES = [
+        ('PENDING', 'Εκκρεμεί Έγκριση'),
+        ('APPROVED', 'Εγκεκριμένος'),
+        ('REJECTED', 'Απορριφθείς'),
+    ]
+    
     # Προσωπικά στοιχεία
     first_name = models.CharField('Όνομα', max_length=50)
     last_name = models.CharField('Επίθετο', max_length=50)
@@ -147,6 +162,16 @@ class User(AbstractUser):
                                    default='OTHER', blank=True)
     specialty = models.ForeignKey(Specialty, on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Ειδικότητα', related_name='users')
+    
+    # Κατάσταση εγγραφής
+    registration_status = models.CharField('Κατάσταση Εγγραφής', max_length=20,
+                                         choices=REGISTRATION_STATUS_CHOICES,
+                                         default='PENDING')
+    registration_date = models.DateTimeField('Ημερομηνία Εγγραφής', auto_now_add=True)
+    approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                  verbose_name='Εγκρίθηκε από', related_name='approved_users')
+    approval_date = models.DateTimeField('Ημερομηνία Έγκρισης', null=True, blank=True)
+    approval_notes = models.TextField('Σημειώσεις Έγκρισης', blank=True)
     
     # Ημερομηνίες
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
@@ -238,3 +263,46 @@ class User(AbstractUser):
     def get_user_category_display(self):
         """Επιστρέφει την ελληνική ονομασία της κατηγορίας χρήστη"""
         return dict(self.USER_CATEGORIES).get(self.user_category, self.user_category)
+    
+    def get_registration_status_display(self):
+        """Επιστρέφει την ελληνική ονομασία της κατάστασης εγγραφής"""
+        return dict(self.REGISTRATION_STATUS_CHOICES).get(self.registration_status, self.registration_status)
+    
+    @property
+    def is_pending_approval(self):
+        """Επιστρέφει True αν η εγγραφή είναι σε αναμονή έγκρισης"""
+        return self.registration_status == 'PENDING'
+    
+    @property
+    def is_approved(self):
+        """Επιστρέφει True αν η εγγραφή έχει εγκριθεί"""
+        return self.registration_status == 'APPROVED'
+    
+    @property
+    def is_rejected(self):
+        """Επιστρέφει True αν η εγγραφή έχει απορριφθεί"""
+        return self.registration_status == 'REJECTED'
+    
+    def approve_registration(self, approved_by_user, notes=''):
+        """Εγκρίνει την εγγραφή του χρήστη"""
+        from django.utils import timezone
+        self.registration_status = 'APPROVED'
+        self.approved_by = approved_by_user
+        self.approval_date = timezone.now()
+        self.approval_notes = notes
+        self.is_active = True  # Ενεργοποίηση του χρήστη
+        self.save()
+    
+    def reject_registration(self, rejected_by_user, notes=''):
+        """Απορρίπτει την εγγραφή του χρήστη"""
+        from django.utils import timezone
+        self.registration_status = 'REJECTED'
+        self.approved_by = rejected_by_user
+        self.approval_date = timezone.now()
+        self.approval_notes = notes
+        self.is_active = False  # Απενεργοποίηση του χρήστη
+        self.save()
+    
+    def can_access_system(self):
+        """Ελέγχει αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα"""
+        return self.is_superuser or (self.is_approved and self.is_active)
