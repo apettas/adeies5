@@ -34,6 +34,10 @@ class LeaveType(models.Model):
     requires_approval = models.BooleanField('Απαιτεί Έγκριση', default=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    subject_text = models.TextField('Κείμενο Θέματος', blank=True)
+    decision_text = models.TextField('Κείμενο Απόφασης', blank=True)
+    folder = models.CharField('Φ Φάκελος', max_length=255, blank=True)
+    general_category = models.CharField('Γενική Κατηγορία Αδειών', max_length=100, blank=True)
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
