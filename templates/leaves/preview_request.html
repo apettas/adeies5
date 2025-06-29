@@ -70,13 +70,10 @@
                             </ul>
                             <p>Σύνολο ημερών: {{ total_days }}</p>
                             <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Αιτιολόγηση:</label>
-                                <textarea class="form-control" id="description" name="description" rows="5">{{ form_data.description }}</textarea>
-                            </div>
-                            <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
+                            <input type="hidden" name="description" value="{{ form_data.description }}">
+                            <div style="margin-bottom: 120px;"></div> <!-- Extra space to compensate for removed section -->
                             <div style="text-align: center; margin-bottom: 30px;">
-                                <p>Ο {% if user.gender == 'M' %}αιτών{% else %}αιτούσα{% endif %}</p>
+                                <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα (Debug: gender={{ user.gender|default:"not set" }}){% endif %}</p>
                                 <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
                                 <p>Υπογεγραμμένο μέσω διαδικτύου</p>
                                 <div style="margin-bottom: 30px;"></div> <!-- Empty space -->

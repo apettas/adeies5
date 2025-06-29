@@ -95,8 +95,8 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                         total_days += days
                         
                         periods.append({
-                            'start_date': start_date,
-                            'end_date': end_date,
+                            'start_date': start_dt,  # Use the datetime object instead of string
+                            'end_date': end_dt,      # Use the datetime object instead of string
                             'days': days
                         })
                 except (ValueError, TypeError) as e:
