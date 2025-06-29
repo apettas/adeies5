@@ -87,6 +87,9 @@
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
+                                        {% if request.attachments.exists %}
+                                            <span class="badge bg-primary ms-1"><i class="bi bi-paperclip"></i> Συνημμένα</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <span class="date-greek">
