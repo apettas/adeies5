@@ -541,7 +541,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         # Έλεγχος δικαιωμάτων
         can_view = (
             obj.user == user or  # Ο ίδιος ο αιτών
-            (user.is_department_manager and obj.user.manager == user) or  # Ο προϊστάμενός του
+            (user.is_department_manager and user.department and obj.user.department and user.department.id == obj.user.department.id) or  # Στο ίδιο τμήμα
             user.is_leave_handler or  # Χειριστής αδειών
             user.is_administrator  # Διαχειριστής
         )
