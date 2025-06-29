@@ -161,13 +161,15 @@
                     <label class="form-label">
                         <i class="bi bi-calendar"></i> Ημερομηνία Έναρξης
                     </label>
-                    <input type="text" class="form-control greek-datepicker period-start-date" required>
+                    <input type="text" class="form-control period-start-date" placeholder="ηη/μμ/εεεε" required>
+                    <div class="date-help-text">Εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">
                         <i class="bi bi-calendar-check"></i> Ημερομηνία Λήξης
                     </label>
-                    <input type="text" class="form-control greek-datepicker period-end-date" required>
+                    <input type="text" class="form-control period-end-date" placeholder="ηη/μμ/εεεε" required>
+                    <div class="date-help-text">Εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Ημέρες</label>
@@ -437,354 +439,12 @@
 <script>
 $(document).ready(function() {
     console.log('Initializing leave request form...');
-    console.log('jQuery UI datepicker available:', typeof $.datepicker);
     
     let periodCounter = 0;
     const periodsContainer = $('#periods-container');
     const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
     const totalDaysSpan = $('#total-days');
     const daysCalculation = $('#days-calculation');
-    
-    
-    // Skip jQuery UI setup - using custom Greek calendar instead
-    console.log('🗓️ Using custom Greek calendar system - no jQuery UI dependency');
-    
-    // Function to initialize custom Greek calendar (no jQuery UI dependency)
-    function initDatepicker(element) {
-        console.log('🗓️ Initializing custom Greek calendar for element:', element.attr('id'));
-        
-        try {
-            // Check if already initialized
-            if (element.hasClass('custom-calendar-initialized') || element.data('custom-calendar')) {
-                console.log('Element already has custom calendar, skipping');
-                return;
-            }
-            
-            // Mark as initialized to prevent double initialization
-            element.addClass('custom-calendar-initialized');
-            element.data('custom-calendar', true);
-            
-            // Initialize custom calendar directly (no jQuery UI)
-            console.log('✅ Initializing custom Greek calendar');
-            initCustomCalendar(element);
-            
-        } catch (error) {
-            console.error('❌ Error initializing custom calendar:', error);
-            // Fall back to plain text input
-            element.addClass('datepicker-failed');
-            element.removeClass('custom-calendar-initialized');
-            element.removeData('custom-calendar');
-        }
-    }
-    
-    // Custom Greek Calendar Implementation
-    function initCustomCalendar(element) {
-        console.log('🗓️ Initializing custom Greek calendar for:', element.attr('id'));
-        
-        // Greek month names
-        const greekMonths = [
-            'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
-            'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'
-        ];
-        
-        // Greek day names
-        const greekDays = ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'];
-        
-        // Create calendar button
-        const calendarBtn = $('<button type="button" class="btn btn-outline-secondary ms-2 custom-calendar-btn">📅</button>');
-        element.after(calendarBtn);
-        
-        // Calendar popup container
-        let calendarPopup = null;
-        let selectedDate = null;
-        
-        // Format date to dd/mm/yyyy
-        function formatDate(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-        
-        // Parse date from dd/mm/yyyy format
-        function parseDate(dateStr) {
-            if (!dateStr) return null;
-            const parts = dateStr.split('/');
-            if (parts.length !== 3) return null;
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1;
-            const year = parseInt(parts[2], 10);
-            return new Date(year, month, day);
-        }
-        
-        // Create calendar HTML
-        function createCalendar(year, month) {
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-            const startDay = firstDay.getDay(); // 0 = Sunday
-            const daysInMonth = lastDay.getDate();
-            
-            let html = `
-                <div class="custom-calendar-popup" style="
-                    position: absolute;
-                    z-index: 10000;
-                    background: white;
-                    border: 2px solid #007bff;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                    padding: 15px;
-                    min-width: 280px;
-                    font-family: Arial, sans-serif;
-                ">
-                    <div class="calendar-header" style="
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 15px;
-                        padding-bottom: 10px;
-                        border-bottom: 1px solid #eee;
-                    ">
-                        <button type="button" class="prev-month btn btn-sm btn-outline-primary" style="width: 35px;">‹</button>
-                        <div class="month-year" style="
-                            font-weight: bold;
-                            font-size: 16px;
-                            color: #333;
-                        ">${greekMonths[month]} ${year}</div>
-                        <button type="button" class="next-month btn btn-sm btn-outline-primary" style="width: 35px;">›</button>
-                    </div>
-                    <div class="calendar-grid">
-                        <div class="days-header" style="
-                            display: grid;
-                            grid-template-columns: repeat(7, 1fr);
-                            gap: 2px;
-                            margin-bottom: 5px;
-                        ">`;
-            
-            // Add day headers
-            for (let i = 0; i < 7; i++) {
-                html += `<div style="
-                    text-align: center;
-                    font-weight: bold;
-                    font-size: 12px;
-                    color: #666;
-                    padding: 5px;
-                ">${greekDays[i]}</div>`;
-            }
-            
-            html += `</div><div class="days-grid" style="
-                display: grid;
-                grid-template-columns: repeat(7, 1fr);
-                gap: 2px;
-            ">`;
-            
-            // Add empty cells for days before month starts
-            for (let i = 0; i < startDay; i++) {
-                html += '<div style="padding: 8px;"></div>';
-            }
-            
-            // Add days of the month
-            for (let day = 1; day <= daysInMonth; day++) {
-                const currentDate = new Date(year, month, day);
-                const isToday = new Date().toDateString() === currentDate.toDateString();
-                const isSelected = selectedDate && selectedDate.toDateString() === currentDate.toDateString();
-                
-                let dayStyle = `
-                    padding: 8px;
-                    text-align: center;
-                    cursor: pointer;
-                    border-radius: 4px;
-                    font-size: 14px;
-                    transition: all 0.2s;
-                `;
-                
-                if (isToday) {
-                    dayStyle += 'background-color: #e3f2fd; font-weight: bold;';
-                }
-                if (isSelected) {
-                    dayStyle += 'background-color: #007bff; color: white; font-weight: bold;';
-                }
-                
-                html += `<div class="calendar-day" data-day="${day}" style="${dayStyle}">${day}</div>`;
-            }
-            
-            html += `</div></div>
-                <div class="calendar-footer" style="
-                    margin-top: 15px;
-                    padding-top: 10px;
-                    border-top: 1px solid #eee;
-                    text-align: right;
-                ">
-                    <button type="button" class="btn btn-sm btn-secondary me-2 calendar-cancel">Ακύρωση</button>
-                    <button type="button" class="btn btn-sm btn-primary calendar-today">Σήμερα</button>
-                </div>
-            </div>`;
-            
-            return html;
-        }
-        
-        // Show calendar
-        function showCalendar() {
-            hideCalendar(); // Hide any existing calendar
-            
-            // Get current date from input or use today
-            const inputDate = parseDate(element.val()) || new Date();
-            selectedDate = parseDate(element.val());
-            
-            const year = inputDate.getFullYear();
-            const month = inputDate.getMonth();
-            
-            // Create and position calendar
-            const calendarHtml = createCalendar(year, month);
-            calendarPopup = $(calendarHtml);
-            
-            // Position relative to input
-            const inputOffset = element.offset();
-            calendarPopup.css({
-                'top': (inputOffset.top + element.outerHeight() + 5) + 'px',
-                'left': inputOffset.left + 'px'
-            });
-            
-            $('body').append(calendarPopup);
-            
-            // Add event listeners
-            setupCalendarEvents(year, month);
-            
-            console.log('📅 Custom calendar displayed');
-        }
-        
-        // Hide calendar
-        function hideCalendar() {
-            if (calendarPopup) {
-                calendarPopup.remove();
-                calendarPopup = null;
-            }
-        }
-        
-        // Setup calendar event listeners
-        function setupCalendarEvents(currentYear, currentMonth) {
-            // Day selection
-            calendarPopup.find('.calendar-day').on('click', function() {
-                const day = parseInt($(this).data('day'));
-                const selectedDate = new Date(currentYear, currentMonth, day);
-                const formattedDate = formatDate(selectedDate);
-                
-                element.val(formattedDate);
-                element.trigger('change');
-                hideCalendar();
-                
-                console.log('📅 Date selected:', formattedDate);
-            });
-            
-            // Month navigation
-            calendarPopup.find('.prev-month').on('click', function() {
-                let newMonth = currentMonth - 1;
-                let newYear = currentYear;
-                if (newMonth < 0) {
-                    newMonth = 11;
-                    newYear--;
-                }
-                showCalendarMonth(newYear, newMonth);
-            });
-            
-            calendarPopup.find('.next-month').on('click', function() {
-                let newMonth = currentMonth + 1;
-                let newYear = currentYear;
-                if (newMonth > 11) {
-                    newMonth = 0;
-                    newYear++;
-                }
-                showCalendarMonth(newYear, newMonth);
-            });
-            
-            // Today button
-            calendarPopup.find('.calendar-today').on('click', function() {
-                const today = new Date();
-                const formattedDate = formatDate(today);
-                element.val(formattedDate);
-                element.trigger('change');
-                hideCalendar();
-            });
-            
-            // Cancel button
-            calendarPopup.find('.calendar-cancel').on('click', function() {
-                hideCalendar();
-            });
-            
-            // Click outside to close
-            $(document).on('click.customCalendar', function(e) {
-                if (!calendarPopup.is(e.target) && calendarPopup.has(e.target).length === 0 &&
-                    !calendarBtn.is(e.target) && !element.is(e.target)) {
-                    hideCalendar();
-                    $(document).off('click.customCalendar');
-                }
-            });
-        }
-        
-        // Show calendar for specific month
-        function showCalendarMonth(year, month) {
-            const calendarHtml = createCalendar(year, month);
-            const newCalendar = $(calendarHtml);
-            
-            // Position same as current calendar
-            newCalendar.css({
-                'top': calendarPopup.css('top'),
-                'left': calendarPopup.css('left')
-            });
-            
-            calendarPopup.replaceWith(newCalendar);
-            calendarPopup = newCalendar;
-            
-            setupCalendarEvents(year, month);
-        }
-        
-        // Calendar button click
-        calendarBtn.on('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            if (calendarPopup && calendarPopup.is(':visible')) {
-                hideCalendar();
-            } else {
-                showCalendar();
-            }
-        });
-        
-        // Input click also shows calendar
-        element.on('click', function(e) {
-            e.stopPropagation();
-            showCalendar();
-        });
-        
-        // Format input on blur
-        element.on('blur', function() {
-            const value = $(this).val().trim();
-            if (value) {
-                const date = parseDate(value);
-                if (date && !isNaN(date.getTime())) {
-                    $(this).val(formatDate(date));
-                    $(this).trigger('change');
-                }
-            }
-        });
-        
-        // Prevent typing in input - force calendar use
-        element.on('keydown', function(e) {
-            // Allow backspace, delete, tab, escape, enter
-            if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-                // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                (e.keyCode === 65 && e.ctrlKey === true) ||
-                (e.keyCode === 67 && e.ctrlKey === true) ||
-                (e.keyCode === 86 && e.ctrlKey === true) ||
-                (e.keyCode === 88 && e.ctrlKey === true)) {
-                return;
-            }
-            // Stop the keypress
-            e.preventDefault();
-            showCalendar();
-        });
-        
-        console.log('✅ Custom Greek calendar initialized successfully');
-    }
     
     // Function to add a new period
     function addPeriod() {
@@ -809,18 +469,65 @@ $(document).ready(function() {
             calculateTotalDays();
         });
         
+        // Add input formatting for automatic slash insertion
+        periodElement.find('.period-start-date, .period-end-date').on('input', function() {
+            var value = $(this).val().replace(/\D/g, ''); // Remove non-digits
+            var formatted = '';
+            
+            if (value.length > 0) {
+                formatted = value.substring(0, 2);
+                if (value.length > 2) {
+                    formatted += '/' + value.substring(2, 4);
+                    if (value.length > 4) {
+                        formatted += '/' + value.substring(4, 8);
+                    }
+                }
+            }
+            
+            if (formatted !== $(this).val()) {
+                $(this).val(formatted);
+            }
+        });
+        
+        // Add validation on blur
+        periodElement.find('.period-start-date, .period-end-date').on('blur', function() {
+            var value = $(this).val().trim();
+            var $this = $(this);
+            
+            // Remove previous validation feedback
+            $this.removeClass('is-invalid is-valid');
+            $this.siblings('.invalid-feedback').remove();
+            
+            if (value === '') {
+                return; // Empty is allowed, will be caught by required validation
+            }
+            
+            // Check format
+            if (!value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                $this.addClass('is-invalid');
+                $this.after('<div class="invalid-feedback">Παρακαλώ εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>');
+                return;
+            }
+            
+            // Validate actual date
+            var parts = value.split('/');
+            var day = parseInt(parts[0], 10);
+            var month = parseInt(parts[1], 10);
+            var year = parseInt(parts[2], 10);
+            
+            var testDate = new Date(year, month - 1, day);
+            if (testDate.getDate() !== day || testDate.getMonth() !== (month - 1) || testDate.getFullYear() !== year) {
+                $this.addClass('is-invalid');
+                $this.after('<div class="invalid-feedback">Μη έγκυρη ημερομηνία</div>');
+                return;
+            }
+            
+            // Valid date
+            $this.addClass('is-valid');
+        });
+        
         // Append to container
         periodsContainer.append(periodElement);
-        
-        // Initialize datepickers with a small delay
-        setTimeout(function() {
-            const dateInputs = periodElement.find('.greek-datepicker');
-            console.log('Found', dateInputs.length, 'date inputs to initialize');
-            
-            dateInputs.each(function() {
-                initDatepicker($(this));
-            });
-        }, 200);
         
         updatePeriodsData();
     }
@@ -855,12 +562,8 @@ $(document).ready(function() {
         if (startDate && endDate) {
             let start, end;
             
-            // Handle both Greek format (dd/mm/yyyy) and HTML5 format (yyyy-mm-dd)
-            if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                // HTML5 format
-                start = new Date(startDate);
-            } else if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                // Greek format
+            // Handle Greek format (dd/mm/yyyy)
+            if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
                 const startParts = startDate.split('/');
                 start = new Date(startParts[2], startParts[1] - 1, startParts[0]);
             } else {
@@ -868,11 +571,7 @@ $(document).ready(function() {
                 return;
             }
             
-            if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                // HTML5 format
-                end = new Date(endDate);
-            } else if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                // Greek format
+            if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
                 const endParts = endDate.split('/');
                 end = new Date(endParts[2], endParts[1] - 1, endParts[0]);
             } else {
@@ -892,21 +591,53 @@ $(document).ready(function() {
         }
     }
     
-    // Function to calculate total days
+    // Function to calculate total days and weekend days
     function calculateTotalDays() {
         let totalDays = 0;
+        let totalWeekendDays = 0;
         let validPeriods = 0;
         
         $('.period-card').each(function() {
+            const startDate = $(this).find('.period-start-date').val();
+            const endDate = $(this).find('.period-end-date').val();
             const daysValue = $(this).find('.period-days').val();
+            
             if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
                 totalDays += parseInt(daysValue);
                 validPeriods++;
+                
+                // Calculate weekend days for this period
+                if (startDate && endDate) {
+                    let start, end;
+                    if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        const startParts = startDate.split('/');
+                        start = new Date(startParts[2], startParts[1] - 1, startParts[0]);
+                    }
+                    if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        const endParts = endDate.split('/');
+                        end = new Date(endParts[2], endParts[1] - 1, endParts[0]);
+                    }
+                    
+                    if (start && end && start <= end) {
+                        let currentDate = new Date(start);
+                        while (currentDate <= end) {
+                            const dayOfWeek = currentDate.getDay();
+                            if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
+                                totalWeekendDays++;
+                            }
+                            currentDate.setDate(currentDate.getDate() + 1);
+                        }
+                    }
+                }
             }
         });
         
         if (validPeriods > 0) {
-            totalDaysSpan.text(totalDays);
+            let displayText = totalDays;
+            if (totalWeekendDays > 0) {
+                displayText += ` (εκ των οποίων οι ${totalWeekendDays} είναι μέσα σε Σαββατοκύριακο)`;
+            }
+            totalDaysSpan.text(displayText);
             daysCalculation.show();
         } else {
             daysCalculation.hide();
@@ -922,14 +653,10 @@ $(document).ready(function() {
             let endDate = $(this).find('.period-end-date').val();
             
             if (startDate && endDate) {
-                // Handle both Greek format (dd/mm/yyyy) and HTML5 format (yyyy-mm-dd)
+                // Handle Greek format (dd/mm/yyyy)
                 let isoStartDate, isoEndDate;
                 
-                if (startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    // HTML5 format - already in ISO format
-                    isoStartDate = startDate;
-                } else if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                    // Greek format - convert to ISO
+                if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
                     const startParts = startDate.split('/');
                     isoStartDate = `${startParts[2]}-${startParts[1].padStart(2, '0')}-${startParts[0].padStart(2, '0')}`;
                 } else {
@@ -937,11 +664,7 @@ $(document).ready(function() {
                     return;
                 }
                 
-                if (endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    // HTML5 format - already in ISO format
-                    isoEndDate = endDate;
-                } else if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                    // Greek format - convert to ISO
+                if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
                     const endParts = endDate.split('/');
                     isoEndDate = `${endParts[2]}-${endParts[1].padStart(2, '0')}-${endParts[0].padStart(2, '0')}`;
                 } else {
@@ -1049,176 +772,6 @@ $(document).ready(function() {
         // Add the first period automatically
         addPeriod();
     }
-    
-    // Enhanced datepicker click/focus handler with HTML5 fallback
-    $(document).on('click focus', '.greek-datepicker', function(e) {
-        var $this = $(this);
-        console.log('🗓️ Greek datepicker clicked/focused:', $this.attr('id'));
-        
-        // If this datepicker has been marked as failed, switch to HTML5 fallback
-        if ($this.hasClass('datepicker-failed')) {
-            console.log('Switching to HTML5 date input fallback');
-            switchToHTML5DateInput($this);
-            return;
-        }
-        
-        // Ensure custom calendar is initialized first
-        if (!$this.hasClass('custom-calendar-initialized')) {
-            console.log('Custom calendar not initialized, initializing now...');
-            initDatepicker($this);
-            
-            // If initialization failed, switch to HTML5
-            if ($this.hasClass('datepicker-failed')) {
-                switchToHTML5DateInput($this);
-                return;
-            }
-        }
-        
-        // Custom calendar is already initialized via initDatepicker
-        // The click/focus handlers are set up in initCustomCalendar function
-        console.log('✅ Custom calendar ready for interaction');
-    });
-    
-    // Function to switch to Greek formatted text input as fallback
-    function switchToHTML5DateInput($element) {
-        console.log('Converting to Greek formatted date input for reliable functionality');
-        
-        // Preserve existing date value
-        var currentValue = $element.val();
-        
-        // Remove custom calendar classes and data
-        $element.removeClass('custom-calendar-initialized greek-datepicker datepicker-failed')
-                .removeData('custom-calendar')
-                .off('.custom-calendar');
-        
-        // Remove any calendar buttons
-        $element.siblings('.custom-calendar-btn').remove();
-        
-        // Convert to text input with Greek formatting
-        $element.attr('type', 'text')
-                .addClass('greek-date-fallback')
-                .attr('placeholder', 'ΗΗ/ΜΜ/ΕΕΕΕ')
-                .attr('title', 'Εισάγετε ημερομηνία σε μορφή ΗΗ/ΜΜ/ΕΕΕΕ (π.χ. 25/12/2024)')
-                .attr('maxlength', '10')
-                .attr('pattern', '[0-9]{2}/[0-9]{2}/[0-9]{4}');
-        
-        // Keep existing value if it's already in Greek format
-        if (currentValue && currentValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-            $element.val(currentValue);
-        } else if (currentValue && currentValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // Convert from ISO format to Greek format
-            var parts = currentValue.split('-');
-            var greekFormat = parts[2] + '/' + parts[1] + '/' + parts[0];
-            $element.val(greekFormat);
-        }
-        
-        // Add input formatting for automatic slash insertion
-        $element.on('input.greekformat', function() {
-            var value = $(this).val().replace(/\D/g, ''); // Remove non-digits
-            var formatted = '';
-            
-            if (value.length > 0) {
-                formatted = value.substring(0, 2);
-                if (value.length > 2) {
-                    formatted += '/' + value.substring(2, 4);
-                    if (value.length > 4) {
-                        formatted += '/' + value.substring(4, 8);
-                    }
-                }
-            }
-            
-            if (formatted !== $(this).val()) {
-                $(this).val(formatted);
-            }
-        });
-        
-        // Add validation on blur
-        $element.on('blur.greekvalidation', function() {
-            var value = $(this).val().trim();
-            var $this = $(this);
-            
-            // Remove previous validation feedback
-            $this.removeClass('is-invalid is-valid');
-            $this.siblings('.invalid-feedback').remove();
-            
-            if (value === '') {
-                return; // Empty is allowed, will be caught by required validation
-            }
-            
-            // Check format
-            if (!value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                $this.addClass('is-invalid');
-                $this.after('<div class="invalid-feedback">Παρακαλώ εισάγετε ημερομηνία σε μορφή ΗΗ/ΜΜ/ΕΕΕΕ</div>');
-                return;
-            }
-            
-            // Validate actual date
-            var parts = value.split('/');
-            var day = parseInt(parts[0], 10);
-            var month = parseInt(parts[1], 10);
-            var year = parseInt(parts[2], 10);
-            
-            var testDate = new Date(year, month - 1, day);
-            if (testDate.getDate() !== day || testDate.getMonth() !== (month - 1) || testDate.getFullYear() !== year) {
-                $this.addClass('is-invalid');
-                $this.after('<div class="invalid-feedback">Μη έγκυρη ημερομηνία</div>');
-                return;
-            }
-            
-            // Valid date
-            $this.addClass('is-valid');
-        });
-        
-        // Add change handler for period calculations
-        $element.on('change.greekdatechange', function() {
-            var $this = $(this);
-            var periodRow = $this.closest('.period-row');
-            
-            // Trigger validation first
-            $this.trigger('blur.greekvalidation');
-            
-            // Update period days if validation passed
-            if (!$this.hasClass('is-invalid')) {
-                updatePeriodDays(periodRow);
-            }
-        });
-        
-        // Add visual styling for fallback
-        $element.css({
-            'background-color': '#fffacd',
-            'border-left': '3px solid #ffa500'
-        });
-        
-        console.log('✅ Successfully switched to Greek formatted date input');
-    }
-    
-    // Monitor for datepicker creation and immediately fix visibility
-    var observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1 && (node.id === 'ui-datepicker-div' || $(node).hasClass('ui-datepicker'))) {
-                        console.log('Datepicker detected in DOM, applying visibility fix');
-                        setTimeout(function() {
-                            $(node).css({
-                                'position': 'absolute',
-                                'z-index': '99999',
-                                'display': 'block',
-                                'visibility': 'visible',
-                                'opacity': '1'
-                            });
-                        }, 10);
-                    }
-                });
-            }
-        });
-    });
-    
-    // Start observing
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
 });
 </script>
 {% endblock %}
