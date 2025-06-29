@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from accounts.models import Department, Specialty, Role
+from accounts.models import Department, Specialty, Role, Prefecture, Headquarters
 
 
 class Command(BaseCommand):
@@ -25,6 +25,12 @@ class Command(BaseCommand):
             # Φόρτωση Specialties
             self.load_specialties()
             
+            # Φόρτωση Prefectures
+            self.load_prefectures()
+            
+            # Φόρτωση Headquarters
+            self.load_headquarters()
+            
             # Φόρτωση Departments
             self.load_departments()
             
@@ -42,6 +48,8 @@ class Command(BaseCommand):
         Department.objects.all().delete()
         Specialty.objects.all().delete()
         Role.objects.all().delete()
+        Prefecture.objects.all().delete()
+        Headquarters.objects.all().delete()
         
         self.stdout.write(self.style.WARNING('✅ Διαγραφή ολοκληρώθηκε'))
 
@@ -87,6 +95,49 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(f'  ⚠️ Υπάρχει ήδη: {name}')
 
+    def load_prefectures(self):
+        """Φόρτωση νομών"""
+        self.stdout.write('🌍 Φόρτωση νομών...')
+        
+        prefectures_data = [
+            ('ACHAIA', 'Αχαΐας'),
+            ('AITOLOAKARNANIA', 'Αιτωλοακαρνανίας'),
+            ('ILIA', 'Ηλείας'),
+        ]
+
+        for code, name in prefectures_data:
+            prefecture, created = Prefecture.objects.get_or_create(
+                code=code,
+                defaults={'name': name, 'is_active': True}
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+            else:
+                self.stdout.write(f'  ⚠️ Υπάρχει ήδη: {name}')
+
+    def load_headquarters(self):
+        """Φόρτωση εδρών"""
+        self.stdout.write('🏢 Φόρτωση εδρών...')
+        
+        headquarters_data = [
+            ('PATRA', 'Πάτρα'),
+            ('MESSOLONGI', 'Μεσολόγγι'),
+            ('PYRGOS', 'Πύργος'),
+            ('KLEITORIA', 'Κλειτορία'),
+            ('KRESTENA', 'Κρέστενα'),
+            ('ANDRAVIDA', 'Ανδραβίδα'),
+        ]
+
+        for code, name in headquarters_data:
+            headquarters, created = Headquarters.objects.get_or_create(
+                code=code,
+                defaults={'name': name, 'is_active': True}
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+            else:
+                self.stdout.write(f'  ⚠️ Υπάρχει ήδη: {name}')
+
     def load_departments(self):
         """Φόρτωση οργανογράμματος ΠΔΕΔΕ"""
         self.stdout.write('🏢 Φόρτωση οργανογράμματος...')
@@ -95,15 +146,15 @@ class Command(BaseCommand):
         pdede_main, created = Department.objects.get_or_create(
             code='PDEDE_MAIN',
             defaults={
-                'name': 'ΠΔΕΔΕ Δυτικής Ελλάδος',
+                'name': 'Περιφερειακή Διεύθυνση Εκπαίδευσης Δυτικής Ελλάδας ΠΔΕΔΕ',
                 'department_type': 'DIRECTION',
-                'headquarters': 'PATRA',
-                'prefecture': 'ACHAIA',
-                'is_active': True
+                'headquarters': Headquarters.objects.get(code='PATRA'),
+                'prefecture': Prefecture.objects.get(code='ACHAIA'),
+                'is_active': True,
             }
         )
         if created:
-            self.stdout.write('  ✅ Δημιουργήθηκε: ΠΔΕΔΕ Δυτικής Ελλάδος')
+            self.stdout.write('  ✅ Δημιουργήθηκε: Περιφερειακή Διεύθυνση Εκπαίδευσης Δυτικής Ελλάδας ΠΔΕΔΕ')
 
         # 2. ΑΥΤΟΤΕΛΗΣ ΔΙΕΥΘΗΝΣΗ
         autonomous_direction, created = Department.objects.get_or_create(
@@ -112,9 +163,9 @@ class Command(BaseCommand):
                 'name': 'Αυτοτελής Διεύθυνση',
                 'department_type': 'AUTONOMOUS_DIRECTION',
                 'parent_department': pdede_main,
-                'headquarters': 'PATRA',
-                'prefecture': 'ACHAIA',
-                'is_active': True
+                'headquarters': Headquarters.objects.get(code='PATRA'),
+                'prefecture': Prefecture.objects.get(code='ACHAIA'),
+                'is_active': True,
             }
         )
         if created:
@@ -122,23 +173,23 @@ class Command(BaseCommand):
 
         # 3. Τμήματα υπό την Αυτοτελή Διεύθυνση
         departments_data = [
-            ('TMIMA_A', 'ΤΜΗΜΑ Α'),
-            ('TMIMA_B', 'ΤΜΗΜΑ Β'),
-            ('TMIMA_C', 'ΤΜΗΜΑ Γ'),
-            ('TMIMA_D', 'ΤΜΗΜΑ Δ'),
-            ('GRAFIO_NOMIKIS', 'ΓΡΑΦΕΙΟ ΝΟΜΙΚΗΣ'),
+            ('TMIMA_A', 'ΤΜΗΜΑ Α', 'DEPARTMENT'),
+            ('TMIMA_B', 'ΤΜΗΜΑ Β', 'DEPARTMENT'),
+            ('TMIMA_C', 'ΤΜΗΜΑ Γ', 'DEPARTMENT'),
+            ('TMIMA_D', 'ΤΜΗΜΑ Δ', 'DEPARTMENT'),
+            ('GRAFIO_NOMIKIS', 'ΓΡΑΦΕΙΟ ΝΟΜΙΚΗΣ', 'OFFICE'),
         ]
 
-        for code, name in departments_data:
+        for code, name, dept_type in departments_data:
             dept, created = Department.objects.get_or_create(
                 code=code,
                 defaults={
                     'name': name,
-                    'department_type': 'DEPARTMENT' if 'ΤΜΗΜΑ' in name else 'OFFICE',
+                    'department_type': dept_type,
                     'parent_department': autonomous_direction,
-                    'headquarters': 'PATRA',
-                    'prefecture': 'ACHAIA',
-                    'is_active': True
+                    'headquarters': Headquarters.objects.get(code='PATRA'),
+                    'prefecture': Prefecture.objects.get(code='ACHAIA'),
+                    'is_active': True,
                 }
             )
             if created:
@@ -146,22 +197,22 @@ class Command(BaseCommand):
 
         # 4. ΚΕ.Δ.Α.Σ.Υ. Services
         kedasy_services = [
-            ('KEDASY_1_PATRA', '1ο ΚΕ.Δ.Α.Σ.Υ. ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
-            ('KEDASY_2_PATRA', '2ο ΚΕ.Δ.Α.Σ.Υ. ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
+            ('KEDASY_1_PATRA', 'ΚΕ.Δ.Α.Σ.Υ. 1ο ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
+            ('KEDASY_2_PATRA', 'ΚΕ.Δ.Α.Σ.Υ. 2ο ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
             ('KEDASY_AITOL', 'ΚΕ.Δ.Α.Σ.Υ. ΑΙΤ/ΝΙΑΣ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
             ('KEDASY_ILIA', 'ΚΕ.Δ.Α.Σ.Υ. ΗΛΕΙΑΣ', 'PYRGOS', 'ILIA'),
         ]
 
-        for code, name, headquarters, prefecture in kedasy_services:
+        for code, name, headquarters_code, prefecture_code in kedasy_services:
             dept, created = Department.objects.get_or_create(
                 code=code,
                 defaults={
                     'name': name,
                     'department_type': 'VIRTUAL_DEPARTMENT',
                     'parent_department': pdede_main,
-                    'headquarters': headquarters,
-                    'prefecture': prefecture,
-                    'is_active': True
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
                 }
             )
             if created:
@@ -169,21 +220,170 @@ class Command(BaseCommand):
 
         # 5. ΚΕΠΕΑ Services
         kepea_services = [
-            ('KEPEA_ACHAIA', 'ΚΕΠΕΑ ΑΧΑΪΑΣ', 'PATRA', 'ACHAIA'),
-            ('KEPEA_ILIA', 'ΚΕΠΕΑ ΗΛΕΙΑΣ', 'PYRGOS', 'ILIA'),
-            ('KEPEA_AITOL', 'ΚΕΠΕΑ ΑΙΤ/ΝΙΑΣ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('KEPEA_ACHAIA', 'ΚΕΠΕΑ ΑΧΑΪΑΣ', 'KLEITORIA', 'ACHAIA'),
+            ('KEPEA_ILIA', 'ΚΕΠΕΑ ΗΛΕΙΑΣ', 'KRESTENA', 'ILIA'),
+            ('KEPEA_AITOL', 'ΚΕΠΕΑ ΑΙΤΩΛΟΑΚΑΡΝΑΝΙΑΣ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
         ]
 
-        for code, name, headquarters, prefecture in kepea_services:
+        for code, name, headquarters_code, prefecture_code in kepea_services:
             dept, created = Department.objects.get_or_create(
                 code=code,
                 defaults={
                     'name': name,
                     'department_type': 'VIRTUAL_DEPARTMENT',
                     'parent_department': pdede_main,
-                    'headquarters': headquarters,
-                    'prefecture': prefecture,
-                    'is_active': True
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
+                }
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+
+        # 6. ΚΕΝΤΡΟ ΦΙΛΟΞΕΝΙΑΣ ΠΡΟΣΦΥΓΩΝ - ΑΝΔΡΑΒΙΔΑΣ-ΚΥΛΛΗΝΗΣ
+        kfp_andravida, created = Department.objects.get_or_create(
+            code='KFP_ANDRAVIDA',
+            defaults={
+                'name': 'ΚΕΝΤΡΟ ΦΙΛΟΞΕΝΙΑΣ ΠΡΟΣΦΥΓΩΝ - ΑΝΔΡΑΒΙΔΑΣ-ΚΥΛΛΗΝΗΣ',
+                'department_type': 'VIRTUAL_DEPARTMENT',
+                'parent_department': pdede_main,
+                'headquarters': Headquarters.objects.get(code='ANDRAVIDA'),
+                'prefecture': Prefecture.objects.get(code='ILIA'),
+                'is_active': True,
+            }
+        )
+        if created:
+            self.stdout.write('  ✅ Δημιουργήθηκε: ΚΕΝΤΡΟ ΦΙΛΟΞΕΝΙΑΣ ΠΡΟΣΦΥΓΩΝ - ΑΝΔΡΑΒΙΔΑΣ-ΚΥΛΛΗΝΗΣ')
+
+        # 7. ΔΝ/ΤΕΣ ΕΚΠΑΙΔΕΥΣΗΣ
+        dntes_ekp, created = Department.objects.get_or_create(
+            code='DNTES_EKP',
+            defaults={
+                'name': 'ΔΝ/ΤΕΣ ΕΚΠΑΙΔΕΥΣΗΣ',
+                'department_type': 'VIRTUAL_DEPARTMENT',
+                'parent_department': pdede_main,
+                'headquarters': Headquarters.objects.get(code='PATRA'),
+                'prefecture': Prefecture.objects.get(code='ACHAIA'),
+                'is_active': True,
+            }
+        )
+        if created:
+            self.stdout.write('  ✅ Δημιουργήθηκε: ΔΝ/ΤΕΣ ΕΚΠΑΙΔΕΥΣΗΣ')
+
+        # 8. Σ.Δ.Ε.Υ. under ΚΕ.Δ.Α.Σ.Υ. 1ο ΠΑΤΡΑΣ
+        sdey_kedasy_1_patra = [
+            ('SDEY_1_EID_DIM_AIG', 'Σ.Δ.Ε.Υ. 1ο ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΑΙΓΙΟΥ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EID_NIP_AIG', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΑΙΓΙΟΥ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EEEEK_AIG', 'Σ.Δ.Ε.Υ. Ε.Ε.Ε.ΕΚ ΑΙΓΙΟΥ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EID_DIM_KALAV', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΚΑΛΑΒΡΥΤΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_2_EID_DIM_PAT', 'Σ.Δ.Ε.Υ. 2ο ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EID_DIM_KOF_PAT', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΚΩΦΩΝ-ΒΑΡΗΚΟΩΝ ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EEEEK_ACH', 'Σ.Δ.Ε.Υ. Ε.Ε.Ε.Ε.Κ. ΑΧΑΪΑΣ', 'PATRA', 'ACHAIA'),
+            ('SDEY_2_EID_NIP_PAT', 'Σ.Δ.Ε.Υ. 2ο ΕΙΔΙΚΟ ΝΗΠΙΑΓΩΓΕΙΟ ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
+            ('SDEY_EID_NIP_KOF_PAT', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΚΩΦΩΝ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_48_DIM_PAT', 'Σ.Δ.Ε.Υ. 48ου ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+        ]
+
+        kedasy_1_patra = Department.objects.get(code='KEDASY_1_PATRA')
+        for code, name, headquarters_code, prefecture_code in sdey_kedasy_1_patra:
+            dept, created = Department.objects.get_or_create(
+                code=code,
+                defaults={
+                    'name': name,
+                    'department_type': 'VIRTUAL_DEPARTMENT',
+                    'parent_department': kedasy_1_patra,
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
+                }
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+
+        # 9. Σ.Δ.Ε.Υ. under ΚΕ.Δ.Α.Σ.Υ. 2ο ΠΑΤΡΑΣ
+        sdey_kedasy_2_patra = [
+            ('SDEY_EID_DIM_KATO_ACH', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΚΑΤΩ ΑΧΑΙΑΣ', 'PATRA', 'ACHAIA'),
+            ('SDEY_44_DIM_PAT', 'Σ.Δ.Ε.Υ. 44ο ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΠΑΤΡΩΝ (ΕΙΔΙΚΟ ΝΗΠΙΑΓΩΓΕΙΟ ΚΑΤΩ ΑΧΑΙΑΣ)', 'PATRA', 'ACHAIA'),
+            ('SDEY_1_EID_DIM_PAT', 'Σ.Δ.Ε.Υ. 1ΟΥ ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_3_EID_DIM_PAT', 'Σ.Δ.Ε.Υ. 3οΥ ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΩΝ - ΠΙΚΠΑ', 'PATRA', 'ACHAIA'),
+            ('SDEY_4_EID_DIM_PAT', 'Σ.Δ.Ε.Υ. 4ΟΥ ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΑΣ - ΕΙΔΙΚΟ ΦΑΣΜΑΤΟΣ ΑΥΤΙΣΜΟΥ', 'PATRA', 'ACHAIA'),
+            ('SDEY_ENEEGY_L_PAT', 'Σ.Δ.Ε.Υ. ΕΝ.Ε.Ε.ΓΥ.- Λ. ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_1_EID_NIP_PAT', 'Σ.Δ.Ε.Υ. 1ου ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΠΑΤΡΑΣ', 'PATRA', 'ACHAIA'),
+            ('SDEY_3_EID_NIP_PAT', 'Σ.Δ.Ε.Υ. 3ου ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_39_DIM_PAT', 'Σ.Δ.Ε.Υ. 39ου ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+            ('SDEY_61_DIM_PAT', 'Σ.Δ.Ε.Υ. 61ο ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΑΤΡΩΝ', 'PATRA', 'ACHAIA'),
+        ]
+
+        kedasy_2_patra = Department.objects.get(code='KEDASY_2_PATRA')
+        for code, name, headquarters_code, prefecture_code in sdey_kedasy_2_patra:
+            dept, created = Department.objects.get_or_create(
+                code=code,
+                defaults={
+                    'name': name,
+                    'department_type': 'VIRTUAL_DEPARTMENT',
+                    'parent_department': kedasy_2_patra,
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
+                }
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+
+        # 10. Σ.Δ.Ε.Υ. under ΚΕ.Δ.Α.Σ.Υ. ΑΙΤΩΛΟΑΚΑΡΝΑΝΙΑΣ
+        sdey_kedasy_aitol = [
+            ('SDEY_1_EID_DIM_AGR', 'Σ.Δ.Ε.Υ. 1ΟΥ ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΑΓΡΙΝΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_2_EID_DIM_AGR', 'Σ.Δ.Ε.Υ. 2ΟΥ ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟY ΣΧΟΛΕΙΟΥ ΑΓΡΙΝΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_DIM_AGR_MAR', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΑΓΡΙΝΙΟΥ "ΜΑΡΙΑ ΔΗΜΑΔΗ"', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_NIP_AGR_MAR', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΑΓΡΙΝΙΟΥ "ΜΑΡΙΑ ΔΗΜΑΔΗ"', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EN_EID_EPAG_AGR', 'Σ.Δ.Ε.Υ. ΕΝΙΑΙΟ ΕΙΔΙΚΟ ΕΠΑΓΓΕΛΜΑΤΙΚΟ ΓΥΜΝΑΣΙΟ - ΛΥΚΕΙΟ ΑΓΡΙΝΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_DIM_VON', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΒΟΝΙΤΣΑΣ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_DIM_MESS', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΜΕΣΟΛΟΓΓΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_NIP_MESS', 'ΕΙΔΙΚΟ ΝΗΠΙΑΓΩΓΕΙΟ ΜΕΣΟΛΟΓΓΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EN_EID_EPAG_MESS', 'Σ.Δ.Ε.Υ. ΕΝΙΑΙΟΥ ΕΙΔΙΚΟΥ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥ ΓΥΜΝΑΣΙΟΥ - ΛΥΚΕΙΟΥ ΜΕΣΟΛΟΓΓΙΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EID_DIM_NAUP', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟ ΝΑΥΠΑΚΤΟΥ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+            ('SDEY_EEEEK_NAUP', 'ΕΕΕΕΚ ΝΑΥΠΑΚΤΟΣ – ΕΕΕΕΚ', 'MESSOLONGI', 'AITOLOAKARNANIA'),
+        ]
+
+        kedasy_aitol = Department.objects.get(code='KEDASY_AITOL')
+        for code, name, headquarters_code, prefecture_code in sdey_kedasy_aitol:
+            dept, created = Department.objects.get_or_create(
+                code=code,
+                defaults={
+                    'name': name,
+                    'department_type': 'VIRTUAL_DEPARTMENT',
+                    'parent_department': kedasy_aitol,
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
+                }
+            )
+            if created:
+                self.stdout.write(f'  ✅ Δημιουργήθηκε: {name}')
+
+        # 11. Σ.Δ.Ε.Υ. under ΚΕ.Δ.Α.Σ.Υ. ΗΛΕΙΑΣ
+        sdey_kedasy_ilia = [
+            ('SDEY_EID_DIM_LECH', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΛΕΧΑΙΝΩΝ', 'PYRGOS', 'ILIA'),
+            ('SDEY_DIM_KREST', 'Σ.Δ.Ε.Υ. ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΚΡΕΣΤΕΝΩΝ (ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΚΡΕΣΤΕΝΩΝ)', 'PYRGOS', 'ILIA'),
+            ('SDEY_EID_NIP_PIN', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟ ΝΗΠΙΑΓΩΓΕΙΟ ΠΗΝΕΙΟΥ', 'PYRGOS', 'ILIA'),
+            ('SDEY_EID_NIP_PYR', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΝΗΠΙΑΓΩΓΕΙΟΥ ΠΥΡΓΟΥ', 'PYRGOS', 'ILIA'),
+            ('SDEY_EID_DIM_PYR', 'Σ.Δ.Ε.Υ. ΕΙΔΙΚΟΥ ΔΗΜΟΤΙΚΟΥ ΣΧΟΛΕΙΟΥ ΠΥΡΓΟΥ', 'PYRGOS', 'ILIA'),
+            ('SDEY_4_FOUFEIO_AMAL', 'Σ.Δ.Ε.Υ. 4/Θ ΦΟΥΦΕΙΟ ΕΙΔΙΚΟ ΔΗΜΟΤΙΚΟ ΣΧΟΛΕΙΟ ΑΜΑΛΙΑΔΑΣ', 'PYRGOS', 'ILIA'),
+            ('SDEY_EN_EID_EPAG_PYR', 'Σ.Δ.Ε.Υ. ΕΝΙΑΙΟΥ ΕΙΔΙΚΟΥ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥ ΓΥΜΝΑΣΙΟΥ-ΛΥΚΕΙΟΥ ΠΥΡΓΟΥ', 'PYRGOS', 'ILIA'),
+            ('SDEY_EEEEK_PYR_ILIA', 'Σ.Δ.Ε.Υ. Ε.Ε.Ε.Ε.Κ. ΠΥΡΓΟΥ ΗΛΕΙΑΣ', 'PYRGOS', 'ILIA'),
+        ]
+
+        kedasy_ilia = Department.objects.get(code='KEDASY_ILIA')
+        for code, name, headquarters_code, prefecture_code in sdey_kedasy_ilia:
+            dept, created = Department.objects.get_or_create(
+                code=code,
+                defaults={
+                    'name': name,
+                    'department_type': 'VIRTUAL_DEPARTMENT',
+                    'parent_department': kedasy_ilia,
+                    'headquarters': Headquarters.objects.get(code=headquarters_code),
+                    'prefecture': Prefecture.objects.get(code=prefecture_code),
+                    'is_active': True,
                 }
             )
             if created:
@@ -219,3 +419,5 @@ class Command(BaseCommand):
         self.stdout.write(f'  🏢 Departments: {Department.objects.count()}')
         self.stdout.write(f'  📚 Specialties: {Specialty.objects.count()}')
         self.stdout.write(f'  👥 Roles: {Role.objects.count()}')
+        self.stdout.write(f'  🌍 Prefectures: {Prefecture.objects.count()}')
+        self.stdout.write(f'  🏢 Headquarters: {Headquarters.objects.count()}')

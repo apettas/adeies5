@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import User, Department, Role, Specialty
+from .models import User, Department, Role, Specialty, Headquarters, Prefecture
 
 
 @admin.register(Role)
@@ -15,10 +15,26 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'department_type', 'parent_department', 'is_active')
-    list_filter = ('department_type', 'is_active')
+    list_display = ('name', 'code', 'department_type', 'parent_department', 'headquarters', 'prefecture', 'is_active')
+    list_filter = ('department_type', 'is_active', 'headquarters', 'prefecture')
     search_fields = ('name', 'code')
     ordering = ('name',)
+
+@admin.register(Headquarters)
+class HeadquartersAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'code')
+    ordering = ('name',)
+    readonly_fields = ('created_at',)
+
+@admin.register(Prefecture)
+class PrefectureAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'code')
+    ordering = ('name',)
+    readonly_fields = ('created_at',)
 
 
 @admin.register(Specialty)

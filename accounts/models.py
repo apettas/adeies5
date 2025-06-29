@@ -41,6 +41,40 @@ class UserManager(BaseUserManager):
         return self.create_user(email, first_name, last_name, password, **extra_fields)
 
 
+class Prefecture(models.Model):
+    """Μοντέλο για τους νομούς"""
+    
+    code = models.CharField('Κωδικός Νομού', max_length=50, unique=True)
+    name = models.CharField('Όνομα Νομού', max_length=100)
+    is_active = models.BooleanField('Ενεργός', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Νομός'
+        verbose_name_plural = 'Νομοί'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class Headquarters(models.Model):
+    """Μοντέλο για τις έδρες"""
+    
+    code = models.CharField('Κωδικός Έδρας', max_length=50, unique=True)
+    name = models.CharField('Όνομα Έδρας', max_length=100)
+    is_active = models.BooleanField('Ενεργή', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Έδρα'
+        verbose_name_plural = 'Έδρες'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
 class Department(models.Model):
     """Μοντέλο για τα Τμήματα/Γραφεία της ΠΔΕΔΕ"""
     
@@ -52,27 +86,15 @@ class Department(models.Model):
         ('VIRTUAL_DEPARTMENT', 'Εικονικό Τμήμα'),
     ]
     
-    PREFECTURE_CHOICES = [
-        ('ACHAIA', 'Αχαΐας'),
-        ('AITOLOAKARNANIA', 'Αιτωλοακαρνανίας'),
-        ('ILIA', 'Ηλείας'),
-    ]
-    
-    HEADQUARTERS_CHOICES = [
-        ('PATRA', 'Πάτρα'),
-        ('MESSOLONGI', 'Μεσολόγγι'),
-        ('PYRGOS', 'Πύργος'),
-        ('KLEITORIA', 'Κλειτορία'),
-        ('KRESTENA', 'Κρέστενα'),
-    ]
-    
     name = models.CharField('Όνομα Τμήματος', max_length=200)
-    code = models.CharField('Κωδικός Τμήματος', max_length=20, unique=True)
+    code = models.CharField('Κωδικός Τμήματος', max_length=50, unique=True)
     department_type = models.CharField('Τύπος Τμήματος', max_length=30, choices=DEPARTMENT_TYPES)
     parent_department = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
                                         verbose_name='Γονικό Τμήμα')
-    prefecture = models.CharField('Νομός', max_length=20, choices=PREFECTURE_CHOICES, null=True, blank=True)
-    headquarters = models.CharField('Έδρα', max_length=20, choices=HEADQUARTERS_CHOICES, null=True, blank=True)
+    prefecture = models.ForeignKey(Prefecture, on_delete=models.SET_NULL, null=True, blank=True,
+                                 verbose_name='Νομός', related_name='departments')
+    headquarters = models.ForeignKey(Headquarters, on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name='Έδρα', related_name='departments')
     is_active = models.BooleanField('Ενεργό', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
