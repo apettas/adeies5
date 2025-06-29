@@ -50,7 +50,7 @@ class SpecialtyAdmin(admin.ModelAdmin):
 class CustomUserAdmin(UserAdmin):
     list_display = ('email', 'last_name', 'first_name', 'department', 'specialty', 'get_role_names', 'get_category_display', 'get_registration_status_display', 'is_active')
     list_filter = ('roles', 'department', 'specialty', 'user_category', 'registration_status', 'is_active', 'is_staff')
-    search_fields = ('first_name', 'last_name', 'email', 'employee_id')
+    search_fields = ('first_name', 'last_name', 'email')
     ordering = ('last_name', 'first_name')
     filter_horizontal = ('roles',)
     actions = ['approve_users', 'reject_users']
@@ -108,7 +108,7 @@ class CustomUserAdmin(UserAdmin):
     # Προσαρμογή fieldsets για email-based authentication (χωρίς username)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'phone', 'employee_id', 'hire_date')}),
+        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'gender', 'phone', 'hire_date')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'roles', 'user_category')}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
         ('Δικαιώματα', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
@@ -124,7 +124,7 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Προσωπικά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('first_name', 'last_name', 'phone', 'employee_id', 'hire_date')
+            'fields': ('first_name', 'last_name', 'phone', 'hire_date')
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),

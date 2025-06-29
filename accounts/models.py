@@ -189,9 +189,14 @@ class User(AbstractUser):
     last_name = models.CharField('Επίθετο', max_length=50)
     email = models.EmailField('Email', unique=True)
     phone = models.CharField('Τηλέφωνο', max_length=15, blank=True)
+    GENDER_CHOICES = [
+        ('MALE', 'Άνδρας'),
+        ('FEMALE', 'Γυναίκα'),
+        ('OTHER', 'Άλλο'),
+    ]
+    gender = models.CharField('Φύλο', max_length=10, choices=GENDER_CHOICES, blank=True)
     
     # Υπηρεσιακά στοιχεία
-    employee_id = models.CharField('Αριθμός Μητρώου', max_length=20, unique=True, blank=True, null=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='Τμήμα', related_name='users')
     roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
