@@ -156,7 +156,7 @@
                 <div class="row">
                     {% for attachment in leave_request.attachments.all %}
                     <div class="col-md-6 mb-3">
-                        <div class="d-flex align-items-center p-3 border rounded">
+                        <div class="d-flex align-items-start p-3 border rounded">
                             <div class="flex-shrink-0 me-3">
                                 {% if attachment.file_extension == 'pdf' %}
                                     <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
@@ -168,6 +168,9 @@
                             </div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-1">{{ attachment.original_filename }}</h6>
+                                {% if attachment.description %}
+                                <p class="mb-1 small"><strong>Περιγραφή:</strong> {{ attachment.description }}</p>
+                                {% endif %}
                                 <small class="text-muted">
                                     {{ attachment.file_size|filesizeformat }} •
                                     Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
@@ -194,6 +197,15 @@
                     </div>
                     {% endfor %}
                 </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-paperclip"></i> Συνημένα Αρχεία</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Δεν υπάρχουν συνημμένα αρχεία για αυτή την αίτηση.</p>
             </div>
         </div>
         {% endif %}

@@ -115,6 +115,7 @@ class SecureFile(models.Model):
     encryption_key = models.CharField('Κλειδί Κρυπτογράφησης', max_length=64)  # AES-256 key in hex
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_files')
     uploaded_at = models.DateTimeField('Ημερομηνία Αποστολής', auto_now_add=True)
+    description = models.TextField('Περιγραφή Αρχείου', blank=True)
     
     class Meta:
         verbose_name = 'Ασφαλές Αρχείο'

@@ -76,19 +76,37 @@
                             <textarea name="{{ form.notes.name }}" id="{{ form.notes.id_for_label }}" class="form-control" rows="3">{{ form.notes.value|default:'' }}</textarea>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.attachment.id_for_label }}" class="form-label">
-                                <i class="bi bi-paperclip"></i> Επισύναψη Αρχείου (Προαιρετικό)
+                        <div class="mb-3" id="attachments-container">
+                            <label class="form-label">
+                                <i class="bi bi-paperclip"></i> Επισύναψη Αρχείων (Προαιρετικό)
                             </label>
-                            <input type="file" name="{{ form.attachment.name }}" id="{{ form.attachment.id_for_label }}" class="form-control">
-                            <div class="form-text">
-                                Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                            <div class="attachment-group mb-3" data-index="1">
+                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input">
+                                <div class="form-text">
+                                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                                </div>
+                                <div class="mt-2">
+                                    <label for="attachment_description_1" class="form-label">
+                                        <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1 (Υποχρεωτικό εάν υπάρχει αρχείο)
+                                    </label>
+                                    <textarea name="attachment_description_1" id="attachment_description_1" class="form-control attachment-description" rows="2" placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+                                    <div class="form-text">Παρακαλώ περιγράψτε το περιεχόμενο του συνημμένου αρχείου.</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
+                                    <i class="bi bi-trash"></i> Αφαίρεση Συνημμένου
+                                </button>
                             </div>
                             
                             <!-- File Preview -->
                             <div id="file-preview" class="mt-3" style="display: none;">
                                 <h6><i class="bi bi-eye"></i> Προεπισκόπηση Αρχείων:</h6>
                                 <div id="file-list" class="list-group"></div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="button" id="add-attachment-btn" class="btn btn-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Προσθήκη Επιπλέον Συνημμένου
+                                </button>
                             </div>
                         </div>
 
@@ -687,50 +705,112 @@ $(document).ready(function() {
         addPeriod();
     });
     
-    // File upload preview functionality
-    $('#{{ form.attachment.id_for_label }}').on('change', function() {
-        const files = this.files;
+    // File upload preview functionality for multiple attachments
+    function updateFilePreviews() {
         const filePreview = $('#file-preview');
         const fileList = $('#file-list');
+        fileList.empty();
+        let hasFiles = false;
         
-        if (files.length > 0) {
-            fileList.empty();
+        $('.attachment-input').each(function() {
+            const files = this.files;
+            const index = $(this).closest('.attachment-group').data('index');
+            const descriptionField = $(this).closest('.attachment-group').find('.attachment-description');
             
-            Array.from(files).forEach((file, index) => {
-                const sizeKB = (file.size / 1024).toFixed(1);
-                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                const displaySize = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
-                
-                // Get file type icon
-                let icon = 'bi-file-earmark';
-                if (file.type.includes('pdf')) {
-                    icon = 'bi-file-earmark-pdf';
-                } else if (file.type.includes('image')) {
-                    icon = 'bi-file-earmark-image';
-                }
-                
-                const fileItem = `
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="bi ${icon} text-primary"></i>
-                            <strong>${file.name}</strong>
-                            <br>
-                            <small class="text-muted">Μέγεθος: ${displaySize} | Τύπος: ${file.type}</small>
+            if (files.length > 0) {
+                hasFiles = true;
+                Array.from(files).forEach((file, fileIndex) => {
+                    const sizeKB = (file.size / 1024).toFixed(1);
+                    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                    const displaySize = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+                    
+                    // Get file type icon
+                    let icon = 'bi-file-earmark';
+                    if (file.type.includes('pdf')) {
+                        icon = 'bi-file-earmark-pdf';
+                    } else if (file.type.includes('image')) {
+                        icon = 'bi-file-earmark-image';
+                    }
+                    
+                    const fileItem = `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi ${icon} text-primary"></i>
+                                <strong>${file.name}</strong>
+                                <br>
+                                <small class="text-muted">Μέγεθος: ${displaySize} | Τύπος: ${file.type}</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">${index}</span>
+                            </div>
                         </div>
-                        <div>
-                            <span class="badge bg-secondary">${index + 1}</span>
-                        </div>
-                    </div>
-                `;
+                    `;
+                    
+                    fileList.append(fileItem);
+                });
                 
-                fileList.append(fileItem);
-            });
-            
+                descriptionField.prop('required', true);
+            } else {
+                descriptionField.prop('required', false);
+            }
+        });
+        
+        if (hasFiles) {
             filePreview.show();
         } else {
             filePreview.hide();
         }
+    }
+    
+    // Add attachment functionality
+    let attachmentCounter = 1;
+    $('#add-attachment-btn').on('click', function() {
+        attachmentCounter++;
+        const newAttachmentGroup = `
+            <div class="attachment-group mb-3" data-index="${attachmentCounter}">
+                <input type="file" name="attachment_${attachmentCounter}" id="attachment_${attachmentCounter}" class="form-control attachment-input">
+                <div class="form-text">
+                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                </div>
+                <div class="mt-2">
+                    <label for="attachment_description_${attachmentCounter}" class="form-label">
+                        <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου ${attachmentCounter} (Υποχρεωτικό εάν υπάρχει αρχείο)
+                    </label>
+                    <textarea name="attachment_description_${attachmentCounter}" id="attachment_description_${attachmentCounter}" class="form-control attachment-description" rows="2" placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+                    <div class="form-text">Παρακαλώ περιγράψτε το περιεχόμενο του συνημμένου αρχείου.</div>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2">
+                    <i class="bi bi-trash"></i> Αφαίρεση Συνημμένου
+                </button>
+            </div>
+        `;
+        
+        $('#attachments-container').append(newAttachmentGroup);
+        updateRemoveButtons();
     });
+    
+    // Remove attachment functionality
+    function updateRemoveButtons() {
+        $('.remove-attachment-btn').off('click').on('click', function() {
+            const group = $(this).closest('.attachment-group');
+            group.remove();
+            updateFilePreviews();
+        });
+        
+        if ($('.attachment-group').length > 1) {
+            $('.remove-attachment-btn').show();
+        } else {
+            $('.remove-attachment-btn').hide();
+        }
+    }
+    
+    // Initial setup for file input change events
+    $(document).on('change', '.attachment-input', function() {
+        updateFilePreviews();
+    });
+    
+    // Initial call to set up remove buttons
+    updateRemoveButtons();
     
     // Load existing periods data if any (for form errors)
     const existingData = periodsDataField.val();

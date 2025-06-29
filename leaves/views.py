@@ -105,58 +105,68 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
         return response
     
     def _handle_file_uploads(self, form):
-        """Επεξεργασία και κρυπτογραφημένη αποθήκευση αρχείου"""
-        file_obj = form.cleaned_data.get('attachment')
-        
-        if not file_obj:
-            return
-        
+        """Επεξεργασία και κρυπτογραφημένη αποθήκευση πολλαπλών αρχείων"""
         private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
                                    os.path.join(settings.BASE_DIR, 'private_media'))
         
-        try:
-            # Δημιουργία unique file path
-            file_path = os.path.join(
-                private_media_root,
-                'leave_requests',
-                str(self.object.id),
-                f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
-            )
-            
-            # Κρυπτογραφημένη αποθήκευση
-            success, key_hex, file_size = SecureFileHandler.save_encrypted_file(
-                file_obj, file_path
-            )
-            
-            if success:
-                # Δημιουργία SecureFile record
-                SecureFile.objects.create(
-                    leave_request=self.object,
-                    original_filename=file_obj.name,
-                    file_path=file_path,
-                    file_size=file_size,
-                    content_type=file_obj.content_type,
-                    encryption_key=key_hex,
-                    uploaded_by=self.request.user
-                )
-                messages.success(
-                    self.request,
-                    f'Επιτυχής αποθήκευση αρχείου "{file_obj.name}".'
-                )
-            else:
-                messages.warning(
-                    self.request,
-                    f'Αποτυχία αποθήκευσης αρχείου "{file_obj.name}".'
-                )
+        # Process multiple file uploads
+        for key in self.request.FILES.keys():
+            if key.startswith('attachment_'):
+                file_obj = self.request.FILES[key]
+                index = key.replace('attachment_', '')
+                description_key = f'attachment_description_{index}'
+                description = self.request.POST.get(description_key, '')
                 
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error handling file upload: {str(e)}")
-            messages.error(
-                self.request,
-                f'Σφάλμα κατά την αποθήκευση του αρχείου "{file_obj.name}".'
-            )
+                if not file_obj:
+                    continue
+                
+                try:
+                    # Δημιουργία unique file path
+                    file_path = os.path.join(
+                        private_media_root,
+                        'leave_requests',
+                        str(self.object.id),
+                        f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
+                    )
+                    
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    
+                    # Κρυπτογραφημένη αποθήκευση
+                    success, key_hex, file_size = SecureFileHandler.save_encrypted_file(
+                        file_obj, file_path
+                    )
+                    
+                    if success:
+                        # Δημιουργία SecureFile record
+                        SecureFile.objects.create(
+                            leave_request=self.object,
+                            original_filename=file_obj.name,
+                            file_path=file_path,
+                            file_size=file_size,
+                            content_type=file_obj.content_type,
+                            encryption_key=key_hex,
+                            uploaded_by=self.request.user,
+                            description=description if description else f"Συνημμένο {index}"
+                        )
+                        messages.success(
+                            self.request,
+                            f'Επιτυχής αποθήκευση αρχείου "{file_obj.name}".'
+                        )
+                    else:
+                        messages.warning(
+                            self.request,
+                            f'Αποτυχία αποθήκευσης αρχείου "{file_obj.name}".'
+                        )
+                        
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error handling file upload {file_obj.name}: {str(e)}")
+                    messages.error(
+                        self.request,
+                        f'Σφάλμα κατά την αποθήκευση του αρχείου "{file_obj.name}".'
+                    )
 
 
 class ManagerDashboardView(LoginRequiredMixin, ListView):
