@@ -63,7 +63,7 @@
                             <p>Παρακαλώ να μου χορηγήσετε άδεια {{ form_data.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</p>
                             <ul style="list-style-type: none; padding-left: 0;">
                                 {% for period in periods %}
-                                    <li>Από {{ period.start_date|date:"l d F Y" }} έως και {{ period.end_date|date:"l d F Y" }}, ημέρες {{ period.days }}</li>
+                                    <li>Από {{ period.start_date|date:"l d E Y" }} έως και {{ period.end_date|date:"l d E Y" }}, ημέρες {{ period.days }}</li>
                                 {% empty %}
                                     <li>Δεν έχουν καθοριστεί χρονικά διαστήματα άδειας.</li>
                                 {% endfor %}
