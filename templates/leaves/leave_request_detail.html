@@ -13,15 +13,86 @@
                         <i class="bi bi-arrow-left"></i> Επιστροφή
                     </a>
                 {% elif user.is_department_manager %}
-                    <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Επιστροφή
-                    </a>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Επιστροφή
+                        </a>
+                        {% if leave_request.status == 'SUBMITTED' and leave_request.user.department.id == user.department.id %}
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
+                                <i class="bi bi-check"></i> Έγκριση
+                            </button>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
+                                <i class="bi bi-x"></i> Απόρριψη
+                            </button>
+                        {% endif %}
+                    </div>
                 {% elif user.is_leave_handler %}
                     <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Επιστροφή
                     </a>
                 {% endif %}
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Έγκρισης για Προϊστάμενο -->
+<div class="modal fade" id="approveModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Έγκριση Αίτησης</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:approve_leave_request' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    <p><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }} - {{ leave_request.end_date|date:"d/m/Y" }}</p>
+                    
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Σχόλια Έγκρισης</label>
+                        <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check"></i> Έγκριση
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Απόρριψης για Προϊστάμενο -->
+<div class="modal fade" id="rejectModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Απόρριψη Αίτησης</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:reject_leave_request' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Αιτιολογία Απόρριψης <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x"></i> Απόρριψη
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
