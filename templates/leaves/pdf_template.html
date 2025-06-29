@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <title>Αίτηση Άδειας - {{ user.full_name }}</title>
+    <style>
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('static/fonts/DejaVuLGCSans.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            margin: 40px;
+            font-size: 12pt;
+        }
+        .left-column {
+            width: 30%;
+            float: left;
+        }
+        .right-column {
+            width: 65%;
+            float: right;
+        }
+        .clear {
+            clear: both;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .center {
+            text-align: center;
+        }
+        .empty-space {
+            height: 20px;
+        }
+        ul.no-bullets {
+            list-style-type: none;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="left-column">
+        <div style="height: 100px;"></div> <!-- Empty space -->
+        <h3 class="bold">Αίτηση</h3>
+        <div class="empty-space"></div>
+        <p><span>Επώνυμο:</span> <span class="bold">{{ user.last_name }}</span></p>
+        <p><span>Όνομα:</span> <span class="bold">{{ user.first_name }}</span></p>
+        <p><span>Πατρώνυμο:</span> <span class="bold">{{ user.father_name|default:"-" }}</span></p>
+        <p><span>Κλάδος:</span> <span class="bold">{{ user.specialty|default:"-" }}</span></p>
+        <p><span>Τηλέφωνο:</span> <span class="bold">{{ user.phone|default:"-" }}</span></p>
+        <div class="empty-space"></div>
+        <p><span>Οργανική Θέση:</span> <span class="bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+        <div style="height: 60px;"></div> <!-- Empty space -->
+        <p class="bold">Θέμα: Χορήγηση άδειας {{ leave_request.leave_type.name }}</p>
+    </div>
+    
+    <div class="right-column">
+        <div style="height: 180px;"></div> <!-- Empty space -->
+        <div class="center">
+            <p>ΠΡΟΣ</p>
+            <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
+            <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
+        </div>
+        <div style="height: 40px;"></div> <!-- Empty space -->
+        <p>Παρακαλώ να μου χορηγήσετε άδεια {{ leave_request.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</p>
+        <ul class="no-bullets">
+            {% for period in leave_request.periods.all %}
+                <li>Από {{ period.start_date|date:"l d F Y" }} έως και {{ period.end_date|date:"l d F Y" }}, ημέρες {{ period.days }}</li>
+            {% endfor %}
+        </ul>
+        <p>Σύνολο ημερών: {{ leave_request.total_days }}</p>
+        <div style="height: 40px;"></div> <!-- Empty space -->
+        <p><strong>Αιτιολόγηση:</strong></p>
+        <p>{{ leave_request.description|linebreaksbr }}</p>
+        <div style="height: 80px;"></div> <!-- Empty space -->
+        <div class="center">
+            <p>Ο {% if user.gender == 'M' %}αιτών{% else %}αιτούσα{% endif %}</p>
+            <div style="height: 20px;"></div> <!-- Empty space -->
+            <p>Υπογεγραμμένο μέσω διαδικτύου</p>
+            <div style="height: 20px;"></div> <!-- Empty space -->
+            <p>{{ user.first_name }} {{ user.last_name }}</p>
+        </div>
+        <div style="height: 100px;"></div> <!-- Empty space -->
+        <p class="bold">Συνημμένα:</p>
+        <ul style="padding-left: 20px;">
+            {% for attachment in leave_request.attachments.all %}
+                <li>{{ attachment.description|default:attachment.original_filename }}</li>
+            {% empty %}
+                <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="clear"></div>
+</body>
+</html>

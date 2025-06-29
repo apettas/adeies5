@@ -67,42 +67,90 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
             return reverse_lazy('leaves:employee_dashboard')
     
     def form_valid(self, form):
-        form.instance.user = self.request.user
-        form.instance.status = 'SUBMITTED'
-        form.instance.submitted_at = timezone.now()
+        # Don't save the form yet, just pass the data to preview
+        periods = []
+        total_days = 0
         
-        response = super().form_valid(form)
+        # Check if periods data is coming from a different input name or format
+        periods_json = self.request.POST.get('periods_data', '[]') # Get the JSON string
+        print(f"Raw periods_json from POST: {periods_json}") # Debug print
         
-        # Επεξεργασία επισυναπτόμενων αρχείων
-        self._handle_file_uploads(form)
+        try:
+            import json
+            periods_data_list = json.loads(periods_json) # Parse the JSON string
+            print(f"Parsed periods_data_list: {periods_data_list}") # Debug print
+            
+            for period_dict in periods_data_list:
+                try:
+                    start_date = period_dict.get('start_date')
+                    end_date = period_dict.get('end_date')
+                    
+                    if start_date and end_date:
+                        from datetime import datetime
+                        # Convert string dates to datetime objects to calculate days
+                        start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
+                        end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
+                        
+                        days = (end_dt - start_dt).days + 1
+                        total_days += days
+                        
+                        periods.append({
+                            'start_date': start_date,
+                            'end_date': end_date,
+                            'days': days
+                        })
+                except (ValueError, TypeError) as e:
+                    print(f"Error processing period dictionary {period_dict}: {e}") # Debug print
+                    continue
+        except json.JSONDecodeError as e:
+            print(f"Error decoding periods_data JSON: {e}") # Debug print
+            pass
         
-        # Αποστολή ειδοποίησης στον προϊστάμενο (αν υπάρχει)
-        user = self.request.user
-        if hasattr(user, 'manager') and user.manager:
-            create_notification(
-                user=user.manager,
-                title="Νέα Αίτηση Άδειας",
-                message=f"Ο/Η {user.full_name} υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
-                related_object=self.object
-            )
-        elif user.is_department_manager or user.is_leave_handler:
-            # Για προϊσταμένους και χειριστές αδειών που δεν έχουν manager,
-            # στέλνουμε ειδοποίηση στον διαχειριστή ή άλλον ανώτερο
+        # If no periods found from JSON, try to extract from form data directly (fallback)
+        if not periods and 'start_date' in form.cleaned_data and 'end_date' in form.cleaned_data:
             try:
-                from accounts.models import User
-                admins = User.objects.filter(roles__code='administrator').first()
-                if admins:
-                    create_notification(
-                        user=admins,
-                        title="Νέα Αίτηση Άδειας - Στέλεχος",
-                        message=f"Ο/Η {user.full_name} ({user.get_role_names()}) υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
-                        related_object=self.object
-                    )
-            except Exception:
-                pass  # Σιωπηλή αποτυχία αν δεν υπάρχει διαχειριστής
+                from datetime import datetime
+                start_date = form.cleaned_data.get('start_date')
+                end_date = form.cleaned_data.get('end_date')
+                if start_date and end_date:
+                    days = (end_date - start_date).days + 1
+                    total_days = days
+                    periods.append({
+                        'start_date': start_date.strftime('%Y-%m-%d'),
+                        'end_date': end_date.strftime('%Y-%m-%d'),
+                        'days': days
+                    })
+            except Exception as e:
+                print(f"Error extracting periods from form.cleaned_data (fallback): {e}") # Debug print
+                pass
         
-        messages.success(self.request, 'Η αίτησή σας υποβλήθηκε επιτυχώς!')
-        return response
+        print(f"Final periods list: {periods}") # Debug print
+        print(f"Final total_days: {total_days}") # Debug print
+        
+        # Process attachment descriptions
+        attachments = []
+        for key in self.request.FILES.keys():
+            if key.startswith('attachment_'):
+                file_obj = self.request.FILES[key]
+                index = key.replace('attachment_', '')
+                description_key = f'attachment_description_{index}'
+                description = self.request.POST.get(description_key, '')
+                
+                if file_obj:
+                    attachments.append({
+                        'file_name': file_obj.name,
+                        'description': description if description else f"Συνημμένο {index}"
+                    })
+        
+        context = {
+            'form_data': form.cleaned_data,
+            'user': self.request.user,
+            'files': self.request.FILES,
+            'periods': periods,
+            'total_days': total_days,
+            'attachments': attachments
+        }
+        return render(self.request, 'leaves/preview_request.html', context)
     
     def _handle_file_uploads(self, form):
         """Επεξεργασία και κρυπτογραφημένη αποθήκευση πολλαπλών αρχείων"""
@@ -563,6 +611,146 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
 
 
 # Redirect views για εύκολη πλοήγηση
+@login_required
+def submit_final_request(request):
+    """Handle final submission of leave request and create PDF"""
+    if request.method == 'POST':
+        from django.utils import timezone
+        from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
+        from .crypto_utils import SecureFileHandler
+        from django.conf import settings
+        import os
+        from weasyprint import HTML
+        from django.template.loader import render_to_string
+        from notifications.utils import create_notification
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        
+        # Create LeaveRequest instance
+        leave_type_id = request.POST.get('leave_type_id')
+        description = request.POST.get('description', '')
+        periods_data = request.POST.getlist('periods[]')
+        total_days_calc = 0
+        for period_data in periods_data:
+            try:
+                # Assuming period_data is a string representation of a dictionary or JSON-like data
+                import re
+                days_match = re.search(r'days=(\d+)', period_data)
+                if days_match:
+                    days = int(days_match.group(1))
+                    total_days_calc += days
+            except (IndexError, ValueError, AttributeError):
+                continue
+        
+        leave_request = LeaveRequest(
+            user=request.user,
+            leave_type=LeaveType.objects.get(id=leave_type_id),
+            description=description,
+            status='SUBMITTED',
+            submitted_at=timezone.now()
+        )
+        leave_request.save()
+        
+        # Create LeavePeriod instances
+        periods = request.POST.getlist('periods[]')
+        for period_data in periods:
+            try:
+                import re
+                start_date_match = re.search(r'start_date=([\d-]+)', period_data)
+                end_date_match = re.search(r'end_date=([\d-]+)', period_data)
+                days_match = re.search(r'days=(\d+)', period_data)
+                
+                if start_date_match and end_date_match and days_match:
+                    start_date = start_date_match.group(1)
+                    end_date = end_date_match.group(1)
+                    days = int(days_match.group(1))
+                    
+                    period = LeavePeriod(
+                        leave_request=leave_request,
+                        start_date=start_date,
+                        end_date=end_date,
+                        days=days
+                    )
+                    period.save()
+            except (ValueError, AttributeError):
+                continue
+        
+        # Handle file uploads
+        private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                    os.path.join(settings.BASE_DIR, 'private_media'))
+        for key in request.FILES.keys():
+            if key.startswith('attachment_'):
+                file_obj = request.FILES[key]
+                index = key.replace('attachment_', '')
+                description_key = f'attachment_description_{index}'
+                description = request.POST.get(description_key, '')
+                
+                if not file_obj:
+                    continue
+                
+                try:
+                    file_path = os.path.join(
+                        private_media_root,
+                        'leave_requests',
+                        str(leave_request.id),
+                        f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
+                    )
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    success, key_hex, file_size = SecureFileHandler.save_encrypted_file(file_obj, file_path)
+                    
+                    if success:
+                        SecureFile.objects.create(
+                            leave_request=leave_request,
+                            original_filename=file_obj.name,
+                            file_path=file_path,
+                            file_size=file_size,
+                            content_type=file_obj.content_type,
+                            encryption_key=key_hex,
+                            uploaded_by=request.user,
+                            description=description if description else f"Συνημμένο {index}"
+                        )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error handling file upload {file_obj.name}: {str(e)}")
+        
+        # Generate PDF (placeholder for actual PDF generation)
+        pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+        os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+        html_content = render_to_string('leaves/pdf_template.html', {'leave_request': leave_request, 'user': request.user})
+        HTML(string=html_content).write_pdf(pdf_path)
+        
+        # Save PDF path to LeaveRequest (assuming a field exists or needs to be added)
+        # leave_request.pdf_path = pdf_path
+        # leave_request.save()
+        
+        # Send notification to manager if exists
+        user = request.user
+        if hasattr(user, 'manager') and user.manager:
+            create_notification(
+                user=user.manager,
+                title="Νέα Αίτηση Άδειας",
+                message=f"Ο/Η {user.full_name} υπέβαλε αίτηση άδειας για {leave_request.leave_type.name}",
+                related_object=leave_request
+            )
+        elif user.is_department_manager or user.is_leave_handler:
+            try:
+                from accounts.models import User
+                admins = User.objects.filter(roles__code='administrator').first()
+                if admins:
+                    create_notification(
+                        user=admins,
+                        title="Νέα Αίτηση Άδειας - Στέλεχος",
+                        message=f"Ο/Η {user.full_name} ({user.get_role_names()}) υπέβαλε αίτηση άδειας για {leave_request.leave_type.name}",
+                        related_object=leave_request
+                    )
+            except Exception:
+                pass
+        
+        messages.success(request, 'Η αίτησή σας υποβλήθηκε επιτυχώς!')
+        return redirect('leaves:employee_dashboard')
+    return redirect('leaves:create_leave_request')
+
 @login_required
 def dashboard_redirect(request):
     """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""

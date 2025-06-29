@@ -25,11 +25,87 @@
                                 <i class="bi bi-x"></i> Απόρριψη
                             </button>
                         {% endif %}
+<!-- Modal Ολοκλήρωσης για Χειριστή -->
+<div class="modal fade" id="completeModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ολοκλήρωση Αίτησης</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:complete_leave_request' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    <p><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }} - {{ leave_request.end_date|date:"d/m/Y" }}</p>
+                    
+                    <div class="mb-3">
+                        <label for="protocol_number" class="form-label">Αριθμός Πρωτοκόλλου</label>
+                        <input type="text" class="form-control" id="protocol_number" name="protocol_number" 
+                               placeholder="π.χ. ΠΔΕΔΕ/123/2024">
                     </div>
+                    
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Σχόλια Επεξεργασίας</label>
+                        <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check"></i> Ολοκλήρωση
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Απόρριψης για Χειριστή -->
+<div class="modal fade" id="rejectHandlerModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Απόρριψη Αίτησης</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:reject_leave_request_by_handler' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Αιτιολογία Απόρριψης <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x"></i> Απόρριψη
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
                 {% elif user.is_leave_handler %}
-                    <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Επιστροφή
-                    </a>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Επιστροφή
+                        </a>
+                        {% if leave_request.status in 'APPROVED_MANAGER,FOR_PROTOCOL_PDEDE,UNDER_PROCESSING' %}
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#completeModal{{ leave_request.pk }}">
+                                <i class="bi bi-check"></i> Ολοκλήρωση
+                            </button>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectHandlerModal{{ leave_request.pk }}">
+                                <i class="bi bi-x"></i> Απόρριψη
+                            </button>
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
         </div>

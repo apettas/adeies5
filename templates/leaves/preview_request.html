@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Προεπισκόπηση Αίτησης - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-file-text"></i> Προεπισκόπηση Αίτησης</h2>
+            <div>
+                <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Πίσω
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Προεπισκόπηση Αίτησης Άδειας</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'leaves:submit_final_request' %}">
+                    {% csrf_token %}
+                    
+                    <!-- Hidden fields to pass form data -->
+                    <input type="hidden" name="leave_type_id" value="{{ form_data.leave_type.id }}">
+                    <input type="hidden" name="description" value="{{ form_data.description }}">
+                    {% for period in periods %}
+                        <input type="hidden" name="periods[]"
+                               value="start_date={{ period.start_date }};end_date={{ period.end_date }};days={{ period.days }}">
+                    {% endfor %}
+                    
+                    <div class="row">
+                        <!-- Left Column: Static Data -->
+                        <div class="col-md-4">
+                            <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
+                            <h5 style="font-weight: bold;">Αίτηση</h5>
+                            <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
+                            <p><span style="font-weight: normal;">Επώνυμο:</span> <span style="font-weight: bold;">{{ user.last_name }}</span></p>
+                            <p><span style="font-weight: normal;">Όνομα:</span> <span style="font-weight: bold;">{{ user.first_name }}</span></p>
+                            <p><span style="font-weight: normal;">Πατρώνυμο:</span> <span style="font-weight: bold;">{{ user.father_name|default:"-" }}</span></p>
+                            <p><span style="font-weight: normal;">Κλάδος:</span> <span style="font-weight: bold;">{{ user.specialty|default:"-" }}</span></p>
+                            <p><span style="font-weight: normal;">Τηλέφωνο:</span> <span style="font-weight: bold;">{{ user.phone|default:"-" }}</span></p>
+                            <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
+                            <p><span style="font-weight: normal;">Οργανική Θέση:</span> <span style="font-weight: bold;">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+                            <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
+                            <p><span style="font-weight: bold;">Θέμα: Χορήγηση άδειας {{ form_data.leave_type.name }}</span></p>
+                        </div>
+                        
+                        <!-- Right Column: Main Content -->
+                        <div class="col-md-8">
+                            <div style="margin-bottom: 100px;"></div> <!-- Empty space -->
+                            <div style="text-align: center; margin-bottom: 50px;">
+                                <p>ΠΡΟΣ</p>
+                                <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
+                                <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
+                            </div>
+                            <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
+                            <p>Παρακαλώ να μου χορηγήσετε άδεια {{ form_data.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</p>
+                            <ul style="list-style-type: none; padding-left: 0;">
+                                {% for period in periods %}
+                                    <li>Από {{ period.start_date|date:"l d F Y" }} έως και {{ period.end_date|date:"l d F Y" }}, ημέρες {{ period.days }}</li>
+                                {% empty %}
+                                    <li>Δεν έχουν καθοριστεί χρονικά διαστήματα άδειας.</li>
+                                {% endfor %}
+                            </ul>
+                            <p>Σύνολο ημερών: {{ total_days }}</p>
+                            <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Αιτιολόγηση:</label>
+                                <textarea class="form-control" id="description" name="description" rows="5">{{ form_data.description }}</textarea>
+                            </div>
+                            <div style="margin-bottom: 60px;"></div> <!-- Empty space -->
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <p>Ο {% if user.gender == 'M' %}αιτών{% else %}αιτούσα{% endif %}</p>
+                                <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
+                                <p>Υπογεγραμμένο μέσω διαδικτύου</p>
+                                <div style="margin-bottom: 30px;"></div> <!-- Empty space -->
+                                <p>{{ user.first_name }} {{ user.last_name }}</p>
+                            </div>
+                            <div style="margin-bottom: 100px;"></div> <!-- Empty space -->
+                            <p style="font-weight: bold;">Συνημμένα:</p>
+                            <ul style="list-style-type: decimal; padding-left: 20px;">
+                                {% for attachment in attachments %}
+                                    <li>{{ attachment.description }} - {{ attachment.file_name }}</li>
+                                {% empty %}
+                                    <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 d-flex justify-content-end">
+                        <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-secondary me-2">
+                            <i class="bi bi-arrow-left"></i> Πίσω
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check"></i> Οριστική Υποβολή & Δημιουργία PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
