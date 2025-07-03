@@ -7,3 +7,4 @@ django-crispy-forms==2.4
 crispy-bootstrap5==2025.6
 whitenoise==6.9.0
 pycryptodome==3.23.0
+weasyprint==62.3

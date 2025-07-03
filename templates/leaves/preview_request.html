@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Προεπισκόπηση Αίτησης - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-11">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4><i class="bi bi-eye"></i> Προεπισκόπηση & Επεξεργασία Αίτησης</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'leaves:submit_final_request' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Hidden fields to pass original data -->
+                        <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
+                        <input type="hidden" name="leave_type_id" value="{{ form_data.leave_type.id }}">
+                        <input type="hidden" name="description" value="{{ form_data.description }}">
+                        {% for period in periods %}
+                            <input type="hidden" name="periods[]"
+                                   value="start_date={{ period.start_date|date:'Y-m-d' }};end_date={{ period.end_date|date:'Y-m-d' }};days={{ period.days }}">
+                        {% endfor %}
+                        
+                        <!-- Re-upload files section -->
+                        {% if files %}
+                            <div class="mb-4">
+                                <h5>Επισυναπτόμενα Αρχεία:</h5>
+                                {% for key, file in files.items %}
+                                    <div class="mb-2">
+                                        <label class="form-label">{{ file.name }}</label>
+                                        <input type="file" name="{{ key }}" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                                        <small class="text-muted">Παρακαλώ επανεπιλέξτε το αρχείο για την τελική υποβολή</small>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <!-- PDF-like layout with CSS -->
+                        <div class="pdf-preview" style="border: 1px solid #ddd; padding: 30px; background: white; font-family: 'DejaVu Sans', Arial, sans-serif;">
+                            <div class="row">
+                                <!-- Left Column: Static Elements -->
+                                <div class="col-md-4 left-column">
+                                    <!-- 5 empty lines -->
+                                    <div style="height: 100px;"></div>
+                                    
+                                    <h3 class="fw-bold">Αίτηση</h3>
+                                    
+                                    <!-- 2-3 empty lines -->
+                                    <div style="height: 60px;"></div>
+                                    
+                                    <p><span>Επώνυμο:</span> <span class="fw-bold">{{ user.last_name }}</span></p>
+                                    <p><span>Όνομα:</span> <span class="fw-bold">{{ user.first_name }}</span></p>
+                                    <p><span>Πατρώνυμο:</span> <span class="fw-bold">{{ user.father_name|default:"-" }}</span></p>
+                                    <p><span>Κλάδος:</span> <span class="fw-bold">{{ user.specialty|default:"-" }}</span></p>
+                                    <p><span>Τηλέφωνο:</span> <span class="fw-bold">{{ user.phone|default:"-" }}</span></p>
+                                    
+                                    <!-- 2 empty lines -->
+                                    <div style="height: 40px;"></div>
+                                    
+                                    <p><span>Οργανική Θέση:</span> <span class="fw-bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+                                    
+                                    <!-- 5 empty lines -->
+                                    <div style="height: 100px;"></div>
+                                    
+                                    <p class="fw-bold">Θέμα: Χορήγηση άδειας {{ form_data.leave_type.name }}</p>
+                                </div>
+                                
+                                <!-- Right Column: Main Body -->
+                                <div class="col-md-8 right-column">
+                                    <!-- 9 empty lines -->
+                                    <div style="height: 180px;"></div>
+                                    
+                                    <div class="text-center">
+                                        <p>ΠΡΟΣ</p>
+                                        <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
+                                        <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
+                                    </div>
+                                    
+                                    <!-- 4 empty lines -->
+                                    <div style="height: 80px;"></div>
+                                    
+                                    <!-- Editable request text -->
+                                    <div class="mb-3">
+                                        <label for="request_text" class="form-label fw-bold">Κείμενο Αίτησης (Επεξεργάσιμο):</label>
+                                        <textarea name="request_text" id="request_text" class="form-control" rows="3" style="border: 2px solid #007bff;">Παρακαλώ να μου χορηγήσετε άδεια {{ form_data.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</textarea>
+                                        <small class="text-muted">Μπορείτε να επεξεργαστείτε το κείμενο της αίτησης εδώ</small>
+                                    </div>
+                                    
+                                    <!-- Non-editable periods -->
+                                    <div class="mt-3 mb-4">
+                                        <strong>Χρονικά Διαστήματα (μη επεξεργάσιμα):</strong>
+                                        <ul style="list-style-type: none; padding-left: 0;">
+                                            {% for period in periods %}
+                                                <li>Από {{ period.start_date|date:"l d E Y" }} έως και {{ period.end_date|date:"l d E Y" }}, ημέρες {{ period.days }}</li>
+                                            {% empty %}
+                                                <li>Δεν έχουν οριστεί περίοδοι άδειας</li>
+                                            {% endfor %}
+                                        </ul>
+                                        <p><strong>Σύνολο ημερών: {{ total_days }}</strong></p>
+                                    </div>
+                                    
+                                    <!-- 5 empty lines -->
+                                    <div style="height: 100px;"></div>
+                                    
+                                    <div class="text-center">
+                                        <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
+                                        
+                                        <!-- 2 empty lines -->
+                                        <div style="height: 40px;"></div>
+                                        
+                                        <p>Υπογεγραμμένο μέσω διαδικτύου</p>
+                                        
+                                        <!-- 2 empty lines -->
+                                        <div style="height: 40px;"></div>
+                                        
+                                        <p>{{ user.first_name }} {{ user.last_name }}</p>
+                                    </div>
+                                    
+                                    <!-- 8 empty lines -->
+                                    <div style="height: 160px;"></div>
+                                    
+                                    <div>
+                                        <p class="fw-bold">Συνημμένα:</p>
+                                        <ul style="padding-left: 20px;">
+                                            {% for attachment in attachments %}
+                                                <li>{{ attachment.description|default:attachment.file_name }}</li>
+                                            {% empty %}
+                                                <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action buttons -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-secondary btn-lg w-100">
+                                    <i class="bi bi-arrow-left"></i> Πίσω στη Φόρμα
+                                </a>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-success btn-lg w-100">
+                                    <i class="bi bi-file-earmark-pdf"></i> Οριστική Υποβολή και δημιουργία PDF
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pdf-preview {
+        min-height: 800px;
+        line-height: 1.6;
+    }
+    
+    .left-column p {
+        margin-bottom: 8px;
+    }
+    
+    .right-column p {
+        margin-bottom: 12px;
+    }
+    
+    @media print {
+        .btn, .card-header {
+            display: none;
+        }
+        
+        .pdf-preview {
+            border: none;
+            padding: 0;
+        }
+    }
+</style>
+{% endblock %}

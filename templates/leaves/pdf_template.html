@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Αίτηση Άδειας</title>
+    <style>
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
+        }
+        
+        body {
+            font-family: 'DejaVu Sans', 'Noto Sans', Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            margin: 20px;
+            color: #000;
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+        
+        .left-column {
+            width: 33.33%;
+            padding-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        .right-column {
+            width: 66.67%;
+            padding-left: 20px;
+        }
+        
+        .bold {
+            font-weight: bold;
+        }
+        
+        .center {
+            text-align: center;
+        }
+        
+        .empty-space {
+            height: 20px;
+        }
+        
+        .no-bullets {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        p {
+            margin: 8px 0;
+        }
+        
+        h3 {
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-column">
+            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            <h3 class="bold">Αίτηση</h3>
+            <div style="height: 60px;"></div> <!-- 2-3 empty lines -->
+            <p><span>Επώνυμο:</span> <span class="bold">{{ user.last_name }}</span></p>
+            <p><span>Όνομα:</span> <span class="bold">{{ user.first_name }}</span></p>
+            <p><span>Πατρώνυμο:</span> <span class="bold">{{ user.father_name|default:"-" }}</span></p>
+            <p><span>Κλάδος:</span> <span class="bold">{{ user.specialty|default:"-" }}</span></p>
+            <p><span>Τηλέφωνο:</span> <span class="bold">{{ user.phone|default:"-" }}</span></p>
+            <div style="height: 40px;"></div> <!-- 2 empty lines -->
+            <p><span>Οργανική Θέση:</span> <span class="bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            <p class="bold">Θέμα: Χορήγηση άδειας {{ leave_request.leave_type.name }}</p>
+        </div>
+        
+        <div class="right-column">
+            <div style="height: 180px;"></div> <!-- 9 empty lines -->
+            <div class="center">
+                <p>ΠΡΟΣ</p>
+                <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
+                <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
+            </div>
+            <div style="height: 80px;"></div> <!-- 4 empty lines -->
+            
+            <p>{{ request_text|default:"Παρακαλώ να μου χορηγήσετε άδεια "|add:leave_request.leave_type.name|add:" για τα κάτωθι χρονικά διαστήματα:" }}</p>
+            
+            <ul class="no-bullets">
+                {% for period in periods %}
+                    <li>Από {{ period.start_date|date:"l d E Y" }} έως και {{ period.end_date|date:"l d E Y" }}, ημέρες {{ period.days }}</li>
+                {% empty %}
+                    <li>Δεν έχουν καθοριστεί χρονικά διαστήματα άδειας.</li>
+                {% endfor %}
+            </ul>
+            <p>Σύνολο ημερών: {{ leave_request.total_days }}</p>
+            
+            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            
+            <div class="center">
+                <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
+                <div style="height: 40px;"></div> <!-- 2 empty lines -->
+                <p>Υπογεγραμμένο μέσω διαδικτύου</p>
+                <div style="height: 40px;"></div> <!-- 2 empty lines -->
+                <p>{{ user.first_name }} {{ user.last_name }}</p>
+            </div>
+            
+            <div style="height: 160px;"></div> <!-- 8 empty lines -->
+            
+            <p class="bold">Συνημμένα:</p>
+            <ul style="padding-left: 20px;">
+                {% for attachment in attachments %}
+                    <li>{{ attachment.description|default:attachment.original_filename }}</li>
+                {% empty %}
+                    <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -280,6 +280,45 @@
             </div>
         </div>
         {% endif %}
+        
+        <!-- PDF της Αίτησης -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-file-earmark-pdf"></i> PDF Αίτησης</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-light">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-2 me-3"></i>
+                        <div>
+                            <h6 class="mb-1">Αίτηση Άδειας #{{ leave_request.id }}</h6>
+                            <small class="text-muted">
+                                Δημιουργήθηκε: {{ leave_request.created_at|date:"d/m/Y H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'leaves:download_leave_pdf' leave_request.id %}"
+                           class="btn btn-outline-primary btn-sm"
+                           target="_blank"
+                           title="Προβολή PDF">
+                            <i class="bi bi-eye"></i> Προβολή
+                        </a>
+                        <a href="{% url 'leaves:download_leave_pdf' leave_request.id %}?download=1"
+                           class="btn btn-outline-success btn-sm ms-2"
+                           title="Λήψη PDF">
+                            <i class="bi bi-download"></i> Λήψη
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Το PDF περιέχει την πλήρη αίτηση με όλα τα στοιχεία και τις υπογραφές.
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="col-lg-4">

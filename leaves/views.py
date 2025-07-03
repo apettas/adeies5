@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.conf import settings
 import os
 import mimetypes
-from .models import LeaveRequest, LeaveType, SecureFile
+from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
 from notifications.utils import create_notification
@@ -67,42 +67,89 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
             return reverse_lazy('leaves:employee_dashboard')
     
     def form_valid(self, form):
-        form.instance.user = self.request.user
-        form.instance.status = 'SUBMITTED'
-        form.instance.submitted_at = timezone.now()
+        # Αποθηκεύουμε την αίτηση ΧΩΡΙΣ τα αρχεία προσωρινά για να έχουμε ID
+        leave_request = LeaveRequest(
+            user=self.request.user,
+            leave_type=form.cleaned_data['leave_type'],
+            description=form.cleaned_data['description'],
+            status='DRAFT'  # Προσωρινή κατάσταση
+        )
+        leave_request.save()
         
-        response = super().form_valid(form)
-        
-        # Επεξεργασία επισυναπτόμενων αρχείων
-        self._handle_file_uploads(form)
-        
-        # Αποστολή ειδοποίησης στον προϊστάμενο (αν υπάρχει)
-        user = self.request.user
-        if hasattr(user, 'manager') and user.manager:
-            create_notification(
-                user=user.manager,
-                title="Νέα Αίτηση Άδειας",
-                message=f"Ο/Η {user.full_name} υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
-                related_object=self.object
+        # Δημιουργία periods
+        periods = []
+        total_days = 0
+        periods_data = form.cleaned_data.get('periods_data', [])
+        for period_data in periods_data:
+            period = LeavePeriod(
+                leave_request=leave_request,
+                start_date=period_data['start_date'],
+                end_date=period_data['end_date']
             )
-        elif user.is_department_manager or user.is_leave_handler:
-            # Για προϊσταμένους και χειριστές αδειών που δεν έχουν manager,
-            # στέλνουμε ειδοποίηση στον διαχειριστή ή άλλον ανώτερο
-            try:
-                from accounts.models import User
-                admins = User.objects.filter(roles__code='administrator').first()
-                if admins:
-                    create_notification(
-                        user=admins,
-                        title="Νέα Αίτηση Άδειας - Στέλεχος",
-                        message=f"Ο/Η {user.full_name} ({user.get_role_names()}) υπέβαλε αίτηση άδειας για {form.instance.leave_type.name}",
-                        related_object=self.object
-                    )
-            except Exception:
-                pass  # Σιωπηλή αποτυχία αν δεν υπάρχει διαχειριστής
+            period.save()
+            periods.append({
+                'start_date': period_data['start_date'],
+                'end_date': period_data['end_date'],
+                'days': period_data['days']
+            })
+            total_days += period_data['days']
         
-        messages.success(self.request, 'Η αίτησή σας υποβλήθηκε επιτυχώς!')
-        return response
+        # Αποθήκευση αρχείων αμέσως
+        attachments = []
+        from .crypto_utils import SecureFileHandler
+        from django.conf import settings
+        import os
+        from django.utils import timezone
+        
+        private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                   os.path.join(settings.BASE_DIR, 'private_media'))
+        
+        for key in self.request.FILES.keys():
+            if key.startswith('attachment_'):
+                file_obj = self.request.FILES[key]
+                index = key.replace('attachment_', '')
+                description_key = f'attachment_description_{index}'
+                description = self.request.POST.get(description_key, '')
+                if file_obj:
+                    try:
+                        file_path = os.path.join(
+                            private_media_root,
+                            'leave_requests',
+                            str(leave_request.id),
+                            f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
+                        )
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                        success, key_hex, file_size = SecureFileHandler.save_encrypted_file(file_obj, file_path)
+                        
+                        if success:
+                            attachment = SecureFile.objects.create(
+                                leave_request=leave_request,
+                                original_filename=file_obj.name,
+                                file_path=file_path,
+                                file_size=file_size,
+                                content_type=file_obj.content_type,
+                                encryption_key=key_hex,
+                                uploaded_by=self.request.user,
+                                description=description if description else f"Συνημμένο {index}"
+                            )
+                            attachments.append({
+                                'file_name': file_obj.name,
+                                'description': description if description else f"Συνημμένο {index}"
+                            })
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Error handling file upload {file_obj.name}: {str(e)}")
+        
+        context = {
+            'form_data': form.cleaned_data,
+            'user': self.request.user,
+            'leave_request': leave_request,  # Προσθήκη leave_request στο context
+            'periods': periods,
+            'total_days': total_days,
+            'attachments': attachments
+        }
+        return render(self.request, 'leaves/preview_request.html', context)
     
     def _handle_file_uploads(self, form):
         """Επεξεργασία και κρυπτογραφημένη αποθήκευση πολλαπλών αρχείων"""
@@ -560,6 +607,13 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             raise PermissionDenied("Δεν έχετε δικαίωμα προβολής αυτής της αίτησης.")
         
         return obj
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Προσθήκη attachments στο context
+        attachments = self.object.attachments.all()
+        context['attachments'] = attachments
+        return context
 
 
 # Redirect views για εύκολη πλοήγηση
@@ -703,3 +757,161 @@ def delete_secure_file(request, file_id):
         logger.error(f"Error deleting secure file {file_id}: {str(e)}")
         
         return JsonResponse({'error': 'Σφάλμα κατά τη διαγραφή'}, status=500)
+
+@login_required
+def submit_final_request(request):
+    """Handle final submission of leave request and create PDF"""
+    if request.method == 'POST':
+        from django.utils import timezone
+        from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
+        from .crypto_utils import SecureFileHandler
+        from django.conf import settings
+        import os
+        from weasyprint import HTML
+        from django.template.loader import render_to_string
+        from notifications.utils import create_notification
+        from django.contrib import messages
+        from django.shortcuts import redirect
+        from django.http import HttpResponse
+        
+        # Παίρνουμε το ID της αίτησης που δημιουργήθηκε ως DRAFT
+        leave_request_id = request.POST.get('leave_request_id')
+        
+        if not leave_request_id:
+            messages.error(request, 'Σφάλμα: Δεν βρέθηκε η αίτηση.')
+            return redirect('leaves:create_leave_request')
+        
+        try:
+            # Βρίσκουμε την αίτηση που δημιουργήθηκε ως DRAFT
+            leave_request = LeaveRequest.objects.get(id=leave_request_id, user=request.user, status='DRAFT')
+            
+            # Ενημερώνουμε την περιγραφή αν άλλαξε
+            new_description = request.POST.get('description')
+            if new_description:
+                leave_request.description = new_description
+            
+            # Αλλάζουμε την κατάσταση σε SUBMITTED
+            leave_request.status = 'SUBMITTED'
+            leave_request.submitted_at = timezone.now()
+            leave_request.save()
+            
+            # Προσθήκη νέων συνημμένων αρχείων αν υπάρχουν
+            private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                       os.path.join(settings.BASE_DIR, 'private_media'))
+            
+            for key in request.FILES.keys():
+                if key.startswith('attachment_'):
+                    file_obj = request.FILES[key]
+                    index = key.replace('attachment_', '')
+                    description_key = f'attachment_description_{index}'
+                    description = request.POST.get(description_key, '')
+                    if file_obj:
+                        try:
+                            file_path = os.path.join(
+                                private_media_root,
+                                'leave_requests',
+                                str(leave_request.id),
+                                f"{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
+                            )
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            success, key_hex, file_size = SecureFileHandler.save_encrypted_file(file_obj, file_path)
+                            
+                            if success:
+                                SecureFile.objects.create(
+                                    leave_request=leave_request,
+                                    original_filename=file_obj.name,
+                                    file_path=file_path,
+                                    file_size=file_size,
+                                    content_type=file_obj.content_type,
+                                    encryption_key=key_hex,
+                                    uploaded_by=request.user,
+                                    description=description if description else f"Συνημμένο {index}"
+                                )
+                        except Exception as e:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.error(f"Error handling file upload {file_obj.name}: {str(e)}")
+            
+            # Generate PDF
+            pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+            os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+            
+            # Ensure we're using the same context as preview
+            # Refresh leave_request from database to ensure relationships are loaded
+            leave_request.refresh_from_db()
+            
+            # Get attachments after they have been created
+            attachments = leave_request.attachments.all()
+            
+            context = {
+                'leave_request': leave_request,
+                'user': request.user,
+                'periods': leave_request.periods.all(),
+                'request_text': request.POST.get('request_text', ''),
+                'attachments': attachments,
+                'form_data': {
+                    'description': leave_request.description,
+                    'leave_type': leave_request.leave_type
+                }
+            }
+            
+            # Generate PDF
+            html_content = render_to_string('leaves/pdf_template.html', context)
+            HTML(string=html_content).write_pdf(pdf_path)
+            
+            messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
+            return redirect('leaves:leave_request_detail', leave_request.id)
+            
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, 'Σφάλμα: Η αίτηση δεν βρέθηκε ή δεν ανήκει σε εσάς.')
+            return redirect('leaves:create_leave_request')
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in submit_final_request: {str(e)}")
+            messages.error(request, f'Σφάλμα κατά την υποβολή της αίτησης: {str(e)}')
+            return redirect('leaves:create_leave_request')
+    
+    return redirect('leaves:create_leave_request')
+        
+
+
+@login_required
+def download_leave_pdf(request, request_id):
+    """Download PDF for a leave request"""
+    from django.http import HttpResponse, Http404
+    from django.conf import settings
+    import os
+    
+    # Get the leave request
+    try:
+        leave_request = LeaveRequest.objects.get(id=request_id)
+    except LeaveRequest.DoesNotExist:
+        raise Http404("Η αίτηση δεν βρέθηκε")
+    
+    # Check permissions
+    if not (request.user == leave_request.user or
+            request.user.is_department_manager or
+            request.user.is_leave_handler):
+        raise Http404("Δεν έχετε δικαίωμα πρόσβασης")
+    
+    # Check if PDF exists
+    private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                               os.path.join(settings.BASE_DIR, 'private_media'))
+    pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+    
+    if not os.path.exists(pdf_path):
+        raise Http404("Το PDF δεν βρέθηκε")
+    
+    # Return PDF
+    try:
+        with open(pdf_path, 'rb') as pdf:
+            response = HttpResponse(pdf.read(), content_type='application/pdf')
+            # If download parameter is set, force download, otherwise inline view
+            if request.GET.get('download'):
+                response['Content-Disposition'] = f'attachment; filename=leave_request_{leave_request.id}.pdf'
+            else:
+                response['Content-Disposition'] = f'inline; filename=leave_request_{leave_request.id}.pdf'
+            return response
+    except Exception:
+        raise Http404("Σφάλμα κατά τη λήψη του PDF")
