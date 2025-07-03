@@ -56,6 +56,29 @@
     </div>
 </div>
 
+<!-- Στατιστικά ΣΗΔΕ -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-send fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ for_protocol_count }}</h5>
+                <small class="text-muted">Για Πρωτοκόλληση ΣΗΔΕ</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card text-center bg-info bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-hourglass-split fs-3 text-info"></i>
+                <h5 class="mt-2">{{ under_processing_count }}</h5>
+                <small class="text-muted">Υπό Επεξεργασία ΣΗΔΕ</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Λίστα Αιτήσεων προς Επεξεργασία -->
 <div class="row">
     <div class="col-12">
@@ -73,8 +96,8 @@
                                     <th>Τύπος Άδειας</th>
                                     <th>Ημερομηνίες</th>
                                     <th>Ημέρες</th>
-                                    <th>Εγκρίθηκε</th>
-                                    <th>Προϊστάμενος</th>
+                                    <th>Κατάσταση</th>
+                                    <th>Πρωτόκολλο</th>
                                     <th>Ενέργειες</th>
                                 </tr>
                             </thead>
@@ -100,26 +123,60 @@
                                         <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
                                     </td>
                                     <td>
-                                        <span class="date-greek">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</span>
+                                        {% if request.status == 'APPROVED_MANAGER' %}
+                                            <span class="badge bg-warning">Εγκρίθηκε από Προϊστάμενο</span>
+                                            <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
+                                        {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                            <span class="badge bg-info">Για Πρωτόκολλο ΣΗΔΕ</span>
+                                            <br><small class="text-muted">{{ request.processed_at|date:"d/m/Y H:i" }}</small>
+                                        {% elif request.status == 'UNDER_PROCESSING' %}
+                                            <span class="badge bg-primary">Προς Επεξεργασία</span>
+                                            <br><small class="text-muted">Πρωτοκολλήθηκε</small>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <small>{{ request.manager_approved_by.full_name }}</small>
+                                        {% if request.protocol_number %}
+                                            <strong>{{ request.protocol_number }}</strong>
+                                        {% else %}
+                                            <small class="text-muted">Δεν έχει πρωτοκολληθεί</small>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-success" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#completeModal{{ request.pk }}">
-                                                <i class="bi bi-check"></i> Ολοκλήρωση
-                                            </button>
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-danger" 
-                                                    data-bs-toggle="modal" 
+                                        <div class="btn-group-vertical" role="group">
+                                            {% if request.status == 'APPROVED_MANAGER' %}
+                                                <!-- Πρώτο στάδιο: Αποστολή για πρωτόκολλο -->
+                                                <button type="button"
+                                                        class="btn btn-sm btn-warning mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#sendProtocolModal{{ request.pk }}">
+                                                    <i class="bi bi-send"></i> Στείλε στο ΣΗΔΕ
+                                                </button>
+                                            {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                                <!-- Δεύτερο στάδιο: Ανέβασμα πρωτοκολλημένου PDF -->
+                                                <button type="button"
+                                                        class="btn btn-sm btn-info mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#uploadProtocolModal{{ request.pk }}">
+                                                    <i class="bi bi-upload"></i> Ανέβασε Πρωτόκολλο
+                                                </button>
+                                            {% elif request.status == 'UNDER_PROCESSING' %}
+                                                <!-- Τρίτο στάδιο: Ολοκλήρωση -->
+                                                <button type="button"
+                                                        class="btn btn-sm btn-success mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#completeModal{{ request.pk }}">
+                                                    <i class="bi bi-check"></i> Ολοκλήρωση
+                                                </button>
+                                            {% endif %}
+                                            
+                                            <!-- Κοινά κουμπιά -->
+                                            <button type="button"
+                                                    class="btn btn-sm btn-danger mb-1"
+                                                    data-bs-toggle="modal"
                                                     data-bs-target="#rejectModal{{ request.pk }}">
                                                 <i class="bi bi-x"></i> Απόρριψη
                                             </button>
-                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}" 
+                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}"
                                                class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> Προβολή
                                             </a>
@@ -187,6 +244,82 @@
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
                                                     <button type="submit" class="btn btn-danger">
                                                         <i class="bi bi-x"></i> Απόρριψη
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modal για Αποστολή στο ΣΗΔΕ -->
+                                <div class="modal fade" id="sendProtocolModal{{ request.pk }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Αποστολή στο ΣΗΔΕ</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="post" action="{% url 'leaves:send_to_protocol_pdede' request.pk %}">
+                                                {% csrf_token %}
+                                                <div class="modal-body">
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
+                                                    <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
+                                                    <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
+                                                    
+                                                    <div class="alert alert-info">
+                                                        <i class="bi bi-info-circle"></i>
+                                                        <strong>Οδηγίες:</strong> Η αίτηση θα σταλεί για πρωτοκόλληση στο ΣΗΔΕ.
+                                                        Θα χρειαστεί στη συνέχεια να κατεβάσετε το PDF της αίτησης μαζί με τα συνημμένα,
+                                                        να τα εισάγετε στο ΣΗΔΕ, και να ανεβάσετε το πρωτοκολλημένο PDF.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                                                    <button type="submit" class="btn btn-warning">
+                                                        <i class="bi bi-send"></i> Στείλε στο ΣΗΔΕ
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Modal για Ανέβασμα Πρωτοκολλημένου PDF -->
+                                <div class="modal fade" id="uploadProtocolModal{{ request.pk }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Ανέβασμα Πρωτοκολλημένου PDF</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="post" action="{% url 'leaves:upload_protocol_pdf' request.pk %}" enctype="multipart/form-data">
+                                                {% csrf_token %}
+                                                <div class="modal-body">
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
+                                                    <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
+                                                    
+                                                    <div class="alert alert-warning">
+                                                        <i class="bi bi-exclamation-triangle"></i>
+                                                        <strong>Προσοχή:</strong> Ανεβάστε το πρωτοκολλημένο PDF που λάβατε από το ΣΗΔΕ.
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="protocol_number" class="form-label">Αριθμός Πρωτοκόλλου <span class="text-danger">*</span></label>
+                                                        <input type="text" class="form-control" id="protocol_number" name="protocol_number"
+                                                               placeholder="π.χ. ΠΔΕΔΕ/123/2024" required>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="protocol_pdf" class="form-label">Πρωτοκολλημένο PDF <span class="text-danger">*</span></label>
+                                                        <input type="file" class="form-control" id="protocol_pdf" name="protocol_pdf"
+                                                               accept=".pdf" required>
+                                                        <small class="text-muted">Μόνο αρχεία PDF είναι αποδεκτά</small>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                                                    <button type="submit" class="btn btn-info">
+                                                        <i class="bi bi-upload"></i> Ανέβασε Πρωτόκολλο
                                                     </button>
                                                 </div>
                                             </form>

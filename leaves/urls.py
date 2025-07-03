@@ -22,6 +22,8 @@ urlpatterns = [
     path('handler/', views.HandlerDashboardView.as_view(), name='handler_dashboard'),
     path('complete/<int:pk>/', views.complete_leave_request, name='complete_leave_request'),
     path('reject-handler/<int:pk>/', views.reject_leave_request_by_handler, name='reject_leave_request_by_handler'),
+    path('send-to-protocol/<int:pk>/', views.send_to_protocol_pdede, name='send_to_protocol_pdede'),
+    path('upload-protocol-pdf/<int:pk>/', views.upload_protocol_pdf, name='upload_protocol_pdf'),
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     
@@ -31,4 +33,5 @@ urlpatterns = [
     # Secure file handling
     path('files/<int:file_id>/', views.serve_secure_file, name='serve_secure_file'),
     path('files/<int:file_id>/delete/', views.delete_secure_file, name='delete_secure_file'),
+    path('protocol-pdf/<int:pk>/', views.serve_protocol_pdf, name='serve_protocol_pdf'),
 ]

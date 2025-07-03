@@ -376,7 +376,7 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο και περιμένουν επεξεργασία
         return LeaveRequest.objects.filter(
-            status='APPROVED_MANAGER'
+            status__in=['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
         ).select_related('user', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at')
     
     def get_context_data(self, **kwargs):
@@ -390,6 +390,13 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
                 processed_at__month=timezone.now().month
             ).count(),
             'total_completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
+            # Στατιστικά για ΣΗΔΕ workflows
+            'for_protocol_count': LeaveRequest.objects.filter(
+                status='FOR_PROTOCOL_PDEDE'
+            ).count(),
+            'under_processing_count': LeaveRequest.objects.filter(
+                status='UNDER_PROCESSING'
+            ).count(),
         })
         
         return context
@@ -583,6 +590,162 @@ def reject_leave_request_by_handler(request, pk):
             messages.error(request, f'Σφάλμα κατά την απόρριψη: {str(e)}')
     
     return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def send_to_protocol_pdede(request, pk):
+    """Στέλνει την αίτηση για πρωτόκολλο στο ΣΗΔΕ"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα επεξεργασίας.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    if leave_request.status != 'APPROVED_MANAGER':
+        messages.error(request, 'Η αίτηση δεν μπορεί να σταλεί για πρωτόκολλο σε αυτή τη φάση.')
+        return redirect('leaves:handler_dashboard')
+    
+    if request.method == 'POST':
+        try:
+            # Αλλαγή status σε FOR_PROTOCOL_PDEDE
+            leave_request.status = 'FOR_PROTOCOL_PDEDE'
+            leave_request.processed_by = request.user
+            leave_request.processed_at = timezone.now()
+            leave_request.save()
+            
+            # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
+            try:
+                create_notification(
+                    user=leave_request.user,
+                    title="Αίτηση στάλθηκε για Πρωτόκολλο",
+                    message=f"Η αίτησή σας για {leave_request.leave_type.name} στάλθηκε στο ΣΗΔΕ για πρωτοκόλληση",
+                    related_object=leave_request
+                )
+            except Exception as notification_error:
+                # Αν αποτύχει το notification, συνεχίζουμε χωρίς να διακόπτουμε τη διαδικασία
+                print(f"Notification error: {notification_error}")
+            
+            messages.success(request, 'Η αίτηση στάλθηκε επιτυχώς για πρωτόκολλο στο ΣΗΔΕ!')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά την αποστολή: {str(e)}')
+    
+    return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def upload_protocol_pdf(request, pk):
+    """Ανέβασμα του πρωτοκολλημένου PDF από το ΣΗΔΕ"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα επεξεργασίας.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    if leave_request.status != 'FOR_PROTOCOL_PDEDE':
+        messages.error(request, 'Δεν μπορείτε να ανεβάσετε πρωτοκολλημένο PDF σε αυτή τη φάση.')
+        return redirect('leaves:handler_dashboard')
+    
+    if request.method == 'POST':
+        protocol_number = request.POST.get('protocol_number', '').strip()
+        protocol_pdf = request.FILES.get('protocol_pdf')
+        
+        if not protocol_number:
+            messages.error(request, 'Παρακαλώ συμπληρώστε τον αριθμό πρωτοκόλλου.')
+            return redirect('leaves:handler_dashboard')
+        
+        if not protocol_pdf:
+            messages.error(request, 'Παρακαλώ ανεβάστε το πρωτοκολλημένο PDF.')
+            return redirect('leaves:handler_dashboard')
+        
+        try:
+            # Αποθήκευση του πρωτοκολλημένου PDF στο LeaveRequest
+            from .crypto_utils import SecureFileHandler
+            from django.conf import settings
+            import os
+            
+            private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                       os.path.join(settings.BASE_DIR, 'private_media'))
+            
+            file_path = os.path.join(
+                private_media_root,
+                'leave_requests',
+                str(leave_request.id),
+                f"protocol_{timezone.now().strftime('%Y%m%d_%H%M%S')}_{protocol_pdf.name}"
+            )
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            success, key_hex, file_size = SecureFileHandler.save_encrypted_file(protocol_pdf, file_path)
+            
+            if success:
+                # Ενημέρωση της αίτησης με τα στοιχεία του πρωτοκολλημένου PDF
+                leave_request.protocol_number = protocol_number
+                leave_request.protocol_pdf_path = file_path
+                leave_request.protocol_pdf_encryption_key = key_hex
+                leave_request.protocol_pdf_size = file_size
+                leave_request.status = 'UNDER_PROCESSING'
+                leave_request.save()
+                
+                # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
+                try:
+                    create_notification(
+                        user=leave_request.user,
+                        title="Αίτηση Πρωτοκολλήθηκε",
+                        message=f"Η αίτησή σας για {leave_request.leave_type.name} πρωτοκολλήθηκε με αριθμό {protocol_number} και βρίσκεται υπό επεξεργασία",
+                        related_object=leave_request
+                    )
+                except Exception as notification_error:
+                    # Αν αποτύχει το notification, συνεχίζουμε χωρίς να διακόπτουμε τη διαδικασία
+                    print(f"Notification error: {notification_error}")
+                
+                messages.success(request, f'Το πρωτοκολλημένο PDF ανέβηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}')
+            else:
+                messages.error(request, 'Σφάλμα κατά την αποθήκευση του αρχείου.')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά το ανέβασμα: {str(e)}')
+    
+    return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def serve_protocol_pdf(request, pk):
+    """Serve του πρωτοκολλημένου PDF"""
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    user = request.user
+    
+    # Έλεγχος δικαιωμάτων
+    can_view = (
+        leave_request.user == user or  # Ο ίδιος ο αιτών
+        (user.is_department_manager and user.department and leave_request.user.department and user.department.id == leave_request.user.department.id) or  # Στο ίδιο τμήμα
+        user.is_leave_handler or  # Χειριστής αδειών
+        user.is_administrator  # Διαχειριστής
+    )
+    
+    if not can_view:
+        raise PermissionDenied("Δεν έχετε δικαίωμα προβολής αυτού του αρχείου.")
+    
+    if not leave_request.has_protocol_pdf:
+        raise Http404("Το πρωτοκολλημένο PDF δεν βρέθηκε.")
+    
+    try:
+        from .crypto_utils import SecureFileHandler
+        
+        # Αποκρυπτογράφηση και serve του αρχείου
+        decrypted_content = SecureFileHandler.load_encrypted_file(
+            leave_request.protocol_pdf_path,
+            leave_request.protocol_pdf_encryption_key
+        )
+        
+        if decrypted_content is None:
+            raise Http404("Σφάλμα κατά την αποκρυπτογράφηση του αρχείου.")
+        
+        response = HttpResponse(decrypted_content, content_type='application/pdf')
+        filename = f"Πρωτοκολλημένη_Αίτηση_{leave_request.protocol_number or leave_request.id}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Length'] = len(decrypted_content)
+        
+        return response
+        
+    except Exception as e:
+        raise Http404(f"Σφάλμα κατά τη φόρτωση του αρχείου: {str(e)}")
 
 
 class LeaveRequestDetailView(LoginRequiredMixin, DetailView):

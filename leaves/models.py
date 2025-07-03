@@ -169,6 +169,9 @@ class LeaveRequest(models.Model):
     
     # Επεξεργασία από χειριστή
     protocol_number = models.CharField('Αριθμός Πρωτοκόλλου', max_length=100, blank=True)
+    protocol_pdf_path = models.CharField('Διαδρομή Πρωτοκολλημένου PDF', max_length=500, blank=True)
+    protocol_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Πρωτοκόλλου', max_length=64, blank=True)
+    protocol_pdf_size = models.PositiveIntegerField('Μέγεθος Πρωτοκολλημένου PDF', null=True, blank=True)
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='processed_leaves', verbose_name='Επεξεργάστηκε από')
     processed_at = models.DateTimeField('Ημερομηνία Επεξεργασίας', null=True, blank=True)
@@ -346,6 +349,23 @@ class LeaveRequest(models.Model):
             self.save()
             return True
         return False
+    
+    @property
+    def has_protocol_pdf(self):
+        """Ελέγχει αν υπάρχει πρωτοκολλημένο PDF"""
+        return bool(self.protocol_pdf_path and self.protocol_pdf_encryption_key)
+        return False
+    
+    def has_protocol_pdf(self):
+        """Επιστρέφει True αν υπάρχει πρωτοκολλημένο PDF"""
+        return bool(self.protocol_pdf_path and self.protocol_pdf_encryption_key)
+    
+    def get_protocol_pdf_url(self):
+        """URL για το πρωτοκολλημένο PDF"""
+        if self.has_protocol_pdf():
+            from django.urls import reverse
+            return reverse('leaves:serve_protocol_pdf', kwargs={'pk': self.pk})
+        return None
     
     def get_status_display_class(self):
         """CSS κλάση για το status badge"""
