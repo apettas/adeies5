@@ -414,3 +414,92 @@ class LeaveRequest(models.Model):
             actions.append('complete')
         
         return actions
+
+
+class Logo(models.Model):
+    """Λογότυπο της υπηρεσίας για τις αποφάσεις"""
+    logo_short = models.CharField('Σύντομο Λογότυπο', max_length=100)
+    logo = models.TextField('Πλήρες Λογότυπο')
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Λογότυπο'
+        verbose_name_plural = 'Λογότυπα'
+        ordering = ['-is_active', '-created_at']
+    
+    def __str__(self):
+        return self.logo_short
+    
+    @classmethod
+    def get_active(cls):
+        """Επιστρέφει το ενεργό λογότυπο"""
+        return cls.objects.filter(is_active=True).first()
+
+
+class Info(models.Model):
+    """Πληροφορίες χειριστή αδειών για τις αποφάσεις"""
+    info_short = models.CharField('Σύντομες Πληροφορίες', max_length=100)
+    info = models.TextField('Πλήρεις Πληροφορίες')
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Πληροφορίες'
+        verbose_name_plural = 'Πληροφορίες'
+        ordering = ['-is_active', '-created_at']
+    
+    def __str__(self):
+        return self.info_short
+    
+    @classmethod
+    def get_active(cls):
+        """Επιστρέφει τις ενεργές πληροφορίες"""
+        return cls.objects.filter(is_active=True).first()
+
+
+class Ypopsin(models.Model):
+    """Έχοντας υπόψη πληροφορίες για τις αποφάσεις"""
+    ypopsin_short = models.CharField('Σύντομη Περιγραφή', max_length=200)
+    ypopsin = models.TextField('Πλήρες Κείμενο Υπόψη')
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Έχοντας Υπόψη'
+        verbose_name_plural = 'Έχοντας Υπόψη'
+        ordering = ['-is_active', '-created_at']
+    
+    def __str__(self):
+        return self.ypopsin_short
+    
+    @classmethod
+    def get_active(cls):
+        """Επιστρέφει το ενεργό κείμενο υπόψη"""
+        return cls.objects.filter(is_active=True).first()
+
+
+class Signee(models.Model):
+    """Στοιχεία υπογράφοντα των αποφάσεων"""
+    signee_short = models.CharField('Σύντομη Περιγραφή', max_length=100)
+    signee_name = models.CharField('Ονοματεπώνυμο', max_length=200)
+    signee = models.TextField('Πλήρες Κείμενο Υπογραφής')
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Υπογράφων'
+        verbose_name_plural = 'Υπογράφοντες'
+        ordering = ['-is_active', '-created_at']
+    
+    def __str__(self):
+        return self.signee_name
+    
+    @classmethod
+    def get_active(cls):
+        """Επιστρέφει τον ενεργό υπογράφοντα"""
+        return cls.objects.filter(is_active=True).first()
