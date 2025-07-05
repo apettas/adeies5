@@ -205,6 +205,12 @@ class User(AbstractUser):
     specialty = models.ForeignKey(Specialty, on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Ειδικότητα', related_name='users')
     
+    # Επιπλέον στοιχεία χρήστη
+    notification = models.TextField('Κοινοποίηση Απόφασης', blank=True,
+                                  help_text='Υπηρεσίες που θα γίνει κοινοποίηση η απόφαση της άδειας')
+    user_description = models.TextField('Περιγραφή Χρήστη', blank=True,
+                                      help_text='Ιδιότητα του χρήστη')
+    
     # Κατάσταση εγγραφής
     registration_status = models.CharField('Κατάσταση Εγγραφής', max_length=20,
                                          choices=REGISTRATION_STATUS_CHOICES,
