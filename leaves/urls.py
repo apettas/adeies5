@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .decision_views import prepare_decision_preview, generate_final_decision_pdf, serve_decision_pdf
 
 app_name = 'leaves'
 
@@ -29,6 +30,12 @@ urlpatterns = [
     
     # Detail view
     path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='leave_request_detail'),
+    path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='detail'),  # Alias for compatibility
+    
+    # Decision PDF URLs
+    path('decision/prepare/<int:leave_request_id>/', prepare_decision_preview, name='prepare_decision_preview'),
+    path('decision/generate/', generate_final_decision_pdf, name='generate_final_decision_pdf'),
+    path('decision-pdf/<int:pk>/', serve_decision_pdf, name='serve_decision_pdf'),
     
     # Secure file handling
     path('files/<int:file_id>/', views.serve_secure_file, name='serve_secure_file'),

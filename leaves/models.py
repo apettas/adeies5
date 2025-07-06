@@ -189,6 +189,21 @@ class LeaveRequest(models.Model):
     # Notifications
     notifications = GenericRelation(Notification)
     
+    # Πεδία για απόφαση PDF
+    decision_logo = models.ForeignKey('Logo', on_delete=models.SET_NULL, null=True, blank=True,
+                                    verbose_name='Λογότυπο Απόφασης')
+    decision_info = models.ForeignKey('Info', on_delete=models.SET_NULL, null=True, blank=True,
+                                    verbose_name='Πληροφορίες Απόφασης')
+    decision_ypopsin = models.ForeignKey('Ypopsin', on_delete=models.SET_NULL, null=True, blank=True,
+                                       verbose_name='Έχοντας Υπόψη Απόφασης')
+    decision_signee = models.ForeignKey('Signee', on_delete=models.SET_NULL, null=True, blank=True,
+                                      verbose_name='Υπογράφων Απόφασης')
+    final_decision_text = models.TextField('Τελικό Κείμενο Απόφασης', blank=True)
+    decision_pdf_path = models.CharField('Διαδρομή PDF Απόφασης', max_length=500, blank=True)
+    decision_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Απόφασης', max_length=64, blank=True)
+    decision_pdf_size = models.PositiveIntegerField('Μέγεθος PDF Απόφασης', null=True, blank=True)
+    decision_created_at = models.DateTimeField('Ημερομηνία Δημιουργίας Απόφασης', null=True, blank=True)
+    
     class Meta:
         verbose_name = 'Αίτηση Άδειας'
         verbose_name_plural = 'Αιτήσεις Αδειών'
@@ -366,6 +381,33 @@ class LeaveRequest(models.Model):
             from django.urls import reverse
             return reverse('leaves:serve_protocol_pdf', kwargs={'pk': self.pk})
         return None
+    
+    def has_decision_pdf(self):
+        """Επιστρέφει True αν υπάρχει PDF απόφασης"""
+        return bool(self.decision_pdf_path and self.decision_pdf_encryption_key)
+    
+    def get_decision_pdf_url(self):
+        """URL για το PDF απόφασης"""
+        if self.has_decision_pdf():
+            from django.urls import reverse
+            return reverse('leaves:serve_decision_pdf', kwargs={'pk': self.pk})
+        return None
+    
+    def can_create_decision(self):
+        """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
+        return self.status == 'FOR_PROTOCOL_PDEDE'
+    
+    def get_end_date(self):
+        """Υπολογίζει την ημερομηνία λήξης της άδειας"""
+        if self.start_date and self.total_days:
+            from datetime import timedelta
+            return self.start_date + timedelta(days=self.total_days - 1)
+        return None
+    
+    @property
+    def days_requested(self):
+        """Alias για total_days για compatibility"""
+        return self.total_days
     
     def get_status_display_class(self):
         """CSS κλάση για το status badge"""

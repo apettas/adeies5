@@ -27,9 +27,21 @@
                         {% endif %}
                     </div>
                 {% elif user.is_leave_handler %}
-                    <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Επιστροφή
-                    </a>
+                    <div class="btn-group" role="group">
+                        <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Επιστροφή
+                        </a>
+                        {% if leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                            <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
+                                <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
+                            </a>
+                        {% endif %}
+                        {% if leave_request.has_decision_pdf %}
+                            <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}" class="btn btn-info" target="_blank">
+                                <i class="bi bi-file-earmark-pdf"></i> Προβολή Απόφασης PDF
+                            </a>
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
         </div>

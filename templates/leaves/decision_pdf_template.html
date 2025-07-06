@@ -1,0 +1,262 @@
+{% load decision_tags %}
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Απόφαση - {{ leave_request.user.full_name }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: "DejaVu Sans", "Arial", sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 15px;
+            white-space: pre-line;
+        }
+        
+        .title {
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .protocol {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+        
+        .section-content {
+            text-align: justify;
+            white-space: pre-line;
+            margin-left: 10px;
+        }
+        
+        .decision-text {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .signature {
+            margin-top: 50px;
+            text-align: right;
+        }
+        
+        .signature-content {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            max-width: 300px;
+            margin-left: auto;
+            text-align: center;
+            white-space: pre-line;
+        }
+        
+        .date {
+            text-align: right;
+            margin-top: 30px;
+            font-weight: bold;
+        }
+        
+        .footer {
+            position: fixed;
+            bottom: 1cm;
+            left: 2cm;
+            right: 2cm;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+        }
+        
+        .employee-info {
+            background-color: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .approval-box {
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+            background-color: #d4edda;
+            text-align: center;
+        }
+        
+        .approval-box h3 {
+            color: #155724;
+            margin: 0 0 10px 0;
+            font-size: 14pt;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .table th,
+        .table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Κεφαλίδα -->
+    <div class="header">
+        <div class="logo">{{ logo.logo|default:"ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ" }}</div>
+        <div class="title">Απόφαση</div>
+        <div class="protocol">
+            {% if leave_request.protocol_number %}
+                Αριθμός Πρωτοκόλλου: {{ leave_request.protocol_number }}
+            {% else %}
+                Αριθμός Πρωτοκόλλου: [Θα συμπληρωθεί]
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Περιεχόμενο -->
+    <div class="content">
+        <!-- Πληροφορίες -->
+        {% if info_text %}
+        <div class="section">
+            <div class="section-title">Πληροφορίες</div>
+            <div class="section-content">{{ info_text }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Στοιχεία Αιτούντος -->
+        <div class="employee-info">
+            <table class="table">
+                <tr>
+                    <th>Αιτών/Αιτούσα:</th>
+                    <td>{{ leave_request.user.full_name }}</td>
+                </tr>
+                <tr>
+                    <th>Τμήμα:</th>
+                    <td>{{ leave_request.user.department.name|default:"Δεν έχει οριστεί" }}</td>
+                </tr>
+                <tr>
+                    <th>Τύπος Άδειας:</th>
+                    <td>{{ leave_request.leave_type.name }}</td>
+                </tr>
+                <tr>
+                    <th>Διάρκεια:</th>
+                    <td>{{ leave_request.total_days }} ημέρες</td>
+                </tr>
+                <tr>
+                    <th>Περίοδος:</th>
+                    <td>{{ leave_request|format_leave_dates }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Κύρια Απόφαση -->
+        <div class="approval-box">
+            <h3>ΑΠΟΦΑΣΗ</h3>
+            <p>Αποφασίζουμε την <strong>ΕΓΚΡΙΣΗ</strong> της αίτησης άδειας του/της 
+               <strong>{{ leave_request.user.full_name|to_accusative }}</strong> 
+               για <strong>{{ leave_request.total_days|convert_days_to_greek_genitive }}</strong> ημέρες,
+               {{ leave_request|format_leave_dates }}.</p>
+        </div>
+
+        <!-- Έχοντας Υπόψη -->
+        {% if ypopsin_text %}
+        <div class="section">
+            <div class="section-title">Έχοντας Υπόψη</div>
+            <div class="section-content">{{ ypopsin_text }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Αιτιολογία (αν υπάρχει) -->
+        {% if leave_request.description %}
+        <div class="section">
+            <div class="section-title">Αιτιολογία</div>
+            <div class="section-content">{{ leave_request.description }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Παρατηρήσεις Προϊσταμένου -->
+        {% if leave_request.manager_comments %}
+        <div class="section">
+            <div class="section-title">Παρατηρήσεις Προϊσταμένου</div>
+            <div class="section-content">{{ leave_request.manager_comments }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Υπογραφή -->
+    <div class="signature">
+        <div class="signature-content">
+            {{ signee_text|default:"Ο/Η Υπογράφων/ουσα" }}
+        </div>
+    </div>
+
+    <!-- Ημερομηνία -->
+    <div class="date">
+        Ημερομηνία: {{ current_date }}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        Αυτή η απόφαση δημιουργήθηκε αυτόματα από το σύστημα διαχείρισης αδειών.
+        <br>
+        Ημερομηνία δημιουργίας: {{ leave_request.decision_created_at|date:"d/m/Y H:i" }}
+    </div>
+</body>
+</html>

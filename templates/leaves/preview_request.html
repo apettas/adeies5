@@ -126,7 +126,12 @@
                                         <p class="fw-bold">Συνημμένα:</p>
                                         <ul style="padding-left: 20px;">
                                             {% for attachment in attachments %}
-                                                <li>{{ attachment.description|default:attachment.file_name }}</li>
+                                                <li>
+                                                    <strong>{{ attachment.original_filename }}</strong>
+                                                    {% if attachment.description %}
+                                                        <br><small>Περιγραφή: {{ attachment.description }}</small>
+                                                    {% endif %}
+                                                </li>
                                             {% empty %}
                                                 <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
                                             {% endfor %}

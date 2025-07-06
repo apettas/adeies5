@@ -159,6 +159,11 @@
                                                         data-bs-target="#uploadProtocolModal{{ request.pk }}">
                                                     <i class="bi bi-upload"></i> Ανέβασε Πρωτόκολλο
                                                 </button>
+                                                <!-- Επεξεργασία Απόφασης -->
+                                                <a href="{% url 'leaves:prepare_decision_preview' request.pk %}"
+                                                   class="btn btn-sm btn-warning mb-1">
+                                                    <i class="bi bi-file-earmark-text"></i> Επεξεργασία Απόφασης
+                                                </a>
                                             {% elif request.status == 'UNDER_PROCESSING' %}
                                                 <!-- Τρίτο στάδιο: Ολοκλήρωση -->
                                                 <button type="button"

@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load decision_tags %}
+
+{% block title %}Προεπισκόπηση Απόφασης - {{ leave_request.user.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <i class="fas fa-file-contract"></i>
+                        Προεπισκόπηση και Επεξεργασία Απόφασης
+                    </h4>
+                    <div class="card-tools">
+                        <a href="{% url 'leaves:detail' leave_request.id %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Επιστροφή
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Πληροφορίες Αίτησης -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Στοιχεία Αίτησης</h5>
+                            <p><strong>Αιτών:</strong> {{ leave_request.user.full_name }}</p>
+                            <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                            <p><strong>Διάρκεια:</strong> {{ leave_request.total_days }} ημέρες</p>
+                            <p><strong>Περίοδος:</strong> {{ leave_request|format_leave_dates }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Κατάσταση</h5>
+                            <p><strong>Στάτους:</strong> 
+                                <span class="badge badge-{{ leave_request.get_status_display_class }}">
+                                    {{ leave_request.get_status_display }}
+                                </span>
+                            </p>
+                            <p><strong>Πρωτόκολλο:</strong> {{ leave_request.protocol_number|default:"Δεν έχει οριστεί" }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Φόρμα Επεξεργασίας -->
+                    <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
+                        
+                        <div class="row">
+                            <!-- Αριστερή Στήλη - Επιλογές -->
+                            <div class="col-md-4">
+                                <h5>Επιλογές Στοιχείων</h5>
+                                
+                                <!-- Επιλογή Λογότυπου -->
+                                <div class="form-group">
+                                    <label for="logo_id">Λογότυπο:</label>
+                                    <select name="logo_id" id="logo_id" class="form-control" onchange="updatePreview()">
+                                        {% for logo in logos %}
+                                            <option value="{{ logo.id }}" 
+                                                    {% if logo == default_logo %}selected{% endif %}
+                                                    data-logo-short="{{ logo.logo_short }}"
+                                                    data-logo-full="{{ logo.logo }}">
+                                                {{ logo.logo_short }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Επιλογή Πληροφοριών -->
+                                <div class="form-group">
+                                    <label for="info_id">Πληροφορίες:</label>
+                                    <select name="info_id" id="info_id" class="form-control" onchange="updatePreview()">
+                                        {% for info in infos %}
+                                            <option value="{{ info.id }}" 
+                                                    {% if info == default_info %}selected{% endif %}
+                                                    data-info-content="{{ info.info }}">
+                                                {{ info.info_short }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Επιλογή Έχοντας Υπόψη -->
+                                <div class="form-group">
+                                    <label for="ypopsin_id">Έχοντας Υπόψη:</label>
+                                    <select name="ypopsin_id" id="ypopsin_id" class="form-control" onchange="updatePreview()">
+                                        {% for ypopsin in ypopsins %}
+                                            <option value="{{ ypopsin.id }}" 
+                                                    {% if ypopsin == default_ypopsin %}selected{% endif %}
+                                                    data-ypopsin-content="{{ ypopsin.ypopsin }}">
+                                                {{ ypopsin.ypopsin_short }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Επιλογή Υπογράφοντα -->
+                                <div class="form-group">
+                                    <label for="signee_id">Υπογράφων:</label>
+                                    <select name="signee_id" id="signee_id" class="form-control" onchange="updatePreview()">
+                                        {% for signee in signees %}
+                                            <option value="{{ signee.id }}" 
+                                                    {% if signee == default_signee %}selected{% endif %}
+                                                    data-signee-content="{{ signee.signee }}">
+                                                {{ signee.signee_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Κουμπί Υποβολής -->
+                                <div class="form-group">
+                                    <button type="submit" class="btn btn-success btn-lg btn-block">
+                                        <i class="fas fa-file-pdf"></i>
+                                        Οριστικοποίηση και Δημιουργία PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Δεξιά Στήλη - Προεπισκόπηση -->
+                            <div class="col-md-8">
+                                <h5>Προεπισκόπηση Απόφασης</h5>
+                                
+                                <div class="decision-preview border p-4" style="min-height: 600px; background-color: #f8f9fa;">
+                                    <!-- Κεφαλίδα -->
+                                    <div class="text-center mb-4">
+                                        <div id="preview-logo">
+                                            {{ default_logo.logo|default:"" }}
+                                        </div>
+                                        <h3 class="mt-3">ΑΠΟΦΑΣΗ</h3>
+                                        <p class="text-muted">Αριθμός Πρωτοκόλλου: {{ leave_request.protocol_number|default:"[Θα συμπληρωθεί]" }}</p>
+                                    </div>
+
+                                    <!-- Περιεχόμενο Απόφασης -->
+                                    <div class="mb-4">
+                                        <h5>Πληροφορίες:</h5>
+                                        <textarea name="info_text" id="info_text" class="form-control" rows="4" placeholder="Επεξεργαστείτε τις πληροφορίες...">{{ default_info.info|default:"" }}</textarea>
+                                    </div>
+
+                                    <!-- Κύριο Κείμενο -->
+                                    <div class="mb-4">
+                                        <h5>Απόφαση:</h5>
+                                        <p>Αποφασίζουμε την έγκριση της αίτησης άδειας του/της 
+                                           <strong>{{ leave_request.user.full_name|to_accusative }}</strong> 
+                                           για <strong>{{ leave_request.total_days|convert_days_to_greek_genitive }}</strong> ημέρες,
+                                           {{ leave_request|format_leave_dates }}.</p>
+                                    </div>
+
+                                    <!-- Έχοντας Υπόψη -->
+                                    <div class="mb-4">
+                                        <h5>Έχοντας Υπόψη:</h5>
+                                        <textarea name="ypopsin_text" id="ypopsin_text" class="form-control" rows="3" placeholder="Επεξεργαστείτε το κείμενο υπόψη...">{{ default_ypopsin.ypopsin|default:"" }}</textarea>
+                                    </div>
+
+                                    <!-- Υπογραφή -->
+                                    <div class="text-right">
+                                        <h5>Υπογραφή:</h5>
+                                        <textarea name="signee_text" id="signee_text" class="form-control" rows="3" placeholder="Επεξεργαστείτε τα στοιχεία υπογραφής...">{{ default_signee.signee|default:"" }}</textarea>
+                                    </div>
+
+                                    <!-- Ημερομηνία -->
+                                    <div class="text-right mt-3">
+                                        <p><strong>Ημερομηνία:</strong> {{ "now"|date:"d/m/Y" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updatePreview() {
+    // Ενημέρωση λογότυπου
+    const logoSelect = document.getElementById('logo_id');
+    const selectedLogo = logoSelect.options[logoSelect.selectedIndex];
+    document.getElementById('preview-logo').innerHTML = selectedLogo.getAttribute('data-logo-full');
+    
+    // Ενημέρωση πληροφοριών
+    const infoSelect = document.getElementById('info_id');
+    const selectedInfo = infoSelect.options[infoSelect.selectedIndex];
+    document.getElementById('info_text').value = selectedInfo.getAttribute('data-info-content');
+    
+    // Ενημέρωση υπόψη
+    const ypopsinSelect = document.getElementById('ypopsin_id');
+    const selectedYpopsin = ypopsinSelect.options[ypopsinSelect.selectedIndex];
+    document.getElementById('ypopsin_text').value = selectedYpopsin.getAttribute('data-ypopsin-content');
+    
+    // Ενημέρωση υπογραφής
+    const signeeSelect = document.getElementById('signee_id');
+    const selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
+    document.getElementById('signee_text').value = selectedSignee.getAttribute('data-signee-content');
+}
+
+// Επιβεβαίωση υποβολής
+document.getElementById('decisionForm').addEventListener('submit', function(e) {
+    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση; Αυτή η ενέργεια θα αλλάξει την κατάσταση της αίτησης.')) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

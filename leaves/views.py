@@ -141,13 +141,17 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                         logger = logging.getLogger(__name__)
                         logger.error(f"Error handling file upload {file_obj.name}: {str(e)}")
         
+        # Παίρνουμε τα attachments από τη βάση δεδομένων μετά την αποθήκευση
+        leave_request.refresh_from_db()
+        saved_attachments = leave_request.attachments.all()
+        
         context = {
             'form_data': form.cleaned_data,
             'user': self.request.user,
             'leave_request': leave_request,  # Προσθήκη leave_request στο context
             'periods': periods,
             'total_days': total_days,
-            'attachments': attachments
+            'attachments': saved_attachments  # Χρήση των αποθηκευμένων attachments
         }
         return render(self.request, 'leaves/preview_request.html', context)
     

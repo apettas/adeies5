@@ -100,6 +100,59 @@ class SecureFileHandler:
             # Δημιουργία καταλόγου αν δεν υπάρχει
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
+            # Διάβασμα περιεχομένου αρχείου
+            file_content = file_obj.read()
+            file_size = len(file_content)
+            
+            # Κρυπτογράφηση
+            encrypted_content, key_hex = SecureFileHandler.encrypt_file(file_content)
+            
+            # Αποθήκευση κρυπτογραφημένου αρχείου
+            with open(file_path, 'wb') as f:
+                f.write(encrypted_content)
+            
+            return True, key_hex, file_size
+            
+        except Exception as e:
+            print(f"Error saving encrypted file: {e}")
+            return False, None, 0
+    
+    @staticmethod
+    def save_encrypted_bytes(file_content, file_path):
+        """
+        Αποθήκευση κρυπτογραφημένου αρχείου από bytes content
+        
+        Args:
+            file_content (bytes): Περιεχόμενο αρχείου σε bytes
+            file_path (str): Πλήρη διαδρομή αποθήκευσης
+        
+        Returns:
+            tuple: (file_path, key_hex)
+        """
+        try:
+            # Δημιουργία καταλόγου αν δεν υπάρχει
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            # Κρυπτογράφηση
+            encrypted_content, key_hex = SecureFileHandler.encrypt_file(file_content)
+            
+            # Αποθήκευση κρυπτογραφημένου αρχείου
+            with open(file_path, 'wb') as f:
+                f.write(encrypted_content)
+            
+            return file_path, key_hex
+            
+        except Exception as e:
+            # Log του σφάλματος
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error saving encrypted file: {str(e)}")
+            
+            raise e
+        try:
+            # Δημιουργία καταλόγου αν δεν υπάρχει
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
             # Ανάγνωση περιεχομένου αρχείου
             file_obj.seek(0)
             file_content = file_obj.read()
