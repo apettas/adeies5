@@ -229,70 +229,6 @@
             </div>
         </div>
         
-        <!-- Συνημένα Αρχεία -->
-        {% if leave_request.attachments.exists %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5><i class="bi bi-paperclip"></i> Συνημένα Αρχεία</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    {% for attachment in leave_request.attachments.all %}
-                    <div class="col-md-6 mb-3">
-                        <div class="d-flex align-items-start p-3 border rounded">
-                            <div class="flex-shrink-0 me-3">
-                                {% if attachment.file_extension == 'pdf' %}
-                                    <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
-                                {% elif attachment.file_extension in 'jpg,jpeg,png' %}
-                                    <i class="bi bi-file-earmark-image-fill text-primary fs-2"></i>
-                                {% else %}
-                                    <i class="bi bi-file-earmark-fill text-secondary fs-2"></i>
-                                {% endif %}
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1">{{ attachment.original_filename }}</h6>
-                                {% if attachment.description %}
-                                <p class="mb-1 small"><strong>Περιγραφή:</strong> {{ attachment.description }}</p>
-                                {% endif %}
-                                <small class="text-muted">
-                                    {{ attachment.file_size|filesizeformat }} •
-                                    Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
-                                    {% if attachment.uploaded_by != leave_request.user %}
-                                        <br>από {{ attachment.uploaded_by.full_name }}
-                                    {% endif %}
-                                </small>
-                                <div class="mt-2">
-                                    <a href="{{ attachment.get_absolute_url }}"
-                                       class="btn btn-sm btn-outline-primary"
-                                       target="_blank">
-                                        <i class="bi bi-download"></i> Λήψη
-                                    </a>
-                                    {% if user == attachment.uploaded_by or user.is_leave_handler %}
-                                        <a href="{% url 'leaves:delete_secure_file' attachment.id %}"
-                                           class="btn btn-sm btn-outline-danger ms-2"
-                                           onclick="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το αρχείο;')">
-                                            <i class="bi bi-trash"></i> Διαγραφή
-                                        </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5><i class="bi bi-paperclip"></i> Συνημένα Αρχεία</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">Δεν υπάρχουν συνημμένα αρχεία για αυτή την αίτηση.</p>
-            </div>
-        </div>
-        {% endif %}
-        
         <!-- PDF της Αίτησης -->
         <div class="card mb-4">
             <div class="card-header">
@@ -337,7 +273,7 @@
                             </h6>
                             <small class="text-muted">
                                 Αριθμός Πρωτοκόλλου: <strong>{{ leave_request.protocol_number }}</strong>
-                                <br>Πρωτοκολλήθηκε: {{ leave_request.processed_at|date:"d/m/Y H:i" }}
+                                <br>Πρωτοκολλήθηκε: {{ leave_request.protocol_created_at|date:"d/m/Y H:i" }}
                             </small>
                         </div>
                     </div>
@@ -369,6 +305,229 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Συνημμένα Αρχεία - Για Χειριστή Αδειών και Ιδιοκτήτη της Αίτησης (GDPR) -->
+        {% if user.is_leave_handler or user == leave_request.user %}
+            {% if leave_request.attachments.exists %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-paperclip"></i> Συνημμένα Αρχεία</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for attachment in leave_request.attachments.all %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-start p-3 border rounded">
+                                <div class="flex-shrink-0 me-3">
+                                    {% if attachment.file_extension == 'pdf' %}
+                                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+                                    {% elif attachment.file_extension in 'jpg,jpeg,png' %}
+                                        <i class="bi bi-file-earmark-image-fill text-primary fs-2"></i>
+                                    {% else %}
+                                        <i class="bi bi-file-earmark-fill text-secondary fs-2"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ attachment.original_filename }}</h6>
+                                    {% if attachment.description %}
+                                    <p class="mb-1 small"><strong>Περιγραφή:</strong> {{ attachment.description }}</p>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        {{ attachment.file_size|filesizeformat }} •
+                                        Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
+                                        {% if attachment.uploaded_by != leave_request.user %}
+                                            <br>από {{ attachment.uploaded_by.full_name }}
+                                        {% endif %}
+                                    </small>
+                                    <div class="mt-2">
+                                        <a href="{{ attachment.get_absolute_url }}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           target="_blank">
+                                            <i class="bi bi-download"></i> Λήψη
+                                        </a>
+                                        <a href="{% url 'leaves:delete_secure_file' attachment.id %}"
+                                           class="btn btn-sm btn-outline-danger ms-2"
+                                           onclick="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το αρχείο;')">
+                                            <i class="bi bi-trash"></i> Διαγραφή
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-paperclip"></i> Συνημμένα Αρχεία</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Δεν υπάρχουν συνημμένα αρχεία για αυτή την αίτηση.</p>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <!-- Μη Χειριστής και Μη Ιδιοκτήτης - Μόνο ένδειξη ύπαρξης συνημμένων (GDPR) -->
+            {% if leave_request.attachments.exists %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-paperclip"></i> Συνημμένα Αρχεία</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Προστασία Δεδομένων (GDPR):</strong> Η αίτηση περιέχει {{ leave_request.attachments.count }} συνημμένα αρχεία.
+                        Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα είναι προσβάσιμα μόνο από τον χειριστή αδειών.
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-paperclip"></i> Συνημμένα Αρχεία</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Δεν υπάρχουν συνημμένα αρχεία για αυτή την αίτηση.</p>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+        
+        <!-- Απόφαση -->
+        {% if leave_request.has_decision_pdf %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-file-earmark-check"></i> Απόφαση</h5>
+            </div>
+            <div class="card-body">
+                <!-- PDF Απόφασης - Μόνο για Χειριστές -->
+                {% if user.is_leave_handler %}
+                <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-warning bg-opacity-10 mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-pdf-fill text-warning fs-2 me-3"></i>
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="bi bi-award text-warning me-2"></i>
+                                Απόφαση Άδειας #{{ leave_request.id }}
+                            </h6>
+                            <small class="text-muted">
+                                Δημιουργήθηκε: {{ leave_request.decision_created_at|date:"d/m/Y H:i" }}
+                                {% if leave_request.processed_by %}
+                                    <br>από {{ leave_request.processed_by.full_name }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}"
+                           class="btn btn-outline-warning btn-sm"
+                           target="_blank"
+                           title="Προβολή PDF Απόφασης">
+                            <i class="bi bi-eye"></i> Προβολή
+                        </a>
+                        <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}?download=1"
+                           class="btn btn-outline-primary btn-sm ms-2"
+                           title="Λήψη PDF Απόφασης">
+                            <i class="bi bi-download"></i> Λήψη
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Ακριβές Αντίγραφο από ΣΗΔΕ -->
+                {% if leave_request.has_exact_copy_pdf %}
+                <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-success bg-opacity-10 mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-check-fill text-success fs-2 me-3"></i>
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="bi bi-shield-check text-success me-2"></i>
+                                Ακριβές Αντίγραφο από ΣΗΔΕ
+                            </h6>
+                            <small class="text-muted">
+                                Ανέβηκε: {{ leave_request.exact_copy_uploaded_at|date:"d/m/Y H:i" }}
+                                {% if leave_request.exact_copy_uploaded_by %}
+                                    <br>από {{ leave_request.exact_copy_uploaded_by.full_name }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{% url 'leaves:serve_exact_copy_pdf' leave_request.id %}"
+                           class="btn btn-outline-success btn-sm"
+                           target="_blank"
+                           title="Προβολή Ακριβούς Αντιγράφου">
+                            <i class="bi bi-eye"></i> Προβολή
+                        </a>
+                        <a href="{% url 'leaves:serve_exact_copy_pdf' leave_request.id %}?download=1"
+                           class="btn btn-outline-primary btn-sm ms-2"
+                           title="Λήψη Ακριβούς Αντιγράφου">
+                            <i class="bi bi-download"></i> Λήψη
+                        </a>
+                    </div>
+                </div>
+                {% elif user.is_leave_handler and leave_request.can_upload_exact_copy %}
+                <!-- Φόρμα Upload Ακριβούς Αντιγράφου -->
+                <div class="p-3 border rounded bg-light mb-3">
+                    <h6 class="mb-3">
+                        <i class="bi bi-cloud-upload text-primary me-2"></i>
+                        Αποστολή Ακριβούς Αντιγράφου από ΣΗΔΕ
+                    </h6>
+                    <form method="post" action="{% url 'leaves:upload_exact_copy_pdf' leave_request.id %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="exact_copy_pdf" class="form-label">
+                                        Επιλέξτε το ακριβές αντίγραφο PDF από ΣΗΔΕ
+                                    </label>
+                                    <input type="file" class="form-control" id="exact_copy_pdf" name="exact_copy_pdf"
+                                           accept=".pdf" required>
+                                    <small class="form-text text-muted">
+                                        Μόνο αρχεία PDF, μέγιστο μέγεθος 10MB
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-upload"></i> Αποστολή
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+                
+                <!-- Κουμπί Ολοκλήρωσης -->
+                {% if user.is_leave_handler and leave_request.can_complete_request %}
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{% url 'leaves:complete_leave_request_final' leave_request.id %}"
+                       class="btn btn-success btn-lg"
+                       onclick="return confirm('Είστε σίγουροι ότι θέλετε να ολοκληρώσετε την αίτηση;')">
+                        <i class="bi bi-check-circle"></i> Ολοκλήρωση Αίτησης
+                    </a>
+                </div>
+                {% endif %}
+                
+                {% if user.is_leave_handler %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        {% if leave_request.has_exact_copy_pdf %}
+                            Η αίτηση είναι έτοιμη για ολοκλήρωση. Το ακριβές αντίγραφο από ΣΗΔΕ έχει ανέβει.
+                        {% elif leave_request.can_upload_exact_copy %}
+                            Μετά τη δημιουργία της απόφασης, πρέπει να την κατεβάσετε και να τη στείλετε στο ΣΗΔΕ για επίσημη καταχώρηση. Στη συνέχεια ανεβάστε το ακριβές αντίγραφο.
+                        {% else %}
+                            Το PDF της απόφασης περιέχει την επίσημη απόφαση για την έγκριση της άδειας με όλα τα απαιτούμενα στοιχεία.
+                        {% endif %}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
     
     <div class="col-lg-4">
@@ -390,7 +549,7 @@
                     </div>
                 </div>
                 
-                <!-- Έγκριση/Απόρριψη Προϊσταμένου -->
+                <!-- Έγκριση/Απόρριψη Προϊσταμένου ή Παράκαμψη -->
                 {% if leave_request.manager_approved_by %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
@@ -417,6 +576,17 @@
                         {% if leave_request.rejection_reason %}
                             <p class="mt-1 small text-danger"><em>"{{ leave_request.rejection_reason }}"</em></p>
                         {% endif %}
+                    </div>
+                </div>
+                {% elif leave_request.status != 'SUBMITTED' and not leave_request.manager_approved_by and not leave_request.leave_type.requires_approval %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle-fill text-info"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1">Παρακάμφθηκε Έγκριση Προϊσταμένου</h6>
+                        <p class="mb-1 text-muted small">{{ leave_request.leave_type.name }} - δεν απαιτεί έγκριση</p>
+                        <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
                     </div>
                 </div>
                 {% endif %}
@@ -459,7 +629,11 @@
                         <i class="bi bi-circle text-muted"></i>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Αναμένει έγκριση προϊσταμένου</h6>
+                        {% if leave_request.leave_type.requires_approval %}
+                            <h6 class="mb-1 text-muted">Αναμένει έγκριση προϊσταμένου</h6>
+                        {% else %}
+                            <h6 class="mb-1 text-muted">Αναμένει επεξεργασία από χειριστή</h6>
+                        {% endif %}
                     </div>
                 </div>
                 {% elif leave_request.status == 'APPROVED_MANAGER' %}
@@ -469,6 +643,24 @@
                     </div>
                     <div class="flex-grow-1 ms-3">
                         <h6 class="mb-1 text-muted">Αναμένει επεξεργασία</h6>
+                    </div>
+                </div>
+                {% elif leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Αναμένει πρωτοκόλληση ΣΗΔΕ</h6>
+                    </div>
+                </div>
+                {% elif leave_request.status == 'UNDER_PROCESSING' %}
+                <div class="d-flex mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-circle text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-1 text-muted">Αναμένει ολοκλήρωση</h6>
                     </div>
                 </div>
                 {% endif %}

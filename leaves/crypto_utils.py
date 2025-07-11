@@ -313,6 +313,7 @@ class FileAccessController:
     def can_user_access_file(user, secure_file):
         """
         Ελέγχει αν ο χρήστης έχει δικαίωμα πρόσβασης στο αρχείο
+        GDPR Compliance: Μόνο ο χειριστής αδειών έχει πρόσβαση σε συνημμένα
         
         Args:
             user: User object
@@ -325,19 +326,11 @@ class FileAccessController:
         if secure_file.uploaded_by == user:
             return True
         
-        # Ο ιδιοκτήτης της αίτησης έχει πρόσβαση
-        if secure_file.leave_request.user == user:
-            return True
-        
-        # Προϊστάμενος του τμήματος έχει πρόσβαση
-        if (user.is_department_manager and 
-            secure_file.leave_request.user.department == user.department):
-            return True
-        
-        # Χειριστής αδειών έχει πρόσβαση σε όλα
+        # Χειριστής αδειών έχει πρόσβαση σε όλα (GDPR: μόνο για επεξεργασία)
         if user.is_leave_handler:
             return True
         
+        # GDPR: Προϊστάμενοι και άλλοι χρήστες ΔΕΝ έχουν πρόσβαση σε συνημμένα
         return False
     
     @staticmethod

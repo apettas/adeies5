@@ -31,7 +31,7 @@ class LeaveType(models.Model):
     name = models.CharField('Όνομα Τύπου', max_length=100)
     description = models.TextField('Περιγραφή', blank=True)
     max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', default=30)
-    requires_approval = models.BooleanField('Απαιτεί Έγκριση', default=True)
+    requires_approval = models.BooleanField('Απαιτεί Έγκριση από Προϊστάμενο', default=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     subject_text = models.TextField('Κείμενο Θέματος', blank=True)
@@ -172,6 +172,7 @@ class LeaveRequest(models.Model):
     protocol_pdf_path = models.CharField('Διαδρομή Πρωτοκολλημένου PDF', max_length=500, blank=True)
     protocol_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Πρωτοκόλλου', max_length=64, blank=True)
     protocol_pdf_size = models.PositiveIntegerField('Μέγεθος Πρωτοκολλημένου PDF', null=True, blank=True)
+    protocol_created_at = models.DateTimeField('Ημερομηνία Πρωτοκόλλησης', null=True, blank=True)
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='processed_leaves', verbose_name='Επεξεργάστηκε από')
     processed_at = models.DateTimeField('Ημερομηνία Επεξεργασίας', null=True, blank=True)
@@ -203,6 +204,14 @@ class LeaveRequest(models.Model):
     decision_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Απόφασης', max_length=64, blank=True)
     decision_pdf_size = models.PositiveIntegerField('Μέγεθος PDF Απόφασης', null=True, blank=True)
     decision_created_at = models.DateTimeField('Ημερομηνία Δημιουργίας Απόφασης', null=True, blank=True)
+    
+    # Πεδία για το Ακριβές αντίγραφο από ΣΗΔΕ
+    exact_copy_pdf_path = models.CharField('Διαδρομή Ακριβούς Αντιγράφου', max_length=500, blank=True)
+    exact_copy_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Ακριβούς Αντιγράφου', max_length=64, blank=True)
+    exact_copy_pdf_size = models.PositiveIntegerField('Μέγεθος Ακριβούς Αντιγράφου', null=True, blank=True)
+    exact_copy_uploaded_at = models.DateTimeField('Ημερομηνία Αποστολής Ακριβούς Αντιγράφου', null=True, blank=True)
+    exact_copy_uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                             related_name='uploaded_exact_copies', verbose_name='Ανέβασε το Ακριβές Αντίγραφο')
     
     class Meta:
         verbose_name = 'Αίτηση Άδειας'
@@ -272,7 +281,11 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
-            self.status = 'SUBMITTED'
+            if self.leave_type.requires_approval:
+                self.status = 'SUBMITTED'
+            else:
+                # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
+                self.status = 'APPROVED_MANAGER'
             self.submitted_at = timezone.now()
             self.save()
             return True
@@ -312,8 +325,6 @@ class LeaveRequest(models.Model):
         """Έναρξη επεξεργασίας από χειριστή"""
         if self.can_be_processed:
             self.status = 'UNDER_PROCESSING'
-            self.processed_by = handler
-            self.processed_at = timezone.now()
             if protocol_number:
                 self.protocol_number = protocol_number
             self.processing_comments = comments
@@ -335,8 +346,11 @@ class LeaveRequest(models.Model):
         if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
-            self.processed_by = handler
-            self.processed_at = timezone.now()
+            # Ενημερώνουμε τα πεδία επεξεργασίας μόνο κατά την τελική ολοκλήρωση
+            if not self.processed_by:
+                self.processed_by = handler
+            if not self.processed_at:
+                self.processed_at = timezone.now()
             if comments:
                 self.processing_comments = comments
             self.save()
@@ -392,6 +406,25 @@ class LeaveRequest(models.Model):
             from django.urls import reverse
             return reverse('leaves:serve_decision_pdf', kwargs={'pk': self.pk})
         return None
+    
+    def has_exact_copy_pdf(self):
+        """Επιστρέφει True αν υπάρχει ακριβές αντίγραφο PDF"""
+        return bool(self.exact_copy_pdf_path and self.exact_copy_pdf_encryption_key)
+    
+    def get_exact_copy_pdf_url(self):
+        """URL για το ακριβές αντίγραφο PDF"""
+        if self.has_exact_copy_pdf():
+            from django.urls import reverse
+            return reverse('leaves:serve_exact_copy_pdf', kwargs={'pk': self.pk})
+        return None
+    
+    def can_upload_exact_copy(self):
+        """Ελέγχει αν μπορεί να ανέβει ακριβές αντίγραφο"""
+        return self.has_decision_pdf() and self.status == 'UNDER_PROCESSING'
+    
+    def can_complete_request(self):
+        """Ελέγχει αν μπορεί να ολοκληρωθεί η αίτηση"""
+        return self.has_exact_copy_pdf() and self.status == 'UNDER_PROCESSING'
     
     def can_create_decision(self):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""

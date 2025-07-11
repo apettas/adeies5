@@ -142,10 +142,8 @@ def generate_final_decision_pdf(request):
         leave_request.final_decision_text = f"Info: {edited_info_text}\nYpopsin: {edited_ypopsin_text}\nSignee: {edited_signee_text}"
         leave_request.decision_created_at = timezone.now()
         
-        # Αυτόματη αλλαγή στάτους
+        # Αυτόματη αλλαγή στάτους - δεν θέτουμε processed_by/processed_at ακόμα
         leave_request.status = 'UNDER_PROCESSING'
-        leave_request.processed_by = request.user
-        leave_request.processed_at = timezone.now()
         leave_request.save()
         
         # Προετοιμασία context για PDF
@@ -201,12 +199,12 @@ def serve_decision_pdf(request, pk):
     """
     Σερβίρισμα κρυπτογραφημένου PDF απόφασης
     """
-    # Έλεγχος δικαιωμάτων
-    if not request.user.is_leave_handler:
+    # Έλεγχος δικαιωμάτων - επιτρέπουμε σε όλους τους χρήστες που μπορούν να δουν την αίτηση
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    if not leave_request.can_user_view(request.user):
         messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
         return redirect('leaves:dashboard_redirect')
-    
-    leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
     # Έλεγχος αν υπάρχει PDF απόφασης
     if not leave_request.has_decision_pdf():
@@ -216,13 +214,172 @@ def serve_decision_pdf(request, pk):
     try:
         # Αποκρυπτογράφηση PDF
         handler = SecureFileHandler()
-        pdf_content = handler.serve_encrypted_file(leave_request.decision_pdf_path, leave_request.decision_pdf_encryption_key)
+        pdf_content = handler.load_encrypted_file(leave_request.decision_pdf_path, leave_request.decision_pdf_encryption_key)
+        
+        if pdf_content is None:
+            messages.error(request, 'Δεν ήταν δυνατή η φόρτωση του PDF της απόφασης.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
+        # Έλεγχος αν είναι για download ή preview
+        is_download = request.GET.get('download') == '1'
         
         # Δημιουργία response
         response = HttpResponse(pdf_content, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="decision_{leave_request.id}.pdf"'
+        
+        if is_download:
+            # Για download
+            response['Content-Disposition'] = f'attachment; filename="decision_{leave_request.id}.pdf"'
+        else:
+            # Για preview στο browser
+            response['Content-Disposition'] = f'inline; filename="decision_{leave_request.id}.pdf"'
+        
         return response
         
     except Exception as e:
         messages.error(request, f'Σφάλμα κατά τη φόρτωση του PDF: {str(e)}')
         return redirect('leaves:detail', pk=leave_request.id)
+
+
+@login_required
+def upload_exact_copy_pdf(request, pk):
+    """
+    Αποστολή ακριβούς αντιγράφου PDF από ΣΗΔΕ
+    """
+    # Έλεγχος δικαιωμάτων
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν μπορεί να ανέβει ακριβές αντίγραφο
+    if not leave_request.can_upload_exact_copy():
+        messages.error(request, 'Δεν μπορεί να ανέβει ακριβές αντίγραφο για αυτή την αίτηση.')
+        return redirect('leaves:detail', pk=leave_request.id)
+    
+    if request.method == 'POST':
+        exact_copy_file = request.FILES.get('exact_copy_pdf')
+        
+        if not exact_copy_file:
+            messages.error(request, 'Παρακαλώ επιλέξτε αρχείο PDF.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
+        # Έλεγχος τύπου αρχείου
+        if not exact_copy_file.name.lower().endswith('.pdf'):
+            messages.error(request, 'Το αρχείο πρέπει να είναι PDF.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
+        # Έλεγχος μεγέθους (max 10MB)
+        if exact_copy_file.size > 10 * 1024 * 1024:
+            messages.error(request, 'Το αρχείο είναι πολύ μεγάλο. Μέγιστο μέγεθος: 10MB.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
+        try:
+            # Αποθήκευση κρυπτογραφημένου αρχείου
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'exact_copy_{leave_request.id}_{timestamp}.pdf'
+            
+            # Δημιουργία directory
+            pdf_dir = os.path.join('media', 'private_media', 'exact_copies', str(leave_request.id))
+            os.makedirs(pdf_dir, exist_ok=True)
+            
+            # Αποθήκευση κρυπτογραφημένου αρχείου
+            pdf_path = os.path.join(pdf_dir, filename)
+            handler = SecureFileHandler()
+            file_content = exact_copy_file.read()
+            encrypted_path, encryption_key = handler.save_encrypted_bytes(file_content, pdf_path)
+            
+            # Ενημέρωση αίτησης
+            leave_request.exact_copy_pdf_path = encrypted_path
+            leave_request.exact_copy_pdf_encryption_key = encryption_key
+            leave_request.exact_copy_pdf_size = len(file_content)
+            leave_request.exact_copy_uploaded_at = timezone.now()
+            leave_request.exact_copy_uploaded_by = request.user
+            leave_request.save()
+            
+            messages.success(request, 'Το ακριβές αντίγραφο ανέβηκε επιτυχώς!')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά την αποστολή του αρχείου: {str(e)}')
+    
+    return redirect('leaves:detail', pk=leave_request.id)
+
+
+@login_required
+def serve_exact_copy_pdf(request, pk):
+    """
+    Σερβίρισμα ακριβούς αντιγράφου PDF
+    """
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος δικαιωμάτων
+    if not leave_request.can_user_view(request.user):
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    # Έλεγχος αν υπάρχει ακριβές αντίγραφο
+    if not leave_request.has_exact_copy_pdf():
+        messages.error(request, 'Δεν υπάρχει ακριβές αντίγραφο για αυτή την αίτηση.')
+        return redirect('leaves:detail', pk=leave_request.id)
+    
+    try:
+        # Φόρτωση και αποκρυπτογράφηση PDF
+        handler = SecureFileHandler()
+        pdf_content = handler.load_encrypted_file(leave_request.exact_copy_pdf_path, leave_request.exact_copy_pdf_encryption_key)
+        
+        if pdf_content is None:
+            messages.error(request, 'Δεν ήταν δυνατή η φόρτωση του ακριβούς αντιγράφου.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
+        # Έλεγχος αν είναι για download ή preview
+        is_download = request.GET.get('download') == '1'
+        
+        # Δημιουργία response
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        
+        if is_download:
+            response['Content-Disposition'] = f'attachment; filename="exact_copy_{leave_request.id}.pdf"'
+        else:
+            response['Content-Disposition'] = f'inline; filename="exact_copy_{leave_request.id}.pdf"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Σφάλμα κατά τη φόρτωση του PDF: {str(e)}')
+        return redirect('leaves:detail', pk=leave_request.id)
+
+
+@login_required
+def complete_leave_request_final(request, pk):
+    """
+    Τελική ολοκλήρωση αίτησης (μόνο όταν υπάρχει ακριβές αντίγραφο)
+    """
+    # Έλεγχος δικαιωμάτων
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν μπορεί να ολοκληρωθεί
+    if not leave_request.can_complete_request():
+        messages.error(request, 'Δεν μπορεί να ολοκληρωθεί η αίτηση. Απαιτείται ακριβές αντίγραφο.')
+        return redirect('leaves:detail', pk=leave_request.id)
+    
+    try:
+        # Ολοκλήρωση αίτησης
+        leave_request.status = 'COMPLETED'
+        leave_request.completed_at = timezone.now()
+        # Ενημερώνουμε τα πεδία επεξεργασίας μόνο αν δεν έχουν ήδη θεσεί
+        if not leave_request.processed_by:
+            leave_request.processed_by = request.user
+        if not leave_request.processed_at:
+            leave_request.processed_at = timezone.now()
+        leave_request.save()
+        
+        messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
+        
+    except Exception as e:
+        messages.error(request, f'Σφάλμα κατά την ολοκλήρωση: {str(e)}')
+    
+    return redirect('leaves:detail', pk=leave_request.id)

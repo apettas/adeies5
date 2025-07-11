@@ -1,6 +1,9 @@
 from django.urls import path
 from . import views
-from .decision_views import prepare_decision_preview, generate_final_decision_pdf, serve_decision_pdf
+from .decision_views import (
+    prepare_decision_preview, generate_final_decision_pdf, serve_decision_pdf,
+    upload_exact_copy_pdf, serve_exact_copy_pdf, complete_leave_request_final
+)
 
 app_name = 'leaves'
 
@@ -36,6 +39,11 @@ urlpatterns = [
     path('decision/prepare/<int:leave_request_id>/', prepare_decision_preview, name='prepare_decision_preview'),
     path('decision/generate/', generate_final_decision_pdf, name='generate_final_decision_pdf'),
     path('decision-pdf/<int:pk>/', serve_decision_pdf, name='serve_decision_pdf'),
+    
+    # Exact Copy URLs
+    path('exact-copy/upload/<int:pk>/', upload_exact_copy_pdf, name='upload_exact_copy_pdf'),
+    path('exact-copy-pdf/<int:pk>/', serve_exact_copy_pdf, name='serve_exact_copy_pdf'),
+    path('complete-final/<int:pk>/', complete_leave_request_final, name='complete_leave_request_final'),
     
     # Secure file handling
     path('files/<int:file_id>/', views.serve_secure_file, name='serve_secure_file'),

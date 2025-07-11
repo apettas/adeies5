@@ -378,10 +378,10 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο και περιμένουν επεξεργασία
+        # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο ή παρακάμπτουν τον προϊστάμενο και περιμένουν επεξεργασία
         return LeaveRequest.objects.filter(
             status__in=['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
-        ).select_related('user', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at')
+        ).select_related('user', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -402,6 +402,13 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
                 status='UNDER_PROCESSING'
             ).count(),
         })
+        
+        # Ολοκληρωμένες αιτήσεις (τελευταίες 20)
+        completed_requests = LeaveRequest.objects.filter(
+            status='COMPLETED'
+        ).select_related('user', 'leave_type', 'processed_by').order_by('-processed_at')[:20]
+        
+        context['completed_requests'] = completed_requests
         
         return context
 
@@ -612,8 +619,6 @@ def send_to_protocol_pdede(request, pk):
         try:
             # Αλλαγή status σε FOR_PROTOCOL_PDEDE
             leave_request.status = 'FOR_PROTOCOL_PDEDE'
-            leave_request.processed_by = request.user
-            leave_request.processed_at = timezone.now()
             leave_request.save()
             
             # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
@@ -684,6 +689,7 @@ def upload_protocol_pdf(request, pk):
                 leave_request.protocol_pdf_path = file_path
                 leave_request.protocol_pdf_encryption_key = key_hex
                 leave_request.protocol_pdf_size = file_size
+                leave_request.protocol_created_at = timezone.now()
                 leave_request.status = 'UNDER_PROCESSING'
                 leave_request.save()
                 
@@ -957,10 +963,35 @@ def submit_final_request(request):
             if new_description:
                 leave_request.description = new_description
             
-            # Αλλάζουμε την κατάσταση σε SUBMITTED
-            leave_request.status = 'SUBMITTED'
+            # Αλλάζουμε την κατάσταση ανάλογα με το αν απαιτεί έγκριση από προϊστάμενο
+            if leave_request.leave_type.requires_approval:
+                leave_request.status = 'SUBMITTED'
+            else:
+                # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
+                leave_request.status = 'APPROVED_MANAGER'
             leave_request.submitted_at = timezone.now()
             leave_request.save()
+            
+            # Ειδοποιήσεις ανάλογα με τον τύπο άδειας
+            if leave_request.leave_type.requires_approval:
+                # Στανταρντ workflow - ειδοποίηση προϊσταμένου
+                if leave_request.user.manager:
+                    create_notification(
+                        user=leave_request.user.manager,
+                        title="Νέα Αίτηση Άδειας",
+                        message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name}",
+                        related_object=leave_request
+                    )
+            else:
+                # Παράκαμψη προϊσταμένου - ειδοποίηση χειριστών αδειών
+                leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+                for handler in leave_handlers:
+                    create_notification(
+                        user=handler,
+                        title="Νέα Αίτηση Άδειας (Άμεση Επεξεργασία)",
+                        message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name} - δεν απαιτεί έγκριση προϊσταμένου",
+                        related_object=leave_request
+                    )
             
             # Προσθήκη νέων συνημμένων αρχείων αν υπάρχουν
             private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',

@@ -111,7 +111,7 @@
                                     <td>
                                         <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
                                         {% if request.attachments.exists %}
-                                            <span class="badge bg-primary ms-1"><i class="bi bi-paperclip"></i> Συνημμένα</span>
+                                            <span class="badge bg-primary ms-1"><i class="bi bi-paperclip"></i> {{ request.attachments.count }} Συνημμένα</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -128,10 +128,18 @@
                                             <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
                                         {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
                                             <span class="badge bg-info">Για Πρωτόκολλο ΣΗΔΕ</span>
-                                            <br><small class="text-muted">{{ request.processed_at|date:"d/m/Y H:i" }}</small>
+                                            {% if request.manager_approved_at %}
+                                                <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
+                                            {% else %}
+                                                <br><small class="text-muted badge bg-secondary">Παρακάμφθηκε Προϊστάμενος</small>
+                                            {% endif %}
                                         {% elif request.status == 'UNDER_PROCESSING' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
-                                            <br><small class="text-muted">Πρωτοκολλήθηκε</small>
+                                            {% if request.protocol_created_at %}
+                                                <br><small class="text-muted">Πρωτοκολλήθηκε: {{ request.protocol_created_at|date:"d/m/Y H:i" }}</small>
+                                            {% else %}
+                                                <br><small class="text-muted">Πρωτοκολλήθηκε</small>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -341,6 +349,117 @@
                         <i class="bi bi-gear fs-1 text-muted"></i>
                         <h5 class="mt-3 text-muted">Δεν υπάρχουν αιτήσεις προς επεξεργασία</h5>
                         <p class="text-muted">Οι αιτήσεις που έχουν εγκριθεί από προϊσταμένους θα εμφανίζονται εδώ.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ολοκληρωμένες Αιτήσεις -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-check-circle"></i> Ολοκληρωμένες Αιτήσεις</h5>
+            </div>
+            <div class="card-body">
+                {% if completed_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Υπάλληλος</th>
+                                    <th>Τύπος Άδειας</th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
+                                    <th>Πρωτόκολλο</th>
+                                    <th>Ολοκληρώθηκε</th>
+                                    <th>Επεξεργάστηκε από</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in completed_requests %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ request.user.full_name }}</strong>
+                                        <br><small class="text-muted">{{ request.user.department.name }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ request.leave_type.name }}</span>
+                                        {% if request.attachments.exists %}
+                                            <span class="badge bg-primary ms-1"><i class="bi bi-paperclip"></i> {{ request.attachments.count }} Συνημμένα</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="date-greek">
+                                            {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
+                                    </td>
+                                    <td>
+                                        {% if request.protocol_number %}
+                                            <strong>{{ request.protocol_number }}</strong>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Ολοκληρώθηκε</span>
+                                        <br><small class="text-muted">{{ request.processed_at|date:"d/m/Y H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if request.processed_by %}
+                                            <strong>{{ request.processed_by.full_name }}</strong>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group-vertical" role="group">
+                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> Προβολή
+                                            </a>
+                                            {% if request.has_protocol_pdf %}
+                                                <a href="{% url 'leaves:serve_protocol_pdf' request.pk %}"
+                                                   class="btn btn-sm btn-outline-success mt-1"
+                                                   target="_blank">
+                                                    <i class="bi bi-file-earmark-pdf"></i> Πρωτόκολλο
+                                                </a>
+                                            {% endif %}
+                                            {% if request.has_exact_copy_pdf %}
+                                                <a href="{% url 'leaves:serve_exact_copy_pdf' request.pk %}"
+                                                   class="btn btn-sm btn-outline-info mt-1"
+                                                   target="_blank">
+                                                    <i class="bi bi-file-earmark-check"></i> Ακριβές Αντίγραφο
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if total_completed > 20 %}
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Εμφανίζονται οι τελευταίες 20 από συνολικά {{ total_completed }} ολοκληρωμένες αιτήσεις.
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle fs-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Δεν υπάρχουν ολοκληρωμένες αιτήσεις</h5>
+                        <p class="text-muted">Οι ολοκληρωμένες αιτήσεις θα εμφανίζονται εδώ.</p>
                     </div>
                 {% endif %}
             </div>
