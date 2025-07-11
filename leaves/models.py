@@ -395,7 +395,7 @@ class LeaveRequest(models.Model):
     
     def can_create_decision(self):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
-        return self.status == 'FOR_PROTOCOL_PDEDE'
+        return self.status == 'UNDER_PROCESSING'
     
     def get_end_date(self):
         """Υπολογίζει την ημερομηνία λήξης της άδειας"""

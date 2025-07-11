@@ -15,11 +15,15 @@ from leaves.crypto_utils import SecureFileHandler
 
 
 @login_required
-@staff_member_required
 def prepare_decision_preview(request, leave_request_id):
     """
     Προεπισκόπηση και επεξεργασία απόφασης
     """
+    # Έλεγχος δικαιωμάτων
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
     leave_request = get_object_or_404(LeaveRequest, id=leave_request_id)
     
     # Έλεγχος αν μπορεί να δημιουργηθεί απόφαση
@@ -32,6 +36,40 @@ def prepare_decision_preview(request, leave_request_id):
     infos = Info.objects.filter(is_active=True)
     ypopsins = Ypopsin.objects.filter(is_active=True)
     signees = Signee.objects.filter(is_active=True)
+    
+    # Δημιουργία default δεδομένων αν δεν υπάρχουν
+    if not logos.exists():
+        default_logo = Logo.objects.create(
+            logo_short="ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ",
+            logo="ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ\nΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΥΝΣΗ ΕΚΠΑΙΔΕΥΣΗΣ\nΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ",
+            is_active=True
+        )
+        logos = Logo.objects.filter(is_active=True)
+    
+    if not infos.exists():
+        default_info = Info.objects.create(
+            info_short="Πληροφορίες ΠΔΕΔΕ",
+            info="Στοιχεία Χειριστή Αδειών:\nΠεριφερειακή Διεύθυνση Εκπαίδευσης Δυτικής Ελλάδας\nΤμήμα Διοικητικού",
+            is_active=True
+        )
+        infos = Info.objects.filter(is_active=True)
+    
+    if not ypopsins.exists():
+        default_ypopsin = Ypopsin.objects.create(
+            ypopsin_short="Νομοθεσία Αδειών",
+            ypopsin="1. Τις διατάξεις του Ν. 3528/2007\n2. Τις σχετικές εγκυκλίους\n3. Την αίτηση του/της ενδιαφερομένου/ης",
+            is_active=True
+        )
+        ypopsins = Ypopsin.objects.filter(is_active=True)
+    
+    if not signees.exists():
+        default_signee = Signee.objects.create(
+            signee_short="Διευθυντής ΠΔΕΔΕ",
+            signee_name="Ο/Η Περιφερειακός/ή Διευθυντής/ντρια",
+            signee="Ο/Η Περιφερειακός/ή Διευθυντής/ντρια\nΕκπαίδευσης Δυτικής Ελλάδας\n\n\n(Υπογραφή)",
+            is_active=True
+        )
+        signees = Signee.objects.filter(is_active=True)
     
     # Προεπιλεγμένα δεδομένα
     default_logo = leave_request.decision_logo or logos.first()
@@ -56,14 +94,18 @@ def prepare_decision_preview(request, leave_request_id):
 
 
 @login_required
-@staff_member_required
 def generate_final_decision_pdf(request):
     """
     Δημιουργία τελικού PDF απόφασης
     """
+    # Έλεγχος δικαιωμάτων
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
     if request.method != 'POST':
         messages.error(request, 'Μη έγκυρη μέθοδος.')
-        return redirect('leaves:employee_list')
+        return redirect('leaves:handler_dashboard')
     
     # Λήψη δεδομένων από φόρμα
     leave_request_id = request.POST.get('leave_request_id')
@@ -155,11 +197,15 @@ def generate_final_decision_pdf(request):
 
 
 @login_required
-@staff_member_required
 def serve_decision_pdf(request, pk):
     """
     Σερβίρισμα κρυπτογραφημένου PDF απόφασης
     """
+    # Έλεγχος δικαιωμάτων
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
     # Έλεγχος αν υπάρχει PDF απόφασης

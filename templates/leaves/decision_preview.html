@@ -11,12 +11,12 @@
             <div class="card">
                 <div class="card-header">
                     <h4 class="card-title">
-                        <i class="fas fa-file-contract"></i>
+                        <i class="bi bi-file-earmark-text"></i>
                         Προεπισκόπηση και Επεξεργασία Απόφασης
                     </h4>
                     <div class="card-tools">
                         <a href="{% url 'leaves:detail' leave_request.id %}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Επιστροφή
+                            <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
                     </div>
                 </div>
@@ -33,7 +33,7 @@
                         <div class="col-md-6">
                             <h5>Κατάσταση</h5>
                             <p><strong>Στάτους:</strong> 
-                                <span class="badge badge-{{ leave_request.get_status_display_class }}">
+                                <span class="badge bg-{{ leave_request.get_status_display_class }}">
                                     {{ leave_request.get_status_display }}
                                 </span>
                             </p>
@@ -52,7 +52,7 @@
                                 <h5>Επιλογές Στοιχείων</h5>
                                 
                                 <!-- Επιλογή Λογότυπου -->
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="logo_id">Λογότυπο:</label>
                                     <select name="logo_id" id="logo_id" class="form-control" onchange="updatePreview()">
                                         {% for logo in logos %}
@@ -67,7 +67,7 @@
                                 </div>
 
                                 <!-- Επιλογή Πληροφοριών -->
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="info_id">Πληροφορίες:</label>
                                     <select name="info_id" id="info_id" class="form-control" onchange="updatePreview()">
                                         {% for info in infos %}
@@ -81,7 +81,7 @@
                                 </div>
 
                                 <!-- Επιλογή Έχοντας Υπόψη -->
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="ypopsin_id">Έχοντας Υπόψη:</label>
                                     <select name="ypopsin_id" id="ypopsin_id" class="form-control" onchange="updatePreview()">
                                         {% for ypopsin in ypopsins %}
@@ -95,7 +95,7 @@
                                 </div>
 
                                 <!-- Επιλογή Υπογράφοντα -->
-                                <div class="form-group">
+                                <div class="mb-3">
                                     <label for="signee_id">Υπογράφων:</label>
                                     <select name="signee_id" id="signee_id" class="form-control" onchange="updatePreview()">
                                         {% for signee in signees %}
@@ -109,9 +109,9 @@
                                 </div>
 
                                 <!-- Κουμπί Υποβολής -->
-                                <div class="form-group">
-                                    <button type="submit" class="btn btn-success btn-lg btn-block">
-                                        <i class="fas fa-file-pdf"></i>
+                                <div class="mb-3">
+                                    <button type="submit" class="btn btn-success btn-lg w-100">
+                                        <i class="bi bi-file-earmark-pdf"></i>
                                         Οριστικοποίηση και Δημιουργία PDF
                                     </button>
                                 </div>
@@ -153,13 +153,13 @@
                                     </div>
 
                                     <!-- Υπογραφή -->
-                                    <div class="text-right">
+                                    <div class="text-end">
                                         <h5>Υπογραφή:</h5>
                                         <textarea name="signee_text" id="signee_text" class="form-control" rows="3" placeholder="Επεξεργαστείτε τα στοιχεία υπογραφής...">{{ default_signee.signee|default:"" }}</textarea>
                                     </div>
 
                                     <!-- Ημερομηνία -->
-                                    <div class="text-right mt-3">
+                                    <div class="text-end mt-3">
                                         <p><strong>Ημερομηνία:</strong> {{ "now"|date:"d/m/Y" }}</p>
                                     </div>
                                 </div>

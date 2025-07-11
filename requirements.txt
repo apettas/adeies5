@@ -8,3 +8,7 @@ crispy-bootstrap5==2025.6
 whitenoise==6.9.0
 pycryptodome==3.23.0
 weasyprint==62.3
+gunicorn==21.2.0
+redis==5.0.1
+django-redis==5.4.0
+celery==5.3.4

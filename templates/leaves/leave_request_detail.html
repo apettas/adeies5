@@ -31,7 +31,7 @@
                         <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
-                        {% if leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                        {% if leave_request.status == 'UNDER_PROCESSING' %}
                             <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
                                 <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
                             </a>
