@@ -343,8 +343,8 @@
             </div>
         </div>
         
-        <!-- Συνημμένα Αρχεία - Για Χειριστή Αδειών, Προϊστάμενο και Ιδιοκτήτη της Αίτησης (GDPR) -->
-        {% if user.is_leave_handler or user == leave_request.user or user.is_department_manager or user.is_secretary %}
+        <!-- Συνημμένα Αρχεία - GDPR Protection: Μόνο χειριστής αδειών και ιδιοκτήτης για αναρρωτικές -->
+        {% if user.is_leave_handler or user == leave_request.user or user.is_department_manager and leave_request.leave_type.requires_approval or user.is_secretary and leave_request.leave_type.requires_approval %}
             {% if leave_request.attachments.exists %}
             <div class="card mb-4">
                 <div class="card-header">
@@ -406,7 +406,7 @@
             </div>
             {% endif %}
         {% else %}
-            <!-- Μη Χειριστής και Μη Ιδιοκτήτης - Μόνο ένδειξη ύπαρξης συνημμένων (GDPR) -->
+            <!-- Μη εξουσιοδοτημένος χρήστης - Μόνο ένδειξη ύπαρξης συνημμένων (GDPR) -->
             {% if leave_request.attachments.exists %}
             <div class="card mb-4">
                 <div class="card-header">
@@ -416,7 +416,11 @@
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i>
                         <strong>Προστασία Δεδομένων (GDPR):</strong> Η αίτηση περιέχει {{ leave_request.attachments.count }} συνημμένα αρχεία.
-                        Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα είναι προσβάσιμα μόνο από τον χειριστή αδειών.
+                        {% if not leave_request.leave_type.requires_approval %}
+                            Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα αναρρωτικών αδειών είναι προσβάσιμα μόνο από τον χειριστή αδειών και τον ιδιοκτήτη της αίτησης.
+                        {% else %}
+                            Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα είναι προσβάσιμα μόνο από εξουσιοδοτημένους χρήστες.
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -291,8 +291,13 @@ class LeaveRequest(models.Model):
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
             else:
-                # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
-                self.status = 'APPROVED_MANAGER'
+                # Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ που ανήκει σε ΚΕΔΑΣΥ
+                if self.is_kedasy_kepea_department():
+                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ακόμα και τα αναρρωτικά χρειάζονται πρωτόκολλο
+                    self.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
+                else:
+                    # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
+                    self.status = 'APPROVED_MANAGER'
             self.submitted_at = timezone.now()
             self.save()
             return True

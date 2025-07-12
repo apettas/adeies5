@@ -251,36 +251,24 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             
             employees_to_include.extend(list(other_department_users))
         
-        # Δημιουργία query conditions
+        # Δημιουργία query conditions - μόνο για αιτήσεις που χρειάζονται έγκριση
         query_conditions = Q(
             user__in=employees_to_include,
             status='SUBMITTED'
         )
         
-        # Αν είναι προϊστάμενος ΚΕΔΑΣΥ/ΚΕΠΕΑ, προσθέτουμε και αιτήσεις που χρειάζονται πρωτόκολλο
-        if (self.request.user.department and
-            self.request.user.department.department_type and
-            self.request.user.department.department_type.code in ['KEDASY', 'KEPEA']):
-            
-            # Προσθήκη αιτήσεων που χρειάζονται πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ από το τμήμα
-            protocol_condition = Q(
-                user__department=self.request.user.department,
-                status='PENDING_KEDASY_KEPEA_PROTOCOL'
-            )
-            
-            # Ενώνουμε τα κριτήρια με OR
-            query_conditions = query_conditions | protocol_condition
-        
         # Αν είναι προϊστάμενος ΚΕΔΑΣΥ, προσθέτουμε και αιτήσεις από ΣΔΕΥ που ανήκουν σε αυτό
+        # αλλά ΜΟΝΟ αυτές που είναι σε status SUBMITTED (χρειάζονται έγκριση)
         if (self.request.user.department and
             self.request.user.department.department_type and
             self.request.user.department.department_type.code == 'KEDASY'):
             
             # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
+            # αλλά μόνο αυτές που είναι SUBMITTED (χρειάζονται έγκριση)
             sdei_condition = Q(
                 user__department__department_type__code='SDEY',
                 user__department__parent_department=self.request.user.department,
-                status__in=['SUBMITTED', 'PENDING_KEDASY_KEPEA_PROTOCOL']
+                status='SUBMITTED'
             )
             
             # Ενώνουμε τα κριτήρια με OR
@@ -919,12 +907,22 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         can_view = (
             obj.user == user or  # Ο ίδιος ο αιτών
             (user.is_department_manager and user.department and obj.user.department and user.department.id == obj.user.department.id) or  # Στο ίδιο τμήμα
+            (user.is_secretary and user.department and obj.user.department and user.department.id == obj.user.department.id) or  # Γραμματέας στο ίδιο τμήμα
             user.is_leave_handler or  # Χειριστής αδειών
             user.is_administrator  # Διαχειριστής
         )
         
         # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
         if (not can_view and user.is_department_manager and
+            user.department and user.department.department_type and
+            user.department.department_type.code == 'KEDASY' and
+            obj.user.department and obj.user.department.department_type and
+            obj.user.department.department_type.code == 'SDEY' and
+            obj.user.department.parent_department == user.department):
+            can_view = True
+        
+        # Έλεγχος αν είναι γραμματέας ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
+        if (not can_view and user.is_secretary and
             user.department and user.department.department_type and
             user.department.department_type.code == 'KEDASY' and
             obj.user.department and obj.user.department.department_type and
@@ -1125,11 +1123,9 @@ def submit_final_request(request):
             if leave_request.leave_type.requires_approval:
                 leave_request.status = 'SUBMITTED'
             else:
-                # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ
-                if (leave_request.user.department and
-                    leave_request.user.department.department_type and
-                    leave_request.user.department.department_type.code in ['KEDASY', 'KEPEA']):
-                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ, ακόμη και οι αναρρωτικές άδειες χρειάζονται πρωτόκολλο
+                # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ με parent ΚΕΔΑΣΥ
+                if leave_request.is_kedasy_kepea_department():
+                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ακόμη και οι αναρρωτικές άδειες χρειάζονται πρωτόκολλο
                     # Δεν θέτουμε manager_approved_at γιατί θέλουμε να τη δει ο προϊστάμενος
                     leave_request.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
                 else:
@@ -1149,16 +1145,21 @@ def submit_final_request(request):
                         related_object=leave_request
                     )
             else:
-                # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ
-                if (leave_request.user.department and
-                    leave_request.user.department.department_type and
-                    leave_request.user.department.department_type.code in ['KEDASY', 'KEPEA']):
-                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ, ειδοποίηση γραμματέα και προϊσταμένου για πρωτόκολλο
+                # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ με parent ΚΕΔΑΣΥ
+                if leave_request.is_kedasy_kepea_department():
+                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ειδοποίηση γραμματέα και προϊσταμένου για πρωτόκολλο
+                    # Για ΣΔΕΥ, βρίσκουμε τους γραμματείς του parent ΚΕΔΑΣΥ
+                    target_department = leave_request.user.department
+                    if (leave_request.user.department.department_type and
+                        leave_request.user.department.department_type.code == 'SDEY' and
+                        leave_request.user.department.parent_department):
+                        target_department = leave_request.user.department.parent_department
+                    
                     # Ειδοποίηση γραμματέα
                     secretaries = User.objects.filter(
                         roles__code='SECRETARY',
                         is_active=True,
-                        department=leave_request.user.department
+                        department=target_department
                     ).distinct()
                     for secretary in secretaries:
                         create_notification(
@@ -1168,10 +1169,23 @@ def submit_final_request(request):
                             related_object=leave_request
                         )
                     
-                    # Ειδοποίηση προϊσταμένου αν υπάρχει
-                    if leave_request.user.manager:
+                    # Ειδοποίηση προϊσταμένου - για ΣΔΕΥ, ειδοποιούμε τον ΚΕΔΑΣΥ προϊστάμενο
+                    manager_to_notify = leave_request.user.manager
+                    if (leave_request.user.department.department_type and
+                        leave_request.user.department.department_type.code == 'SDEY' and
+                        leave_request.user.department.parent_department):
+                        # Βρίσκουμε τον προϊστάμενο του ΚΕΔΑΣΥ
+                        kedasy_managers = User.objects.filter(
+                            roles__code='MANAGER',
+                            department=leave_request.user.department.parent_department,
+                            is_active=True
+                        ).distinct()
+                        if kedasy_managers.exists():
+                            manager_to_notify = kedasy_managers.first()
+                    
+                    if manager_to_notify:
                         create_notification(
-                            user=leave_request.user.manager,
+                            user=manager_to_notify,
                             title="Νέα Αίτηση ΚΕΔΑΣΥ/ΚΕΠΕΑ για Πρωτόκολλο",
                             message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name} - χρειάζεται πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ",
                             related_object=leave_request
@@ -1323,40 +1337,76 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτοκόλληση από το τμήμα του γραμματέα
         if self.request.user.department:
-            return LeaveRequest.objects.filter(
+            # Βασικό κριτήριο: αιτήσεις από το ίδιο τμήμα
+            department_filter = Q(
                 status='PENDING_KEDASY_KEPEA_PROTOCOL',
                 user__department=self.request.user.department
-            ).select_related('user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at')
+            )
+            
+            # Αν ο γραμματέας είναι σε ΚΕΔΑΣΥ, προσθέτουμε και αιτήσεις από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
+            if (self.request.user.department.department_type and
+                self.request.user.department.department_type.code == 'KEDASY'):
+                
+                # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
+                sdei_condition = Q(
+                    status='PENDING_KEDASY_KEPEA_PROTOCOL',
+                    user__department__department_type__code='SDEY',
+                    user__department__parent_department=self.request.user.department
+                )
+                
+                # Ενώνουμε τα κριτήρια με OR
+                department_filter = department_filter | sdei_condition
+            
+            return LeaveRequest.objects.filter(department_filter).select_related(
+                'user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by'
+            ).order_by('-manager_approved_at', '-submitted_at')
         return LeaveRequest.objects.none()
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Στατιστικά μόνο για το τμήμα του γραμματέα
-        department_filter = {}
+        # Στατιστικά για το τμήμα του γραμματέα και ΣΔΕΥ τμήματα αν είναι ΚΕΔΑΣΥ
         if self.request.user.department:
-            department_filter['user__department'] = self.request.user.department
+            # Βασικό φίλτρο για το τμήμα του γραμματέα
+            department_filter = Q(user__department=self.request.user.department)
+            
+            # Αν ο γραμματέας είναι σε ΚΕΔΑΣΥ, προσθέτουμε και ΣΔΕΥ τμήματα
+            if (self.request.user.department.department_type and
+                self.request.user.department.department_type.code == 'KEDASY'):
+                
+                sdei_filter = Q(
+                    user__department__department_type__code='SDEY',
+                    user__department__parent_department=self.request.user.department
+                )
+                department_filter = department_filter | sdei_filter
+            
+            context.update({
+                'pending_protocol_count': self.get_queryset().count(),
+                'completed_this_month': LeaveRequest.objects.filter(
+                    kedasy_kepea_protocol_date__month=timezone.now().month,
+                    kedasy_kepea_protocol_number__isnull=False
+                ).filter(department_filter).count(),
+                'total_processed': LeaveRequest.objects.filter(
+                    kedasy_kepea_protocol_number__isnull=False
+                ).filter(department_filter).count(),
+            })
+            
+            # Πρόσφατα πρωτοκολλημένες (τελευταίες 20) από το τμήμα του γραμματέα και ΣΔΕΥ
+            recent_processed = LeaveRequest.objects.filter(
+                kedasy_kepea_protocol_number__isnull=False
+            ).filter(department_filter).select_related(
+                'user', 'user__department', 'leave_type', 'kedasy_kepea_protocol_by'
+            ).order_by('-kedasy_kepea_protocol_date')[:20]
+            
+            context['recent_processed'] = recent_processed
+        else:
+            context.update({
+                'pending_protocol_count': 0,
+                'completed_this_month': 0,
+                'total_processed': 0,
+            })
+            context['recent_processed'] = []
         
-        context.update({
-            'pending_protocol_count': self.get_queryset().count(),
-            'completed_this_month': LeaveRequest.objects.filter(
-                kedasy_kepea_protocol_date__month=timezone.now().month,
-                kedasy_kepea_protocol_number__isnull=False,
-                **department_filter
-            ).count(),
-            'total_processed': LeaveRequest.objects.filter(
-                kedasy_kepea_protocol_number__isnull=False,
-                **department_filter
-            ).count(),
-        })
-        
-        # Πρόσφατα πρωτοκολλημένες (τελευταίες 20) μόνο από το τμήμα του γραμματέα
-        recent_processed = LeaveRequest.objects.filter(
-            kedasy_kepea_protocol_number__isnull=False,
-            **department_filter
-        ).select_related('user', 'user__department', 'leave_type', 'kedasy_kepea_protocol_by').order_by('-kedasy_kepea_protocol_date')[:20]
-        
-        context['recent_processed'] = recent_processed
         context['today'] = timezone.now().date()
         
         return context
