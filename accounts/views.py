@@ -11,6 +11,7 @@ from .models import User, Role, Department
 from .forms import UserRegistrationForm
 
 
+
 class DashboardView(LoginRequiredMixin, TemplateView):
     """Dashboard για όλους τους χρήστες"""
     template_name = 'accounts/dashboard.html'
@@ -66,7 +67,6 @@ def login_view(request):
             # Έλεγχος αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα
             if user.can_access_system():
                 login(request, user)
-                messages.success(request, f'Καλώς ήρθατε, {user.full_name}!')
                 return redirect('accounts:dashboard')
             else:
                 # Ο χρήστης είναι PENDING ή REJECTED

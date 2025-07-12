@@ -12,32 +12,70 @@ register = template.Library()
 @register.filter
 def to_accusative(name):
     """
-    Μετατροπή ονόματος σε αιτιατική πτώση (απλοποιημένη προσέγγιση)
+    Μετατροπή πλήρους ονόματος από ονομαστική σε αιτιατική πτώση
     """
     if not name:
         return name
     
-    name = name.strip()
+    # Διαχωρίζουμε όνομα και επώνυμο
+    parts = name.strip().split()
+    if len(parts) < 2:
+        return name
     
-    # Βασικές μετατροπές για κοινά ονόματα
-    accusative_map = {
-        # Ανδρικά ονόματα
-        'ος': 'ο',
-        'ης': 'η',
-        'ας': 'α',
-        # Γυναικεία ονόματα
-        'α': 'α',
-        'η': 'η',
-        'ω': 'ω',
-    }
+    first_name = parts[0]
+    last_name = parts[1]
     
-    # Ελέγχουμε τις καταλήξεις
-    for ending, replacement in accusative_map.items():
-        if name.lower().endswith(ending):
-            return name[:-len(ending)] + replacement
+    # Μετατροπή ονόματος σε αιτιατική
+    first_name_accusative = convert_first_name_to_accusative(first_name)
     
-    # Αν δεν βρήκαμε κατάληξη, επιστρέφουμε το όνομα όπως είναι
+    # Μετατροπή επωνύμου σε αιτιατική
+    last_name_accusative = convert_last_name_to_accusative(last_name)
+    
+    return f"{first_name_accusative} {last_name_accusative}"
+
+def convert_first_name_to_accusative(name):
+    """Μετατροπή ονόματος σε αιτιατική πτώση"""
+    # Ανδρικά ονόματα
+    if name.endswith('ας'):
+        return name[:-2] + 'α'  # Ανδρέας → Ανδρέα
+    elif name.endswith('ης'):
+        return name[:-2] + 'η'  # Γιάννης → Γιάννη
+    elif name.endswith('ος'):
+        return name[:-2] + 'ο'  # Νίκος → Νίκο
+    elif name.endswith('ες'):
+        return name[:-2] + 'η'  # Σωκράτης → Σωκράτη
+    
+    # Γυναικεία ονόματα (συνήθως μένουν ίδια στην αιτιατική)
+    elif name.endswith('α'):
+        return name  # Μαρία → Μαρία
+    elif name.endswith('η'):
+        return name  # Ελένη → Ελένη
+    elif name.endswith('ω'):
+        return name  # Καλλιρρόη → Καλλιρρόη
+    
+    # Αν δεν ταιριάζει κάποιος κανόνας, επιστρέφουμε το αρχικό
     return name
+
+def convert_last_name_to_accusative(surname):
+    """Μετατροπή επωνύμου σε αιτιατική πτώση"""
+    # Ανδρικά επώνυμα
+    if surname.endswith('ας'):
+        return surname[:-2] + 'α'  # Πέττας → Πέττα
+    elif surname.endswith('ης'):
+        return surname[:-2] + 'η'  # Παπαδάκης → Παπαδάκη
+    elif surname.endswith('ος'):
+        return surname[:-2] + 'ο'  # Παπαδόπουλος → Παπαδόπουλο
+    elif surname.endswith('ου'):
+        return surname  # Γεωργίου → Γεωργίου (ήδη γενική, μένει ίδιο)
+    
+    # Γυναικεία επώνυμα (συνήθως μένουν ίδια)
+    elif surname.endswith('α'):
+        return surname  # Καρρά → Καρρά
+    elif surname.endswith('η'):
+        return surname  # Παπαδοπούλη → Παπαδοπούλη
+    
+    # Αν δεν ταιριάζει κάποιος κανόνας, επιστρέφουμε το αρχικό
+    return surname
 
 @register.filter
 def convert_days_to_greek_genitive(days):

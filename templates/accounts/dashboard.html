@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
+{% load decision_tags %}
 
 {% block title %}Dashboard - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
 
 {% block content %}
 <div class="row mt-4">
     <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Καλώς ήρθες, {{ user.full_name }}!</h2>
-            <div>
+        <div class="text-center mb-4">
+            <h2>Καλώς ήρθες, {{ user.full_name|to_accusative }}!</h2>
+            <div class="mt-2">
                 {% if user_roles %}
                     {% for role in user.roles.all %}
                     <span class="badge bg-primary me-1">{{ role.name }}</span>
