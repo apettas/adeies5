@@ -58,7 +58,7 @@
 
 <!-- Στατιστικά ΣΗΔΕ -->
 <div class="row mb-4">
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card text-center bg-warning bg-opacity-10">
             <div class="card-body">
                 <i class="bi bi-send fs-3 text-warning"></i>
@@ -68,12 +68,22 @@
         </div>
     </div>
     
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card text-center bg-info bg-opacity-10">
             <div class="card-body">
                 <i class="bi bi-hourglass-split fs-3 text-info"></i>
                 <h5 class="mt-2">{{ under_processing_count }}</h5>
                 <small class="text-muted">Υπό Επεξεργασία ΣΗΔΕ</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center bg-secondary bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-clock-history fs-3 text-secondary"></i>
+                <h5 class="mt-2">{{ pending_kedasy_kepea_count|default:0 }}</h5>
+                <small class="text-muted">Αναμονή Γραμματείας ΚΕΔΑΣΥ/ΚΕΠΕΑ</small>
             </div>
         </div>
     </div>
@@ -126,6 +136,9 @@
                                         {% if request.status == 'APPROVED_MANAGER' %}
                                             <span class="badge bg-warning">Εγκρίθηκε από Προϊστάμενο</span>
                                             <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
+                                        {% elif request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                            <span class="badge bg-secondary">Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</span>
+                                            <br><small class="text-muted">Αναμονή Γραμματείας</small>
                                         {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
                                             <span class="badge bg-info">Για Πρωτόκολλο ΣΗΔΕ</span>
                                             {% if request.manager_approved_at %}
@@ -147,6 +160,12 @@
                                             <strong>{{ request.protocol_number }}</strong>
                                         {% else %}
                                             <small class="text-muted">Δεν έχει πρωτοκολληθεί</small>
+                                        {% endif %}
+                                        
+                                        {% if request.kedasy_kepea_protocol_number %}
+                                            <br><small class="text-primary">
+                                                <i class="bi bi-gear"></i> ΚΕΔΑΣΥ/ΚΕΠΕΑ: {{ request.kedasy_kepea_protocol_number }}
+                                            </small>
                                         {% endif %}
                                     </td>
                                     <td>

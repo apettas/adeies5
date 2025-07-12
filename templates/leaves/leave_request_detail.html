@@ -137,6 +137,8 @@
                                 <span class="badge bg-warning fs-6">Υποβλήθηκε</span>
                             {% elif leave_request.status == 'APPROVED_MANAGER' %}
                                 <span class="badge bg-info fs-6">Εγκρίθηκε από Προϊστάμενο</span>
+                            {% elif leave_request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                <span class="badge bg-warning fs-6">Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</span>
                             {% elif leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
                                 <span class="badge bg-secondary fs-6">Για Πρωτόκολλο ΠΔΕΔΕ</span>
                             {% elif leave_request.status == 'UNDER_PROCESSING' %}
@@ -176,6 +178,37 @@
                         <p class="mt-2"><span class="badge bg-dark fs-6">{{ leave_request.protocol_number }}</span></p>
                     </div>
                 </div>
+                {% endif %}
+                
+                <!-- ΚΕΔΑΣΥ/ΚΕΠΕΑ Protocol Information -->
+                {% if leave_request.is_kedasy_kepea_department %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Ειδικό Workflow ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong> Αυτή η αίτηση ακολουθεί τη διαδικασία των τμημάτων ΚΕΔΑΣΥ και ΚΕΠΕΑ με επιπλέον στάδιο πρωτοκόλλησης.
+                        </div>
+                    </div>
+                </div>
+                
+                {% if leave_request.kedasy_kepea_protocol_number %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong>
+                        <p class="mt-2"><span class="badge bg-primary fs-6">{{ leave_request.kedasy_kepea_protocol_number }}</span></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ημερομηνία Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong>
+                        <p class="mt-2 date-greek">{{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
+                    </div>
+                    {% if leave_request.kedasy_kepea_protocol_by %}
+                    <div class="col-12 mb-3">
+                        <strong>Πρωτοκολλήθηκε από:</strong>
+                        <p class="mt-2">{{ leave_request.kedasy_kepea_protocol_by.full_name }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -306,8 +339,8 @@
             </div>
         </div>
         
-        <!-- Συνημμένα Αρχεία - Για Χειριστή Αδειών και Ιδιοκτήτη της Αίτησης (GDPR) -->
-        {% if user.is_leave_handler or user == leave_request.user %}
+        <!-- Συνημμένα Αρχεία - Για Χειριστή Αδειών, Προϊστάμενο και Ιδιοκτήτη της Αίτησης (GDPR) -->
+        {% if user.is_leave_handler or user == leave_request.user or user.is_department_manager or user.is_secretary %}
             {% if leave_request.attachments.exists %}
             <div class="card mb-4">
                 <div class="card-header">

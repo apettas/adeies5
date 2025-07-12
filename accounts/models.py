@@ -269,6 +269,10 @@ class User(AbstractUser):
         return self.roles.filter(code='administrator').exists()
     
     @property
+    def is_secretary(self):
+        return self.roles.filter(code='SECRETARY').exists()
+    
+    @property
     def is_employee(self):
         return self.roles.filter(code='EMPLOYEE').exists()
     

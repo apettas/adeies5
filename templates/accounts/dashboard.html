@@ -69,6 +69,19 @@
     </div>
     {% endif %}
     
+    {% if is_kedasy_kepea_manager %}
+    <div class="col-md-4 mb-3">
+        <div class="card text-center card-hover">
+            <div class="card-body">
+                <i class="bi bi-archive fs-1 text-warning mb-3"></i>
+                <h5 class="card-title">ΚΕΔΑΣΥ/ΚΕΠΕΑ Πρωτοκόλληση</h5>
+                <p class="card-text">{{ kedasy_kepea_pending_protocol_count|default:0 }} προς πρωτοκόλληση</p>
+                <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-warning">Πρωτοκόλληση</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     {% if user.is_leave_handler %}
     <div class="col-md-4 mb-3">
         <div class="card text-center card-hover">
@@ -77,6 +90,19 @@
                 <h5 class="card-title">Προς Επεξεργασία</h5>
                 <p class="card-text">{{ pending_processing|default:0 }} αιτήσεις</p>
                 <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">Επεξεργασία</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if user.is_secretary %}
+    <div class="col-md-4 mb-3">
+        <div class="card text-center card-hover">
+            <div class="card-body">
+                <i class="bi bi-archive fs-1 text-warning mb-3"></i>
+                <h5 class="card-title">Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ</h5>
+                <p class="card-text">{{ pending_kedasy_kepea_protocol|default:0 }} προς πρωτοκόλληση</p>
+                <a href="{% url 'leaves:secretary_dashboard' %}" class="btn btn-warning">Πρωτοκόλληση</a>
             </div>
         </div>
     </div>
@@ -130,6 +156,10 @@
                     <li>Να προσθέτετε σχόλια στις εγκρίσεις/απορρίψεις</li>
                     <li>Να παρακολουθείτε τις αιτήσεις του τμήματός σας και των υποτμημάτων</li>
                     <li>Να βλέπετε λίστα χρηστών της ιεραρχίας σας</li>
+                    {% if is_kedasy_kepea_manager %}
+                    <li><strong>Ειδικό για ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong> Να προσθέτετε αριθμούς πρωτοκόλλου σε αναρρωτικές άδειες</li>
+                    <li>Να διαχειρίζεστε το ειδικό workflow πρωτοκόλλησης</li>
+                    {% endif %}
                 </ul>
                 {% endif %}
                 
@@ -140,6 +170,16 @@
                     <li>Να προσθέτετε αριθμούς πρωτοκόλλου</li>
                     <li>Να ολοκληρώνετε ή να απορρίπτετε αιτήσεις</li>
                     <li>Να βλέπετε όλους τους χρήστες και το ιστορικό τους</li>
+                </ul>
+                {% endif %}
+                
+                {% if user.is_secretary %}
+                <h6>Ως Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ μπορείτε:</h6>
+                <ul>
+                    <li>Να διαχειρίζεστε αιτήσεις από τμήματα ΚΕΔΑΣΥ και ΚΕΠΕΑ</li>
+                    <li>Να προσθέτετε αριθμούς πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</li>
+                    <li>Να εποπτεύετε το ειδικό workflow πριν από την αποστολή στο ΣΗΔΕ</li>
+                    <li>Να παρακολουθείτε τις πρωτοκολλημένες αιτήσεις</li>
                 </ul>
                 {% endif %}
                 

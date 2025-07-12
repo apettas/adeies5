@@ -56,6 +56,47 @@
     </div>
 </div>
 
+<!-- Στατιστικά ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα -->
+{% if is_kedasy_kepea_manager %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h4><i class="bi bi-archive text-warning"></i> Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ</h4>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-clock fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ kedasy_kepea_pending_protocol_count }}</h5>
+                <small class="text-muted">Προς Πρωτοκόλληση</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center bg-success bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-check-circle fs-3 text-success"></i>
+                <h5 class="mt-2">{{ kedasy_kepea_completed_this_month }}</h5>
+                <small class="text-muted">Πρωτοκολλήθηκαν Μήνα</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card text-center bg-info bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-archive fs-3 text-info"></i>
+                <h5 class="mt-2">{{ kedasy_kepea_total_processed }}</h5>
+                <small class="text-muted">Συνολικά Επεξεργασμένες</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Λίστα Αιτήσεων προς Έγκριση -->
 <div class="row">
     <div class="col-12">
@@ -75,6 +116,7 @@
                                     <th>Ημέρες</th>
                                     <th>Υποβολή</th>
                                     <th>Περιγραφή</th>
+                                    <th>Workflow</th>
                                     <th>Ενέργειες</th>
                                 </tr>
                             </thead>
@@ -107,24 +149,56 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-success" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#approveModal{{ request.pk }}">
-                                                <i class="bi bi-check"></i> Έγκριση
-                                            </button>
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-danger" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#rejectModal{{ request.pk }}">
-                                                <i class="bi bi-x"></i> Απόρριψη
-                                            </button>
-                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}" 
+                                        {% if request.is_kedasy_kepea_department %}
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-gear"></i> ΚΕΔΑΣΥ/ΚΕΠΕΑ
+                                            </span>
+                                            <br><small class="text-muted">Ειδικό workflow</small>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">
+                                                <i class="bi bi-arrow-right"></i> Κανονικό
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'SUBMITTED' %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-success"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#approveModal{{ request.pk }}">
+                                                    <i class="bi bi-check"></i> Έγκριση
+                                                </button>
+                                                <button type="button"
+                                                        class="btn btn-sm btn-danger"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#rejectModal{{ request.pk }}">
+                                                    <i class="bi bi-x"></i> Απόρριψη
+                                                </button>
+                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i> Προβολή
+                                                </a>
+                                            </div>
+                                        {% elif request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                            <div class="btn-group-vertical" role="group">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-primary mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#protocolModal{{ request.pk }}">
+                                                    <i class="bi bi-archive"></i> Προσθήκη Πρωτοκόλλου
+                                                </button>
+                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i> Προβολή
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}"
                                                class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i> Προβολή
                                             </a>
-                                        </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 
@@ -144,9 +218,30 @@
                                                     <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
                                                     <p><strong>Ημέρες:</strong> {{ request.total_days }}</p>
                                                     
+                                                    {% if request.is_kedasy_kepea_department %}
+                                                    <div class="alert alert-info">
+                                                        <i class="bi bi-info-circle"></i>
+                                                        <strong>Ειδικό Workflow ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong> Αυτή η αίτηση ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ. Μπορείτε να προσθέσετε το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ κατά την έγκριση.
+                                                    </div>
+                                                    
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-8">
+                                                            <label for="kedasy_protocol_number{{ request.pk }}" class="form-label">Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</label>
+                                                            <input type="text" class="form-control" id="kedasy_protocol_number{{ request.pk }}" name="kedasy_protocol_number"
+                                                                   placeholder="π.χ. ΚΕΔΑΣΥ/123/2024">
+                                                            <small class="text-muted">Προαιρετικό - μπορεί να προστεθεί αργότερα από τη Γραμματεία</small>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label for="kedasy_protocol_date{{ request.pk }}" class="form-label">Ημερομηνία Πρωτοκόλλου</label>
+                                                            <input type="date" class="form-control" id="kedasy_protocol_date{{ request.pk }}" name="kedasy_protocol_date"
+                                                                   value="{{ today|date:'Y-m-d' }}">
+                                                        </div>
+                                                    </div>
+                                                    {% endif %}
+                                                    
                                                     <div class="mb-3">
-                                                        <label for="comments" class="form-label">Σχόλια (προαιρετικά)</label>
-                                                        <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
+                                                        <label for="comments{{ request.pk }}" class="form-label">Σχόλια (προαιρετικά)</label>
+                                                        <textarea class="form-control" id="comments{{ request.pk }}" name="comments" rows="3"></textarea>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -190,10 +285,65 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- Modal Προσθήκης Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ -->
+                                {% if request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                <div class="modal fade" id="protocolModal{{ request.pk }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Προσθήκη Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="post" action="{% url 'leaves:add_kedasy_kepea_protocol' request.pk %}">
+                                                {% csrf_token %}
+                                                <div class="modal-body">
+                                                    <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
+                                                    <p><strong>Τμήμα:</strong> {{ request.user.department.name }} ({{ request.user.department.department_type.name }})</p>
+                                                    <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
+                                                    <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
+                                                    <p><strong>Ημέρες:</strong> {{ request.total_days }}</p>
+                                                    
+                                                    <div class="alert alert-info">
+                                                        <i class="bi bi-info-circle"></i>
+                                                        <strong>Πληροφορίες:</strong> Αυτή η αίτηση ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ και χρειάζεται ειδικό πρωτόκολλο πριν προχωρήσει στο ΣΗΔΕ.
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="protocol_number" class="form-label">Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ <span class="text-danger">*</span></label>
+                                                        <input type="text" class="form-control" id="protocol_number" name="protocol_number"
+                                                               placeholder="π.χ. ΚΕΔΑΣΥ/123/2024" required>
+                                                        <small class="text-muted">Εισάγετε τον αριθμό πρωτοκόλλου που δόθηκε από το ΚΕΔΑΣΥ/ΚΕΠΕΑ</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="protocol_date" class="form-label">Ημερομηνία Πρωτοκόλλησης</label>
+                                                        <input type="date" class="form-control" id="protocol_date" name="protocol_date"
+                                                               value="{{ today|date:'Y-m-d' }}">
+                                                        <small class="text-muted">Αν δεν επιλεγεί, θα χρησιμοποιηθεί η σημερινή ημερομηνία</small>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="comments" class="form-label">Σχόλια (προαιρετικά)</label>
+                                                        <textarea class="form-control" id="comments" name="comments" rows="3"
+                                                                  placeholder="Τυχόν σχόλια ή παρατηρήσεις..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="bi bi-archive"></i> Προσθήκη Πρωτοκόλλου
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                           </tbody>
+                       </table>
+                   </div>
                     
                     <!-- Pagination -->
                     {% if is_paginated %}
@@ -237,4 +387,223 @@
         </div>
     </div>
 </div>
+
+<!-- Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ προς Πρωτοκόλληση (μόνο για προϊσταμένους ΚΕΔΑΣΥ/ΚΕΠΕΑ) -->
+{% if is_kedasy_kepea_manager %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clipboard-check"></i> Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ προς Πρωτοκόλληση</h5>
+            </div>
+            <div class="card-body">
+                {% if kedasy_kepea_pending_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Υπάλληλος</th>
+                                    <th>Τμήμα</th>
+                                    <th>Τύπος Άδειας</th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
+                                    <th>Έγκριση Προϊσταμένου</th>
+                                    <th>Ενέργειες</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in kedasy_kepea_pending_requests %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ request.user.full_name }}</strong>
+                                                <br><small class="text-muted">{{ request.user.employee_id }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning">
+                                                    {{ request.user.department.name }}
+                                                </span>
+                                                <br><small class="text-muted">{{ request.user.department.department_type.name }}</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="date-greek">
+                                                    {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
+                                            </td>
+                                            <td>
+                                                {% if request.manager_approved_at %}
+                                                    <span class="badge bg-success">Εγκρίθηκε</span>
+                                                    <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
+                                                    {% if request.manager_approved_by %}
+                                                        <br><small class="text-muted">από {{ request.manager_approved_by.full_name }}</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Δεν απαιτείται</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group-vertical" role="group">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-primary mb-1"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#kedasyProtocolModal{{ request.pk }}">
+                                                        <i class="bi bi-archive"></i> Προσθήκη Πρωτοκόλλου
+                                                    </button>
+                                                    <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                                       class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-eye"></i> Προβολή
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Modal Προσθήκης Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ -->
+                                        <div class="modal fade" id="kedasyProtocolModal{{ request.pk }}" tabindex="-1">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Προσθήκη Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <form method="post" action="{% url 'leaves:add_kedasy_kepea_protocol' request.pk %}">
+                                                        {% csrf_token %}
+                                                        <div class="modal-body">
+                                                            <p><strong>Υπάλληλος:</strong> {{ request.user.full_name }}</p>
+                                                            <p><strong>Τμήμα:</strong> {{ request.user.department.name }} ({{ request.user.department.department_type.name }})</p>
+                                                            <p><strong>Τύπος Άδειας:</strong> {{ request.leave_type.name }}</p>
+                                                            <p><strong>Περίοδος:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</p>
+                                                            <p><strong>Ημέρες:</strong> {{ request.total_days }}</p>
+                                                            
+                                                            <div class="alert alert-info">
+                                                                <i class="bi bi-info-circle"></i>
+                                                                <strong>Πληροφορίες:</strong> Αυτή η αίτηση ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ και χρειάζεται ειδικό πρωτόκολλο πριν προχωρήσει στο ΣΗΔΕ.
+                                                            </div>
+                                                            
+                                                            <div class="mb-3">
+                                                                <label for="protocol_number" class="form-label">Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ <span class="text-danger">*</span></label>
+                                                                <input type="text" class="form-control" id="protocol_number" name="protocol_number"
+                                                                       placeholder="π.χ. ΚΕΔΑΣΥ/123/2024" required>
+                                                                <small class="text-muted">Εισάγετε τον αριθμό πρωτοκόλλου που δόθηκε από το ΚΕΔΑΣΥ/ΚΕΠΕΑ</small>
+                                                            </div>
+                                                            
+                                                            <div class="mb-3">
+                                                                <label for="protocol_date" class="form-label">Ημερομηνία Πρωτοκόλλησης</label>
+                                                                <input type="date" class="form-control" id="protocol_date" name="protocol_date"
+                                                                       value="{{ today|date:'Y-m-d' }}">
+                                                                <small class="text-muted">Αν δεν επιλεγεί, θα χρησιμοποιηθεί η σημερινή ημερομηνία</small>
+                                                            </div>
+                                                            
+                                                            <div class="mb-3">
+                                                                <label for="comments" class="form-label">Σχόλια (προαιρετικά)</label>
+                                                                <textarea class="form-control" id="comments" name="comments" rows="3"
+                                                                          placeholder="Τυχόν σχόλια ή παρατηρήσεις..."></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                                                            <button type="submit" class="btn btn-primary">
+                                                                <i class="bi bi-archive"></i> Προσθήκη Πρωτοκόλλου
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-archive fs-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Δεν υπάρχουν αιτήσεις προς πρωτοκόλληση</h5>
+                        <p class="text-muted">Οι αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που χρειάζονται πρωτοκόλληση θα εμφανίζονται εδώ.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Πρόσφατα Πρωτοκολλημένες ΚΕΔΑΣΥ/ΚΕΠΕΑ -->
+{% if kedasy_kepea_recent_processed %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-check-circle"></i> Πρόσφατα Πρωτοκολλημένες ΚΕΔΑΣΥ/ΚΕΠΕΑ</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Υπάλληλος</th>
+                                <th>Τύπος Άδειας</th>
+                                <th>Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</th>
+                                <th>Ημερομηνία Πρωτοκόλλησης</th>
+                                <th>Πρωτοκολλήθηκε από</th>
+                                <th>Κατάσταση</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in kedasy_kepea_recent_processed %}
+                            <tr>
+                                <td>
+                                    <strong>{{ request.user.full_name }}</strong>
+                                    <br><small class="text-muted">{{ request.user.employee_id }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ request.kedasy_kepea_protocol_number }}</strong>
+                                </td>
+                                <td>
+                                    <span class="date-greek">{{ request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</span>
+                                </td>
+                                <td>
+                                    {{ request.kedasy_kepea_protocol_by.full_name }}
+                                </td>
+                                <td>
+                                    {% if request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                        <span class="badge bg-info">Προς ΣΗΔΕ</span>
+                                    {% elif request.status == 'UNDER_PROCESSING' %}
+                                        <span class="badge bg-primary">Υπό Επεξεργασία</span>
+                                    {% elif request.status == 'COMPLETED' %}
+                                        <span class="badge bg-success">Ολοκληρώθηκε</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ request.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Προβολή
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Εμφανίζονται οι τελευταίες 10 από συνολικά {{ kedasy_kepea_total_processed }} πρωτοκολλημένες αιτήσεις.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
 {% endblock %}

@@ -42,9 +42,23 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     status='SUBMITTED'
                 ).count()
                 
+                # Αν είναι προϊστάμενος ΚΕΔΑΣΥ/ΚΕΠΕΑ, προσθέτουμε και τα στατιστικά πρωτοκόλλου
+                if (user.department and user.department.department_type and
+                    user.department.department_type.code in ['KEDASY', 'KEPEA']):
+                    from django.db.models import Q
+                    context['is_kedasy_kepea_manager'] = True
+                    context['kedasy_kepea_pending_protocol_count'] = LeaveRequest.objects.filter(
+                        status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                    ).count()
+                
             elif user.is_leave_handler:
                 context['pending_processing'] = LeaveRequest.objects.filter(
                     status='APPROVED_MANAGER'
+                ).count()
+                
+            elif user.is_secretary:
+                context['pending_kedasy_kepea_protocol'] = LeaveRequest.objects.filter(
+                    status='PENDING_KEDASY_KEPEA_PROTOCOL'
                 ).count()
         except ImportError:
             # Αν το leaves app δεν είναι διαθέσιμο ακόμα

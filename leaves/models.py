@@ -144,6 +144,7 @@ class LeaveRequest(models.Model):
         ('SUBMITTED', 'Υποβλήθηκε'),
         ('APPROVED_MANAGER', 'Εγκρίθηκε από Προϊστάμενο'),
         ('REJECTED_MANAGER', 'Απορρίφθηκε από Προϊστάμενο'),
+        ('PENDING_KEDASY_KEPEA_PROTOCOL', 'Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ'),
         ('FOR_PROTOCOL_PDEDE', 'Για Πρωτόκολλο ΠΔΕΔΕ'),
         ('UNDER_PROCESSING', 'Προς Επεξεργασία'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
@@ -156,7 +157,7 @@ class LeaveRequest(models.Model):
     description = models.TextField('Περιγραφή/Αιτιολογία', blank=True)
     
     # Στάτους και ημερομηνίες
-    status = models.CharField('Κατάσταση', max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    status = models.CharField('Κατάσταση', max_length=40, choices=STATUS_CHOICES, default='DRAFT')
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     updated_at = models.DateTimeField('Ημερομηνία Ενημέρωσης', auto_now=True)
     submitted_at = models.DateTimeField('Ημερομηνία Υποβολής', null=True, blank=True)
@@ -166,6 +167,12 @@ class LeaveRequest(models.Model):
                                           related_name='approved_leaves', verbose_name='Εγκρίθηκε από Προϊστάμενο')
     manager_approved_at = models.DateTimeField('Ημερομηνία Έγκρισης Προϊσταμένου', null=True, blank=True)
     manager_comments = models.TextField('Σχόλια Προϊσταμένου', blank=True)
+    
+    # Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ (για τμήματα ΚΕΔΑΣΥ και ΚΕΠΕΑ)
+    kedasy_kepea_protocol_number = models.CharField('Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ', max_length=100, blank=True)
+    kedasy_kepea_protocol_date = models.DateTimeField('Ημερομηνία Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ', null=True, blank=True)
+    kedasy_kepea_protocol_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                               related_name='kedasy_kepea_protocols', verbose_name='Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ από')
     
     # Επεξεργασία από χειριστή
     protocol_number = models.CharField('Αριθμός Πρωτοκόλλου', max_length=100, blank=True)
@@ -266,7 +273,7 @@ class LeaveRequest(models.Model):
     @property
     def is_pending(self):
         """Ελέγχει αν η αίτηση είναι εκκρεμής"""
-        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
+        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
     
     @property
     def is_completed(self):
@@ -294,7 +301,13 @@ class LeaveRequest(models.Model):
     def approve_by_manager(self, manager, comments=''):
         """Έγκριση από προϊστάμενο"""
         if self.can_be_approved_by_manager:
-            self.status = 'APPROVED_MANAGER'
+            # Για τμήματα ΚΕΔΑΣΥ/ΚΕΠΕΑ, μετά την έγκριση προϊσταμένου
+            # πάει στην αναμονή για πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ
+            if self.is_kedasy_kepea_department():
+                self.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
+            else:
+                self.status = 'APPROVED_MANAGER'
+            
             self.manager_approved_by = manager
             self.manager_approved_at = timezone.now()
             self.manager_comments = comments
@@ -449,6 +462,7 @@ class LeaveRequest(models.Model):
             'SUBMITTED': 'warning',
             'APPROVED_MANAGER': 'info',
             'REJECTED_MANAGER': 'danger',
+            'PENDING_KEDASY_KEPEA_PROTOCOL': 'warning',
             'FOR_PROTOCOL_PDEDE': 'secondary',
             'UNDER_PROCESSING': 'primary',
             'COMPLETED': 'success',
@@ -489,6 +503,77 @@ class LeaveRequest(models.Model):
             actions.append('complete')
         
         return actions
+    
+    def is_kedasy_kepea_department(self):
+        """Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ ή ΚΕΠΕΑ"""
+        try:
+            department = self.user.department
+            if department and department.department_type:
+                return department.department_type.code in ['KEDASY', 'KEPEA']
+        except AttributeError:
+            pass
+        return False
+    
+    def can_add_kedasy_kepea_protocol(self, user):
+        """Έλεγχος αν ο χρήστης μπορεί να προσθέσει πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ"""
+        if not user.is_authenticated:
+            return False
+        
+        # Έλεγχος αν είναι τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ
+        if not self.is_kedasy_kepea_department():
+            return False
+        
+        # Έλεγχος αν το status είναι PENDING_KEDASY_KEPEA_PROTOCOL
+        if self.status != 'PENDING_KEDASY_KEPEA_PROTOCOL':
+            return False
+        
+        # Έλεγχος αν ο χρήστης έχει ρόλο Secretary ή Manager και είναι στο ίδιο τμήμα
+        try:
+            department = self.user.department
+            if department and user.department:
+                # Επιτρέπεται στον Secretary ή στον Manager του τμήματος
+                has_permission = (
+                    user.roles.filter(code__in=['SECRETARY', 'MANAGER']).exists() and
+                    user.department == department
+                )
+                return has_permission
+        except AttributeError:
+            pass
+        
+        return False
+    
+    def add_kedasy_kepea_protocol(self, protocol_number, protocol_date, user):
+        """Προσθήκη πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ"""
+        if not self.can_add_kedasy_kepea_protocol(user):
+            raise ValueError("Δεν έχετε δικαίωμα να προσθέσετε πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ")
+        
+        self.kedasy_kepea_protocol_number = protocol_number
+        self.kedasy_kepea_protocol_date = protocol_date
+        self.kedasy_kepea_protocol_by = user
+        
+        # Αν δεν έχουν τεθεί τα πεδία έγκρισης προϊσταμένου (π.χ. για αναρρωτικές άδειες),
+        # θέτουμε τα στοιχεία της έγκρισης τώρα
+        if not self.manager_approved_by:
+            self.manager_approved_by = user
+            self.manager_approved_at = timezone.now()
+            self.manager_comments = f"Αυτόματη έγκριση με πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
+        
+        self.status = 'FOR_PROTOCOL_PDEDE'
+        self.save()
+        
+        # Δημιουργία ιστορικού (αν υπάρχει το model)
+        try:
+            from .models import LeaveRequestHistory
+            LeaveRequestHistory.objects.create(
+                leave_request=self,
+                action='KEDASY_KEPEA_PROTOCOL_ADDED',
+                user=user,
+                old_status='PENDING_KEDASY_KEPEA_PROTOCOL',
+                new_status='FOR_PROTOCOL_PDEDE',
+                comments=f"Προστέθηκε πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
+            )
+        except ImportError:
+            pass  # Το LeaveRequestHistory δεν υπάρχει ακόμα
 
 
 class Logo(models.Model):

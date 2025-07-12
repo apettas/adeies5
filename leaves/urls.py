@@ -31,6 +31,10 @@ urlpatterns = [
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     
+    # Secretary URLs (ΚΕΔΑΣΥ/ΚΕΠΕΑ)
+    path('secretary/', views.SecretaryDashboardView.as_view(), name='secretary_dashboard'),
+    path('add-kedasy-kepea-protocol/<int:pk>/', views.add_kedasy_kepea_protocol, name='add_kedasy_kepea_protocol'),
+    
     # Detail view
     path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='leave_request_detail'),
     path('detail/<int:pk>/', views.LeaveRequestDetailView.as_view(), name='detail'),  # Alias for compatibility
