@@ -146,6 +146,7 @@ class LeaveRequest(models.Model):
         ('REJECTED_MANAGER', 'Απορρίφθηκε από Προϊστάμενο'),
         ('PENDING_KEDASY_KEPEA_PROTOCOL', 'Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ'),
         ('FOR_PROTOCOL_PDEDE', 'Για Πρωτόκολλο ΠΔΕΔΕ'),
+        ('PENDING_DOCUMENTS', 'Σε Αναμονή Δικαιολογητικών'),
         ('UNDER_PROCESSING', 'Προς Επεξεργασία'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
         ('REJECTED_OPERATOR', 'Απορρίφθηκε από Χειριστή'),
@@ -221,6 +222,18 @@ class LeaveRequest(models.Model):
     exact_copy_uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                              related_name='uploaded_exact_copies', verbose_name='Ανέβασε το Ακριβές Αντίγραφο')
     
+    # Πεδία για διαχείριση δικαιολογητικών
+    required_documents = models.TextField('Απαιτούμενα Δικαιολογητικά', blank=True,
+                                        help_text='Περιγραφή των δικαιολογητικών που χρειάζονται')
+    documents_deadline = models.DateTimeField('Προθεσμία Κατάθεσης Δικαιολογητικών', null=True, blank=True)
+    documents_requested_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                             related_name='requested_documents', verbose_name='Ζήτησε Δικαιολογητικά')
+    documents_requested_at = models.DateTimeField('Ημερομηνία Αιτήματος Δικαιολογητικών', null=True, blank=True)
+    documents_provided_at = models.DateTimeField('Ημερομηνία Παροχής Δικαιολογητικών', null=True, blank=True)
+    documents_provided_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                            related_name='provided_documents', verbose_name='Παρείχε Δικαιολογητικά')
+    documents_notes = models.TextField('Σημειώσεις Δικαιολογητικών', blank=True)
+    
     class Meta:
         verbose_name = 'Αίτηση Άδειας'
         verbose_name_plural = 'Αιτήσεις Αδειών'
@@ -269,12 +282,12 @@ class LeaveRequest(models.Model):
     @property
     def can_be_processed(self):
         """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί από χειριστή"""
-        return self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']
+        return self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS']
     
     @property
     def is_pending(self):
         """Ελέγχει αν η αίτηση είναι εκκρεμής"""
-        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
+        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
     
     @property
     def is_completed(self):
@@ -357,6 +370,8 @@ class LeaveRequest(models.Model):
             if protocol_number:
                 self.protocol_number = protocol_number
             self.processing_comments = comments
+            self.processed_by = handler
+            self.processed_at = timezone.now()
             self.save()
             return True
         return False
@@ -422,6 +437,48 @@ class LeaveRequest(models.Model):
         self.rejection_reason = 'Ανάκληση αίτησης από τον αιτούντα'
         self.save()
         return True
+    
+    def request_documents(self, handler, required_documents, deadline=None):
+        """Αίτημα για δικαιολογητικά από χειριστή"""
+        if not self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+            raise ValueError("Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση")
+        
+        self.status = 'PENDING_DOCUMENTS'
+        self.required_documents = required_documents
+        self.documents_deadline = deadline
+        self.documents_requested_by = handler
+        self.documents_requested_at = timezone.now()
+        self.save()
+        return True
+    
+    def provide_documents(self, handler, notes=''):
+        """Παροχή δικαιολογητικών (από χειριστή)"""
+        if self.status != 'PENDING_DOCUMENTS':
+            raise ValueError("Δεν είναι σε αναμονή δικαιολογητικών")
+        
+        self.status = 'UNDER_PROCESSING'
+        self.documents_provided_by = handler
+        self.documents_provided_at = timezone.now()
+        self.documents_notes = notes
+        self.save()
+        return True
+    
+    @property
+    def is_pending_documents(self):
+        """Ελέγχει αν η αίτηση είναι σε αναμονή δικαιολογητικών"""
+        return self.status == 'PENDING_DOCUMENTS'
+    
+    @property
+    def is_documents_overdue(self):
+        """Ελέγχει αν η προθεσμία δικαιολογητικών έχει λήξει"""
+        if self.status == 'PENDING_DOCUMENTS' and self.documents_deadline:
+            return timezone.now() > self.documents_deadline
+        return False
+    
+    @property
+    def can_provide_documents(self):
+        """Ελέγχει αν μπορούν να παρασχεθούν δικαιολογητικά"""
+        return self.status == 'PENDING_DOCUMENTS'
     
     @property
     def has_protocol_pdf(self):
@@ -495,6 +552,7 @@ class LeaveRequest(models.Model):
             'REJECTED_MANAGER': 'danger',
             'PENDING_KEDASY_KEPEA_PROTOCOL': 'warning',
             'FOR_PROTOCOL_PDEDE': 'secondary',
+            'PENDING_DOCUMENTS': 'warning',
             'UNDER_PROCESSING': 'primary',
             'COMPLETED': 'success',
             'REJECTED_OPERATOR': 'danger',
@@ -554,6 +612,12 @@ class LeaveRequest(models.Model):
         
         if user.is_leave_handler and self.can_be_processed:
             actions.extend(['process', 'reject'])
+            # Εάν η αίτηση είναι εγκεκριμένη ή για πρωτόκολλο, μπορεί να ζητηθούν δικαιολογητικά
+            if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+                actions.append('request_documents')
+        
+        if user.is_leave_handler and self.status == 'PENDING_DOCUMENTS':
+            actions.extend(['provide_documents', 'reject'])
         
         if user.is_leave_handler and self.status == 'UNDER_PROCESSING':
             actions.append('complete')

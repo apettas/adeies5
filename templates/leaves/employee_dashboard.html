@@ -57,6 +57,89 @@
     </div>
 </div>
 
+<!-- Ειδοποίηση για αιτήσεις που χρειάζονται δικαιολογητικά -->
+{% if pending_documents_requests > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                    <h5 class="alert-heading mb-2">Απαιτούνται Δικαιολογητικά</h5>
+                    <p class="mb-3">
+                        {% if pending_documents_requests == 1 %}
+                            Έχετε <strong>1 αίτηση</strong> που χρειάζεται επιπλέον δικαιολογητικά:
+                        {% else %}
+                            Έχετε <strong>{{ pending_documents_requests }} αιτήσεις</strong> που χρειάζονται επιπλέον δικαιολογητικά:
+                        {% endif %}
+                    </p>
+                    
+                    {% for request in pending_documents_list %}
+                        <div class="border-start border-warning border-3 ps-3 mb-3 bg-light bg-opacity-50 p-3 rounded-end">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        <strong>{{ request.leave_type.name }}</strong>
+                                    </h6>
+                                    <small class="text-muted">
+                                        {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
+                                        ({{ request.total_days }} ημέρες)
+                                    </small>
+                                </div>
+                                {% if request.documents_deadline %}
+                                    <div class="text-end">
+                                        <small class="text-danger fw-bold">
+                                            <i class="bi bi-clock-fill me-1"></i>
+                                            Προθεσμία κατάθεσης Δικαιολογητικών: {{ request.documents_deadline|date:"d/m/Y H:i" }}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if request.required_documents %}
+                                <div class="mb-2">
+                                    <strong class="text-dark">Απαιτούμενα δικαιολογητικά:</strong>
+                                    <div class="mt-1 p-2 bg-white rounded small">
+                                        {{ request.required_documents|linebreaks }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if request.documents_requested_by %}
+                                <div class="mt-2 pt-2 border-top">
+                                    <small class="text-muted">
+                                        <i class="bi bi-person-badge me-1"></i>
+                                        <strong>Αίτημα από:</strong> {{ request.documents_requested_by.full_name }}
+                                        {% if request.documents_requested_at %}
+                                            <span class="ms-2">
+                                                <i class="bi bi-calendar3 me-1"></i>
+                                                {{ request.documents_requested_at|date:"d/m/Y H:i" }}
+                                            </span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    
+                    <div class="alert alert-info p-2 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Παρακαλώ επικοινωνήστε άμεσα με τον χειριστή αδειών για την παροχή των απαιτούμενων δικαιολογητικών.</strong>
+                        {% if first_documents_deadline %}
+                            <br>
+                            <i class="bi bi-clock-fill me-2"></i>
+                            <strong>Προθεσμία κατάθεσης Δικαιολογητικών: {{ first_documents_deadline|date:"d/m/Y H:i" }}</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Λίστα Αιτήσεων -->
 <div class="row">
     <div class="col-12">
@@ -99,6 +182,11 @@
                                             <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
                                         {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
                                             <span class="badge bg-secondary">Για Πρωτόκολλο ΠΔΕΔΕ</span>
+                                        {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                            <span class="badge bg-warning">Σε Αναμονή Δικαιολογητικών</span>
+                                            {% if request.documents_deadline %}
+                                                <br><small class="text-danger">Προθεσμία: {{ request.documents_deadline|date:"d/m/Y H:i" }}</small>
+                                            {% endif %}
                                         {% elif request.status == 'UNDER_PROCESSING' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
                                         {% elif request.status == 'COMPLETED' %}

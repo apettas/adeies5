@@ -58,7 +58,7 @@
 
 <!-- Στατιστικά ΣΗΔΕ -->
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card text-center bg-warning bg-opacity-10">
             <div class="card-body">
                 <i class="bi bi-send fs-3 text-warning"></i>
@@ -68,7 +68,7 @@
         </div>
     </div>
     
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card text-center bg-info bg-opacity-10">
             <div class="card-body">
                 <i class="bi bi-hourglass-split fs-3 text-info"></i>
@@ -78,12 +78,22 @@
         </div>
     </div>
     
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card text-center bg-secondary bg-opacity-10">
             <div class="card-body">
                 <i class="bi bi-clock-history fs-3 text-secondary"></i>
                 <h5 class="mt-2">{{ pending_kedasy_kepea_count|default:0 }}</h5>
                 <small class="text-muted">Αναμονή Γραμματείας ΚΕΔΑΣΥ/ΚΕΠΕΑ</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card text-center bg-warning bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-file-earmark-text fs-3 text-warning"></i>
+                <h5 class="mt-2">{{ pending_documents_count|default:0 }}</h5>
+                <small class="text-muted">Αναμονή Δικαιολογητικών</small>
             </div>
         </div>
     </div>
@@ -146,6 +156,12 @@
                                             {% else %}
                                                 <br><small class="text-muted badge bg-secondary">Παρακάμφθηκε Προϊστάμενος</small>
                                             {% endif %}
+                                        {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                            <span class="badge bg-warning">Σε Αναμονή Δικαιολογητικών</span>
+                                            <br><small class="text-muted">{{ request.documents_requested_at|date:"d/m/Y H:i" }}</small>
+                                            {% if request.documents_deadline %}
+                                                <br><small class="text-danger">Προθεσμία: {{ request.documents_deadline|date:"d/m/Y H:i" }}</small>
+                                            {% endif %}
                                         {% elif request.status == 'UNDER_PROCESSING' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
                                             {% if request.protocol_created_at %}
@@ -198,6 +214,24 @@
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#completeModal{{ request.pk }}">
                                                     <i class="bi bi-check"></i> Ολοκλήρωση
+                                                </button>
+                                            {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                                <!-- Παροχή δικαιολογητικών -->
+                                                <button type="button"
+                                                        class="btn btn-sm btn-info mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#provideDocumentsModal{{ request.pk }}">
+                                                    <i class="bi bi-file-upload"></i> Παροχή Δικαιολογητικών
+                                                </button>
+                                            {% endif %}
+                                            
+                                            <!-- Αίτηση δικαιολογητικών - διαθέσιμο για όλες τις καταστάσεις εκτός από REJECTED, APPROVED, PENDING_DOCUMENTS -->
+                                            {% if request.status != 'REJECTED' and request.status != 'APPROVED' and request.status != 'PENDING_DOCUMENTS' %}
+                                                <button type="button"
+                                                        class="btn btn-sm btn-warning mb-1"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#requestDocumentsModal{{ request.pk }}">
+                                                    <i class="bi bi-file-earmark-text"></i> Αίτηση Δικαιολογητικών
                                                 </button>
                                             {% endif %}
                                             
@@ -485,4 +519,96 @@
         </div>
     </div>
 </div>
+<!-- Request Documents Modals -->
+{% for request in leave_requests %}
+<div class="modal fade" id="requestDocumentsModal{{ request.pk }}" tabindex="-1" aria-labelledby="requestDocumentsModalLabel{{ request.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestDocumentsModalLabel{{ request.pk }}">Αίτηση Δικαιολογητικών</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:request_documents' request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Αίτηση δικαιολογητικών για την άδεια του/της <strong>{{ request.user.get_full_name }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <label for="requiredDocuments{{ request.pk }}" class="form-label">Απαιτούμενα Δικαιολογητικά</label>
+                        <textarea class="form-control" id="requiredDocuments{{ request.pk }}" name="required_documents" rows="4" required
+                                  placeholder="Παρακαλώ περιγράψτε τα δικαιολογητικά που απαιτούνται..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentsDeadline{{ request.pk }}" class="form-label">Προθεσμία Κατάθεσης</label>
+                        <input type="datetime-local" class="form-control" id="documentsDeadline{{ request.pk }}" name="documents_deadline" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="documentsNotes{{ request.pk }}" class="form-label">Σημειώσεις</label>
+                        <textarea class="form-control" id="documentsNotes{{ request.pk }}" name="documents_notes" rows="3"
+                                  placeholder="Επιπλέον σημειώσεις ή οδηγίες..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-file-earmark-text"></i> Αίτηση Δικαιολογητικών
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Provide Documents Modals -->
+<div class="modal fade" id="provideDocumentsModal{{ request.pk }}" tabindex="-1" aria-labelledby="provideDocumentsModalLabel{{ request.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="provideDocumentsModalLabel{{ request.pk }}">Παροχή Δικαιολογητικών</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:provide_documents' request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Παροχή δικαιολογητικών για την άδεια του/της <strong>{{ request.user.get_full_name }}</strong>
+                    </div>
+                    
+                    {% if request.required_documents %}
+                    <div class="mb-3">
+                        <label class="form-label">Απαιτούμενα Δικαιολογητικά</label>
+                        <div class="form-control" style="background-color: #f8f9fa; min-height: 80px;">
+                            {{ request.required_documents|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if request.documents_deadline %}
+                    <div class="mb-3">
+                        <label class="form-label">Προθεσμία Κατάθεσης</label>
+                        <div class="form-control" style="background-color: #f8f9fa;">
+                            {{ request.documents_deadline|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="documentsNotes{{ request.pk }}" class="form-label">Σημειώσεις Παροχής</label>
+                        <textarea class="form-control" id="documentsNotes{{ request.pk }}" name="documents_notes" rows="4"
+                                  placeholder="Παρακαλώ περιγράψτε τα δικαιολογητικά που παρέχονται..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-file-upload"></i> Παροχή Δικαιολογητικών
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {% endblock %}

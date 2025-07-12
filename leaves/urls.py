@@ -29,6 +29,8 @@ urlpatterns = [
     path('reject-handler/<int:pk>/', views.reject_leave_request_by_handler, name='reject_leave_request_by_handler'),
     path('send-to-protocol/<int:pk>/', views.send_to_protocol_pdede, name='send_to_protocol_pdede'),
     path('upload-protocol-pdf/<int:pk>/', views.upload_protocol_pdf, name='upload_protocol_pdf'),
+    path('request-documents/<int:pk>/', views.request_documents, name='request_documents'),
+    path('provide-documents/<int:pk>/', views.provide_documents, name='provide_documents'),
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     

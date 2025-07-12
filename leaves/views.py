@@ -36,16 +36,29 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
+        # Αιτήσεις που χρειάζονται δικαιολογητικά με λεπτομέρειες
+        pending_documents_requests = self.get_queryset().filter(status='PENDING_DOCUMENTS')
+        
+        # Βρίσκω την πρώτη διαθέσιμη προθεσμία
+        first_deadline = None
+        for request in pending_documents_requests:
+            if request.documents_deadline:
+                first_deadline = request.documents_deadline
+                break
+        
         # Στατιστικά
         context.update({
             'total_requests': self.get_queryset().count(),
             'pending_requests': self.get_queryset().filter(
-                status__in=['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
+                status__in=['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
             ).count(),
             'completed_requests': self.get_queryset().filter(status='COMPLETED').count(),
             'rejected_requests': self.get_queryset().filter(
                 status__in=['REJECTED_MANAGER', 'REJECTED_OPERATOR']
             ).count(),
+            'pending_documents_requests': pending_documents_requests.count(),
+            'pending_documents_list': pending_documents_requests,
+            'first_documents_deadline': first_deadline,
         })
         
         return context
@@ -502,7 +515,7 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο ή παρακάμπτουν τον προϊστάμενο και περιμένουν επεξεργασία
         return LeaveRequest.objects.filter(
-            status__in=['APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']
+            status__in=['APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
         ).select_related('user', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
     
     def get_context_data(self, **kwargs):
@@ -526,6 +539,10 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
             # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ workflow
             'pending_kedasy_kepea_count': LeaveRequest.objects.filter(
                 status='PENDING_KEDASY_KEPEA_PROTOCOL'
+            ).count(),
+            # Στατιστικά για δικαιολογητικά
+            'pending_documents_count': LeaveRequest.objects.filter(
+                status='PENDING_DOCUMENTS'
             ).count(),
         })
         
@@ -1537,3 +1554,121 @@ def add_kedasy_kepea_protocol(request, pk):
         return redirect('leaves:secretary_dashboard')
     else:
         return redirect('leaves:manager_dashboard')
+
+
+@login_required
+def request_documents(request, pk):
+    """Αίτημα δικαιολογητικών από χειριστή αδειών"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα αιτήματος δικαιολογητικών.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
+    if leave_request.status not in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+        messages.error(request, 'Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση.')
+        return redirect('leaves:handler_dashboard')
+    
+    if request.method == 'POST':
+        required_documents = request.POST.get('required_documents', '').strip()
+        deadline_date = request.POST.get('deadline_date', '')
+        deadline_time = request.POST.get('deadline_time', '')
+        
+        if not required_documents:
+            messages.error(request, 'Παρακαλώ συμπληρώστε τα απαιτούμενα δικαιολογητικά.')
+            return redirect('leaves:handler_dashboard')
+        
+        try:
+            # Δημιουργία deadline datetime
+            deadline = None
+            if deadline_date:
+                from datetime import datetime
+                deadline_str = deadline_date
+                if deadline_time:
+                    deadline_str += f' {deadline_time}'
+                    deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M')
+                else:
+                    deadline = datetime.strptime(deadline_str, '%Y-%m-%d')
+                    deadline = deadline.replace(hour=23, minute=59)  # Τέλος ημέρας
+                
+                # Μετατροπή σε timezone-aware datetime
+                deadline = timezone.make_aware(deadline)
+            
+            # Αίτημα δικαιολογητικών
+            leave_request.request_documents(
+                handler=request.user,
+                required_documents=required_documents,
+                deadline=deadline
+            )
+            
+            # Ειδοποίηση στον υπάλληλο
+            create_notification(
+                user=leave_request.user,
+                title="Απαιτούνται Δικαιολογητικά",
+                message=f"Για την αίτησή σας για {leave_request.leave_type.name} απαιτούνται επιπλέον δικαιολογητικά. Παρακαλώ επικοινωνήστε με τον χειριστή αδειών.",
+                related_object=leave_request
+            )
+            
+            # Ειδοποίηση στον προϊστάμενο
+            if leave_request.manager_approved_by:
+                create_notification(
+                    user=leave_request.manager_approved_by,
+                    title="Απαιτούνται Δικαιολογητικά",
+                    message=f"Η αίτηση του/της {leave_request.user.full_name} για {leave_request.leave_type.name} χρειάζεται επιπλέον δικαιολογητικά",
+                    related_object=leave_request
+                )
+            
+            messages.success(request, 'Το αίτημα δικαιολογητικών στάλθηκε επιτυχώς!')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά το αίτημα δικαιολογητικών: {str(e)}')
+    
+    return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def provide_documents(request, pk):
+    """Παροχή δικαιολογητικών από χειριστή αδειών"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα παροχής δικαιολογητικών.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
+    if leave_request.status != 'PENDING_DOCUMENTS':
+        messages.error(request, 'Η αίτηση δεν είναι σε αναμονή δικαιολογητικών.')
+        return redirect('leaves:handler_dashboard')
+    
+    if request.method == 'POST':
+        notes = request.POST.get('notes', '')
+        
+        try:
+            # Παροχή δικαιολογητικών
+            leave_request.provide_documents(
+                handler=request.user,
+                notes=notes
+            )
+            
+            # Ειδοποίηση στον υπάλληλο
+            create_notification(
+                user=leave_request.user,
+                title="Δικαιολογητικά Παρασχέθηκαν",
+                message=f"Τα δικαιολογητικά για την αίτησή σας για {leave_request.leave_type.name} παρασχέθηκαν και η αίτηση προχωρά στο επόμενο στάδιο",
+                related_object=leave_request
+            )
+            
+            # Ειδοποίηση στον προϊστάμενο
+            if leave_request.manager_approved_by:
+                create_notification(
+                    user=leave_request.manager_approved_by,
+                    title="Δικαιολογητικά Παρασχέθηκαν",
+                    message=f"Τα δικαιολογητικά για την αίτηση του/της {leave_request.user.full_name} παρασχέθηκαν",
+                    related_object=leave_request
+                )
+            
+            messages.success(request, 'Τα δικαιολογητικά παρασχέθηκαν επιτυχώς!')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά την παροχή δικαιολογητικών: {str(e)}')
+    
+    return redirect('leaves:handler_dashboard')
