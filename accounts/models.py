@@ -75,20 +75,31 @@ class Headquarters(models.Model):
         return self.name
 
 
+class DepartmentType(models.Model):
+    """Μοντέλο για τους τύπους τμημάτων"""
+    
+    code = models.CharField('Κωδικός Τύπου', max_length=30, unique=True)
+    name = models.CharField('Όνομα Τύπου', max_length=100)
+    description = models.TextField('Περιγραφή', blank=True)
+    is_active = models.BooleanField('Ενεργός', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Τύπος Τμήματος'
+        verbose_name_plural = 'Τύποι Τμημάτων'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
 class Department(models.Model):
     """Μοντέλο για τα Τμήματα/Γραφεία της ΠΔΕΔΕ"""
     
-    DEPARTMENT_TYPES = [
-        ('DIRECTION', 'Διεύθυνση'),
-        ('AUTONOMOUS_DIRECTION', 'Αυτοτελής Διεύθυνση'),
-        ('DEPARTMENT', 'Τμήμα'),
-        ('OFFICE', 'Γραφείο'),
-        ('VIRTUAL_DEPARTMENT', 'Εικονικό Τμήμα'),
-    ]
-    
     name = models.CharField('Όνομα Τμήματος', max_length=200)
     code = models.CharField('Κωδικός Τμήματος', max_length=50, unique=True)
-    department_type = models.CharField('Τύπος Τμήματος', max_length=30, choices=DEPARTMENT_TYPES)
+    department_type = models.ForeignKey(DepartmentType, on_delete=models.PROTECT,
+                                      verbose_name='Τύπος Τμήματος', related_name='departments')
     parent_department = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True,
                                         verbose_name='Γονικό Τμήμα')
     prefecture = models.ForeignKey(Prefecture, on_delete=models.SET_NULL, null=True, blank=True,

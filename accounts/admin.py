@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import User, Department, Role, Specialty, Headquarters, Prefecture
+from .models import User, Department, DepartmentType, Role, Specialty, Headquarters, Prefecture
 
 
 @admin.register(Role)
@@ -11,6 +11,15 @@ class RoleAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
     search_fields = ('name', 'code')
     ordering = ('name',)
+
+
+@admin.register(DepartmentType)
+class DepartmentTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'code', 'description')
+    ordering = ('name',)
+    readonly_fields = ('created_at',)
 
 
 @admin.register(Department)
