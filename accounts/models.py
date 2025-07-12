@@ -290,11 +290,28 @@ class User(AbstractUser):
     def get_subordinates(self):
         """Επιστρέφει τους υφισταμένους του χρήστη"""
         if self.is_department_manager and self.department:
+            from django.db.models import Q
+            
             # Χρήστες από το ίδιο τμήμα που δεν είναι προϊστάμενοι
-            return User.objects.filter(
+            conditions = Q(
                 department=self.department,
                 is_active=True
-            ).exclude(roles__code='MANAGER')
+            ) & ~Q(roles__code='MANAGER')
+            
+            # Αν είναι προϊστάμενος ΚΕΔΑΣΥ, περιλαμβάνουμε και τους υπαλλήλους των ΣΔΕΥ
+            if (self.department.department_type and
+                self.department.department_type.code == 'KEDASY'):
+                # Προσθέτουμε condition για ΣΔΕΥ υπαλλήλους
+                sdei_condition = Q(
+                    department__parent_department=self.department,
+                    department__department_type__code='SDEY',
+                    is_active=True
+                ) & ~Q(roles__code='MANAGER')
+                
+                # Ενώνουμε τα conditions με OR
+                conditions = conditions | sdei_condition
+            
+            return User.objects.filter(conditions).distinct()
         return User.objects.none()
 
     def get_role_names(self):

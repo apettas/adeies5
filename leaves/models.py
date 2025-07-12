@@ -480,6 +480,15 @@ class LeaveRequest(models.Model):
         if user.is_department_manager and self.user.department == user.department:
             return True
         
+        # Οι προϊστάμενοι ΚΕΔΑΣΥ μπορούν να δουν και αιτήσεις από ΣΔΕΥ
+        if (user.is_department_manager and
+            user.department and user.department.department_type and
+            user.department.department_type.code == 'KEDASY' and
+            self.user.department and self.user.department.department_type and
+            self.user.department.department_type.code == 'SDEY' and
+            self.user.department.parent_department == user.department):
+            return True
+        
         # Οι χειριστές μπορούν να δουν όλες τις αιτήσεις
         if user.is_leave_handler:
             return True
@@ -493,7 +502,18 @@ class LeaveRequest(models.Model):
         if self.user == user and self.can_be_edited:
             actions.append('edit')
         
+        # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις του τμήματός τους
         if user.is_department_manager and self.user.department == user.department and self.can_be_approved_by_manager:
+            actions.extend(['approve', 'reject'])
+        
+        # Προϊστάμενοι ΚΕΔΑΣΥ μπορούν να εγκρίνουν αιτήσεις από ΣΔΕΥ
+        if (user.is_department_manager and
+            user.department and user.department.department_type and
+            user.department.department_type.code == 'KEDASY' and
+            self.user.department and self.user.department.department_type and
+            self.user.department.department_type.code == 'SDEY' and
+            self.user.department.parent_department == user.department and
+            self.can_be_approved_by_manager):
             actions.extend(['approve', 'reject'])
         
         if user.is_leave_handler and self.can_be_processed:
@@ -505,11 +525,20 @@ class LeaveRequest(models.Model):
         return actions
     
     def is_kedasy_kepea_department(self):
-        """Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ ή ΚΕΠΕΑ"""
+        """Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ, ΚΕΠΕΑ ή ΣΔΕΥ"""
         try:
             department = self.user.department
             if department and department.department_type:
-                return department.department_type.code in ['KEDASY', 'KEPEA']
+                # Άμεσα τμήματα ΚΕΔΑΣΥ/ΚΕΠΕΑ
+                if department.department_type.code in ['KEDASY', 'KEPEA']:
+                    return True
+                # ΣΔΕΥ που ανήκουν σε ΚΕΔΑΣΥ
+                elif department.department_type.code == 'SDEY':
+                    # Ελέγχουμε αν το γονικό τμήμα είναι ΚΕΔΑΣΥ
+                    if (department.parent_department and
+                        department.parent_department.department_type and
+                        department.parent_department.department_type.code == 'KEDASY'):
+                        return True
         except AttributeError:
             pass
         return False
@@ -519,7 +548,7 @@ class LeaveRequest(models.Model):
         if not user.is_authenticated:
             return False
         
-        # Έλεγχος αν είναι τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ
+        # Έλεγχος αν είναι τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ
         if not self.is_kedasy_kepea_department():
             return False
         
@@ -527,16 +556,25 @@ class LeaveRequest(models.Model):
         if self.status != 'PENDING_KEDASY_KEPEA_PROTOCOL':
             return False
         
-        # Έλεγχος αν ο χρήστης έχει ρόλο Secretary ή Manager και είναι στο ίδιο τμήμα
+        # Έλεγχος αν ο χρήστης έχει ρόλο Secretary ή Manager
         try:
             department = self.user.department
             if department and user.department:
-                # Επιτρέπεται στον Secretary ή στον Manager του τμήματος
-                has_permission = (
-                    user.roles.filter(code__in=['SECRETARY', 'MANAGER']).exists() and
-                    user.department == department
-                )
-                return has_permission
+                user_has_permission = user.roles.filter(code__in=['SECRETARY', 'MANAGER']).exists()
+                if not user_has_permission:
+                    return False
+                
+                # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ: Ίδιο τμήμα
+                if department.department_type.code in ['KEDASY', 'KEPEA']:
+                    return user.department == department
+                
+                # Για ΣΔΕΥ: Ο χρήστης πρέπει να είναι Manager/Secretary του γονικού ΚΕΔΑΣΥ
+                elif department.department_type.code == 'SDEY':
+                    if (department.parent_department and
+                        department.parent_department.department_type and
+                        department.parent_department.department_type.code == 'KEDASY'):
+                        return user.department == department.parent_department
+                
         except AttributeError:
             pass
         

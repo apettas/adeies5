@@ -605,5 +605,88 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Λίστα Χρηστών ΣΔΕΥ (μόνο για ΚΕΔΑΣΥ προϊσταμένους) -->
+{% if sdeu_users %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-people-fill"></i> Χρήστες ΣΔΕΥ υπό την εποπτεία του {{ user.department.name }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Πληροφορίες:</strong> Ως προϊστάμενος ΚΕΔΑΣΥ, έχετε εποπτεία επί των παρακάτω {{ sdeu_users_count }} χρηστών από τμήματα ΣΔΕΥ.
+                        Μπορείτε να εγκρίνετε τις αιτήσεις αδειών τους και να δείτε το ιστορικό τους.
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Όνομα</th>
+                                <th>Τμήμα ΣΔΕΥ</th>
+                                <th>Θέση</th>
+                                <th>Κατάσταση</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sdeu_user in sdeu_users %}
+                            <tr>
+                                <td>
+                                    <strong>{{ sdeu_user.full_name }}</strong>
+                                    <br><small class="text-muted">{{ sdeu_user.email }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning">
+                                        {{ sdeu_user.department.name }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if sdeu_user.roles.exists %}
+                                        {% for role in sdeu_user.roles.all %}
+                                            <span class="badge bg-light text-dark">{{ role.get_display_name }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">Υπάλληλος</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if sdeu_user.is_active %}
+                                        <span class="badge bg-success">Ενεργός</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Ανενεργός</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-sm" role="group">
+                                        <a href="{% url 'leaves:user_leave_history' sdeu_user.id %}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Προβολή ιστορικού αδειών">
+                                            <i class="bi bi-clock-history"></i> Ιστορικό
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Συνολικά {{ sdeu_users_count }} χρήστες ΣΔΕΥ υπό την εποπτεία σας. Οι αιτήσεις αδειών τους εμφανίζονται στη λίστα "Αιτήσεις προς Έγκριση" όταν υποβάλλονται.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load leave_permissions %}
 
 {% block title %}Λεπτομέρειες Αίτησης - Σύστημα Αδειών ΠΔΕΔΕ{% endblock %}
 
@@ -17,13 +18,16 @@
                         <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
-                        {% if leave_request.status == 'SUBMITTED' and leave_request.user.department.id == user.department.id %}
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
-                                <i class="bi bi-check"></i> Έγκριση
-                            </button>
-                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
-                                <i class="bi bi-x"></i> Απόρριψη
-                            </button>
+                        {% if leave_request.status == 'SUBMITTED' %}
+                            {% can_manager_approve user leave_request as can_approve %}
+                            {% if can_approve %}
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
+                                    <i class="bi bi-check"></i> Έγκριση
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
+                                    <i class="bi bi-x"></i> Απόρριψη
+                                </button>
+                            {% endif %}
                         {% endif %}
                     </div>
                 {% elif user.is_leave_handler %}

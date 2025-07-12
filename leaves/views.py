@@ -271,6 +271,21 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             # Ενώνουμε τα κριτήρια με OR
             query_conditions = query_conditions | protocol_condition
         
+        # Αν είναι προϊστάμενος ΚΕΔΑΣΥ, προσθέτουμε και αιτήσεις από ΣΔΕΥ που ανήκουν σε αυτό
+        if (self.request.user.department and
+            self.request.user.department.department_type and
+            self.request.user.department.department_type.code == 'KEDASY'):
+            
+            # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
+            sdei_condition = Q(
+                user__department__department_type__code='SDEY',
+                user__department__parent_department=self.request.user.department,
+                status__in=['SUBMITTED', 'PENDING_KEDASY_KEPEA_PROTOCOL']
+            )
+            
+            # Ενώνουμε τα κριτήρια με OR
+            query_conditions = query_conditions | sdei_condition
+        
         return LeaveRequest.objects.filter(query_conditions).select_related('user', 'leave_type').order_by('-created_at')
     
     def get_context_data(self, **kwargs):
@@ -295,40 +310,55 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             self.request.user.department.department_type.code in ['KEDASY', 'KEPEA']):
             
             # Φίλτρο για το τμήμα του προϊσταμένου
-            department_filter = {'user__department': self.request.user.department}
+            department_filter = Q(user__department=self.request.user.department)
+            
+            # Αν είναι ΚΕΔΑΣΥ, προσθέτουμε και ΣΔΕΥ τμήματα
+            if self.request.user.department.department_type.code == 'KEDASY':
+                sdei_filter = Q(
+                    user__department__department_type__code='SDEY',
+                    user__department__parent_department=self.request.user.department
+                )
+                department_filter = department_filter | sdei_filter
             
             context.update({
                 'is_kedasy_kepea_manager': True,
                 'kedasy_kepea_pending_protocol_count': LeaveRequest.objects.filter(
-                    status='PENDING_KEDASY_KEPEA_PROTOCOL',
-                    **department_filter
-                ).count(),
+                    status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                ).filter(department_filter).count(),
                 'kedasy_kepea_completed_this_month': LeaveRequest.objects.filter(
                     kedasy_kepea_protocol_date__month=timezone.now().month,
-                    kedasy_kepea_protocol_number__isnull=False,
-                    **department_filter
-                ).count(),
+                    kedasy_kepea_protocol_number__isnull=False
+                ).filter(department_filter).count(),
                 'kedasy_kepea_total_processed': LeaveRequest.objects.filter(
-                    kedasy_kepea_protocol_number__isnull=False,
-                    **department_filter
-                ).count(),
+                    kedasy_kepea_protocol_number__isnull=False
+                ).filter(department_filter).count(),
             })
             
             # Πρόσφατα πρωτοκολλημένες αιτήσεις (τελευταίες 10)
             recent_kedasy_kepea_processed = LeaveRequest.objects.filter(
-                kedasy_kepea_protocol_number__isnull=False,
-                **department_filter
-            ).select_related('user', 'leave_type', 'kedasy_kepea_protocol_by').order_by('-kedasy_kepea_protocol_date')[:10]
+                kedasy_kepea_protocol_number__isnull=False
+            ).filter(department_filter).select_related('user', 'leave_type', 'kedasy_kepea_protocol_by').order_by('-kedasy_kepea_protocol_date')[:10]
             
             context['kedasy_kepea_recent_processed'] = recent_kedasy_kepea_processed
             
             # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτοκόλληση
             kedasy_kepea_pending_requests = LeaveRequest.objects.filter(
-                status='PENDING_KEDASY_KEPEA_PROTOCOL',
-                **department_filter
-            ).select_related('user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
+                status='PENDING_KEDASY_KEPEA_PROTOCOL'
+            ).filter(department_filter).select_related('user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
             
             context['kedasy_kepea_pending_requests'] = kedasy_kepea_pending_requests
+            
+            # Αν είναι ΚΕΔΑΣΥ προϊστάμενος, προσθέτουμε τη λίστα ΣΔΕΥ χρηστών
+            if self.request.user.department.department_type.code == 'KEDASY':
+                from accounts.models import User
+                sdeu_users = User.objects.filter(
+                    department__department_type__code='SDEY',
+                    department__parent_department=self.request.user.department,
+                    is_active=True
+                ).select_related('department').order_by('last_name', 'first_name')
+                
+                context['sdeu_users'] = sdeu_users
+                context['sdeu_users_count'] = sdeu_users.count()
         
         return context
 
@@ -352,9 +382,19 @@ def approve_leave_request(request, pk):
         if request.user.department and leave_request.user.department:
             # Έλεγχος αν είναι από το ίδιο τμήμα
             can_approve = (request.user.department.id == leave_request.user.department.id)
+        
         # Ή αν είναι ο καθορισμένος manager του χρήστη
         if not can_approve and leave_request.user.manager:
             can_approve = (leave_request.user.manager == request.user)
+        
+        # Ή αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση είναι από ΣΔΕΥ που ανήκει στο ΚΕΔΑΣΥ
+        if (not can_approve and
+            request.user.department and request.user.department.department_type and
+            request.user.department.department_type.code == 'KEDASY' and
+            leave_request.user.department and leave_request.user.department.department_type and
+            leave_request.user.department.department_type.code == 'SDEY' and
+            leave_request.user.department.parent_department == request.user.department):
+            can_approve = True
     
     if not can_approve:
         raise PermissionDenied("Δεν μπορείτε να εγκρίνετε αυτή την αίτηση.")
@@ -420,7 +460,21 @@ def reject_leave_request(request, pk):
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
     # Έλεγχος αν ο χρήστης είναι ο προϊστάμενος του αιτούντα
-    if leave_request.user.manager != request.user:
+    can_reject = False
+    
+    # Έλεγχος αν είναι ο άμεσος προϊστάμενος
+    if leave_request.user.manager == request.user:
+        can_reject = True
+    
+    # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
+    elif (request.user.department and request.user.department.department_type and
+          request.user.department.department_type.code == 'KEDASY' and
+          leave_request.user.department and leave_request.user.department.department_type and
+          leave_request.user.department.department_type.code == 'SDEY' and
+          leave_request.user.department.parent_department == request.user.department):
+        can_reject = True
+    
+    if not can_reject:
         raise PermissionDenied("Δεν μπορείτε να απορρίψετε αυτή την αίτηση.")
     
     if request.method == 'POST':
@@ -813,6 +867,15 @@ def serve_protocol_pdf(request, pk):
         user.is_administrator  # Διαχειριστής
     )
     
+    # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
+    if (not can_view and user.is_department_manager and
+        user.department and user.department.department_type and
+        user.department.department_type.code == 'KEDASY' and
+        leave_request.user.department and leave_request.user.department.department_type and
+        leave_request.user.department.department_type.code == 'SDEY' and
+        leave_request.user.department.parent_department == user.department):
+        can_view = True
+    
     if not can_view:
         raise PermissionDenied("Δεν έχετε δικαίωμα προβολής αυτού του αρχείου.")
     
@@ -859,6 +922,15 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             user.is_leave_handler or  # Χειριστής αδειών
             user.is_administrator  # Διαχειριστής
         )
+        
+        # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
+        if (not can_view and user.is_department_manager and
+            user.department and user.department.department_type and
+            user.department.department_type.code == 'KEDASY' and
+            obj.user.department and obj.user.department.department_type and
+            obj.user.department.department_type.code == 'SDEY' and
+            obj.user.department.parent_department == user.department):
+            can_view = True
         
         if not can_view:
             raise PermissionDenied("Δεν έχετε δικαίωμα προβολής αυτής της αίτησης.")
