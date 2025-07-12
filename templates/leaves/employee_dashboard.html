@@ -107,16 +107,26 @@
                                             <span class="badge bg-danger">Απορρίφθηκε από Προϊστάμενο</span>
                                         {% elif request.status == 'REJECTED_OPERATOR' %}
                                             <span class="badge bg-danger">Απορρίφθηκε από Χειριστή</span>
+                                        {% elif request.status == 'WITHDRAWN_BY_REQUESTER' %}
+                                            <span class="badge bg-secondary">Ανακλήθηκε</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <span class="date-greek">{{ request.created_at|date:"d/m/Y H:i" }}</span>
                                     </td>
                                     <td>
-                                        <a href="{% url 'leaves:leave_request_detail' request.pk %}" 
-                                           class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'leaves:leave_request_detail' request.pk %}"
+                                           class="btn btn-sm btn-outline-primary me-1">
                                             <i class="bi bi-eye"></i> Προβολή
                                         </a>
+                                        {% if request.can_be_withdrawn %}
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#withdrawModal{{ request.pk }}">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Ανάκληση
+                                            </button>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -169,4 +179,59 @@
         </div>
     </div>
 </div>
+
+<!-- Withdrawal Confirmation Modals -->
+{% for request in leave_requests %}
+    {% if request.can_be_withdrawn %}
+        <div class="modal fade" id="withdrawModal{{ request.pk }}" tabindex="-1" aria-labelledby="withdrawModalLabel{{ request.pk }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="withdrawModalLabel{{ request.pk }}">
+                            <i class="bi bi-arrow-counterclockwise"></i> Ανάκληση Αίτησης
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Προσοχή!</strong> Είστε σίγουροι ότι θέλετε να ανακαλέσετε την αίτησή σας;
+                        </div>
+                        <div class="mb-3">
+                            <strong>Στοιχεία Αίτησης:</strong>
+                            <ul class="list-unstyled mt-2">
+                                <li><strong>Τύπος:</strong> {{ request.leave_type.name }}</li>
+                                <li><strong>Ημερομηνίες:</strong> {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</li>
+                                <li><strong>Ημέρες:</strong> {{ request.total_days }}</li>
+                                <li><strong>Τρέχουσα Κατάσταση:</strong>
+                                    {% if request.status == 'SUBMITTED' %}
+                                        <span class="badge bg-warning">Υποβλήθηκε</span>
+                                    {% elif request.status == 'APPROVED_MANAGER' %}
+                                        <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                        <p class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Η ανάκληση της αίτησης θα σταματήσει τη διαδικασία έγκρισης και δεν θα μπορεί να αναιρεθεί.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Ακύρωση
+                        </button>
+                        <form method="post" action="{% url 'leaves:withdraw_leave_request' request.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-arrow-counterclockwise"></i> Ανάκληση Αίτησης
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+
 {% endblock %}

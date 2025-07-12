@@ -16,6 +16,7 @@ urlpatterns = [
     path('create/', views.CreateLeaveRequestView.as_view(), name='create_leave_request'),
     path('submit_final/', views.submit_final_request, name='submit_final_request'),
     path('download_pdf/<int:request_id>/', views.download_leave_pdf, name='download_leave_pdf'),
+    path('withdraw/<int:pk>/', views.withdraw_leave_request, name='withdraw_leave_request'),
     
     # Manager URLs
     path('manager/', views.ManagerDashboardView.as_view(), name='manager_dashboard'),

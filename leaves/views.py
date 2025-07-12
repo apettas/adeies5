@@ -1413,6 +1413,52 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
 
 
 @login_required
+def withdraw_leave_request(request, pk):
+    """Ανάκληση αίτησης από τον αιτούντα"""
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν ο χρήστης είναι ο αιτούντας
+    if leave_request.user != request.user:
+        raise PermissionDenied("Μόνο ο αιτούντας μπορεί να ανακαλέσει την αίτηση.")
+    
+    # Έλεγχος αν η αίτηση μπορεί να ανακληθεί
+    if not leave_request.can_be_withdrawn:
+        messages.error(request, 'Η αίτηση δεν μπορεί να ανακληθεί σε αυτή τη φάση.')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+    
+    if request.method == 'POST':
+        try:
+            # Ανάκληση αίτησης
+            leave_request.withdraw_by_requester(request.user)
+            
+            # Ειδοποίηση στον προϊστάμενο αν η αίτηση είχε εγκριθεί
+            if leave_request.manager_approved_by:
+                create_notification(
+                    user=leave_request.manager_approved_by,
+                    title="Ανάκληση Αίτησης",
+                    message=f"Η αίτηση του/της {leave_request.user.full_name} για {leave_request.leave_type.name} ανακλήθηκε από τον αιτούντα",
+                    related_object=leave_request
+                )
+            
+            # Ειδοποίηση στους χειριστές αδειών
+            leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+            for handler in leave_handlers:
+                create_notification(
+                    user=handler,
+                    title="Ανάκληση Αίτησης",
+                    message=f"Η αίτηση του/της {leave_request.user.full_name} για {leave_request.leave_type.name} ανακλήθηκε από τον αιτούντα",
+                    related_object=leave_request
+                )
+            
+            messages.success(request, 'Η αίτηση ανακλήθηκε επιτυχώς!')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά την ανάκληση: {str(e)}')
+    
+    return redirect('leaves:employee_dashboard')
+
+
+@login_required
 def add_kedasy_kepea_protocol(request, pk):
     """Προσθήκη πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ από γραμματεία ή προϊστάμενο"""
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
@@ -1438,6 +1484,7 @@ def add_kedasy_kepea_protocol(request, pk):
             return redirect('leaves:secretary_dashboard')
         else:
             return redirect('leaves:manager_dashboard')
+    
     
     if request.method == 'POST':
         protocol_number = request.POST.get('protocol_number', '').strip()

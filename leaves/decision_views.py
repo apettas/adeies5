@@ -6,7 +6,6 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.contrib import messages
 from django.urls import reverse
-from weasyprint import HTML
 import os
 from datetime import datetime
 
@@ -117,6 +116,13 @@ def generate_final_decision_pdf(request):
         return redirect('leaves:detail', pk=leave_request.id)
     
     try:
+        # Έλεγχος διαθεσιμότητας WeasyPrint
+        try:
+            from weasyprint import HTML
+        except ImportError:
+            messages.error(request, 'Η δημιουργία PDF δεν είναι διαθέσιμη. Παρακαλώ επικοινωνήστε με τον διαχειριστή.')
+            return redirect('leaves:detail', pk=leave_request.id)
+        
         # Συλλογή δεδομένων από φόρμα
         logo_id = request.POST.get('logo_id')
         info_id = request.POST.get('info_id')

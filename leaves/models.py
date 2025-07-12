@@ -149,6 +149,7 @@ class LeaveRequest(models.Model):
         ('UNDER_PROCESSING', 'Προς Επεξεργασία'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
         ('REJECTED_OPERATOR', 'Απορρίφθηκε από Χειριστή'),
+        ('WITHDRAWN_BY_REQUESTER', 'Ανάκληση Αίτησης από Αιτούντα'),
     ]
     
     # Βασικά πεδία
@@ -258,7 +259,7 @@ class LeaveRequest(models.Model):
     @property
     def can_be_edited(self):
         """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί"""
-        return self.status in ['DRAFT', 'SUBMITTED']
+        return self.status == 'DRAFT'
     
     @property
     def can_be_approved_by_manager(self):
@@ -284,6 +285,16 @@ class LeaveRequest(models.Model):
     def is_rejected(self):
         """Ελέγχει αν η αίτηση έχει απορριφθεί"""
         return self.status in ['REJECTED_MANAGER', 'REJECTED_OPERATOR']
+    
+    @property
+    def is_withdrawn(self):
+        """Ελέγχει αν η αίτηση έχει ανακληθεί"""
+        return self.status == 'WITHDRAWN_BY_REQUESTER'
+    
+    @property
+    def can_be_withdrawn(self):
+        """Ελέγχει αν η αίτηση μπορεί να ανακληθεί από τον αιτούντα"""
+        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL']
     
     def submit(self):
         """Υποβολή αίτησης"""
@@ -397,6 +408,21 @@ class LeaveRequest(models.Model):
             return True
         return False
     
+    def withdraw_by_requester(self, user):
+        """Ανάκληση αίτησης από τον αιτούντα"""
+        if self.user != user:
+            raise ValueError("Μόνο ο αιτούντας μπορεί να ανακαλέσει την αίτηση")
+        
+        if not self.can_be_withdrawn:
+            raise ValueError("Η αίτηση δεν μπορεί να ανακληθεί σε αυτή τη φάση")
+        
+        self.status = 'WITHDRAWN_BY_REQUESTER'
+        self.rejected_by = user
+        self.rejected_at = timezone.now()
+        self.rejection_reason = 'Ανάκληση αίτησης από τον αιτούντα'
+        self.save()
+        return True
+    
     @property
     def has_protocol_pdf(self):
         """Ελέγχει αν υπάρχει πρωτοκολλημένο PDF"""
@@ -472,6 +498,7 @@ class LeaveRequest(models.Model):
             'UNDER_PROCESSING': 'primary',
             'COMPLETED': 'success',
             'REJECTED_OPERATOR': 'danger',
+            'WITHDRAWN_BY_REQUESTER': 'warning',
         }
         return status_classes.get(self.status, 'secondary')
     
@@ -506,6 +533,10 @@ class LeaveRequest(models.Model):
         
         if self.user == user and self.can_be_edited:
             actions.append('edit')
+        
+        # Ο αιτούντας μπορεί να ανακαλέσει την αίτηση
+        if self.user == user and self.can_be_withdrawn:
+            actions.append('withdraw')
         
         # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις του τμήματός τους
         if user.is_department_manager and self.user.department == user.department and self.can_be_approved_by_manager:
