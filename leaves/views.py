@@ -278,6 +278,22 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             status='SUBMITTED'
         )
         
+        # Προσθήκη αιτήσεων από managers που χρειάζονται ιεραρχική έγκριση
+        # Για τον delegkos (PDEDE manager), προσθέτουμε αιτήσεις από την kizilou (AUTOTELOUS_DN manager)
+        if (self.request.user.department and
+            self.request.user.department.code == 'PDEDE' and
+            self.request.user.is_department_manager):
+            
+            # Αιτήσεις από AUTOTELOUS_DN manager που χρειάζονται έγκριση από PDEDE manager
+            autotelous_hierarchy_condition = Q(
+                user__department__code='AUTOTELOUS_DN',
+                user__roles__code='MANAGER',
+                status='SUBMITTED'
+            )
+            
+            # Ενώνουμε τα κριτήρια με OR
+            query_conditions = query_conditions | autotelous_hierarchy_condition
+        
         # Αν είναι προϊστάμενος ΚΕΔΑΣΥ, προσθέτουμε και αιτήσεις από ΣΔΕΥ που ανήκουν σε αυτό
         # αλλά ΜΟΝΟ αυτές που είναι σε status SUBMITTED (χρειάζονται έγκριση)
         if (self.request.user.department and
@@ -987,6 +1003,13 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         if (not can_view and user.is_department_manager and
             user.department and user.department.code == 'AUTOTELOUS_DN' and
             obj.user.department and obj.user.department.parent_department == user.department):
+            can_view = True
+        
+        # Έλεγχος αν είναι προϊστάμενος PDEDE και η αίτηση από AUTOTELOUS_DN manager
+        if (not can_view and user.is_department_manager and
+            user.department and user.department.code == 'PDEDE' and
+            obj.user.department and obj.user.department.code == 'AUTOTELOUS_DN' and
+            obj.user.is_department_manager):
             can_view = True
         
         if not can_view:

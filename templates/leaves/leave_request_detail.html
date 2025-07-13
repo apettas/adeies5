@@ -30,7 +30,25 @@
                             {% endif %}
                         {% endif %}
                     </div>
-                {% elif user.is_leave_handler %}
+                {% else %}
+                    <!-- Έλεγχος για managers που δεν είναι department managers αλλά έχουν δικαίωμα έγκρισης -->
+                    {% can_manager_approve user leave_request as can_approve %}
+                    {% if can_approve %}
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Επιστροφή
+                            </a>
+                            {% if leave_request.status == 'SUBMITTED' %}
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
+                                    <i class="bi bi-check"></i> Έγκριση
+                                </button>
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
+                                    <i class="bi bi-x"></i> Απόρριψη
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% if user.is_leave_handler %}
                     <div class="btn-group" role="group">
                         <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
@@ -46,6 +64,7 @@
                             </a>
                         {% endif %}
                     </div>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
