@@ -262,7 +262,7 @@ class User(AbstractUser):
     
     @property
     def is_leave_handler(self):
-        return self.roles.filter(code='HR_OFFICER').exists()
+        return self.roles.filter(code='LEAVE_HANDLER').exists()
     
     @property
     def is_administrator(self):
