@@ -132,7 +132,7 @@ class Department(models.Model):
 
     def get_department_manager(self):
         """Επιστρέφει τον προϊστάμενο του τμήματος"""
-        return self.users.filter(roles__code='department_manager').first()
+        return self.users.filter(roles__code='MANAGER').first()
 
 
 class Role(models.Model):
@@ -206,6 +206,9 @@ class User(AbstractUser):
         ('OTHER', 'Άλλο'),
     ]
     gender = models.CharField('Φύλο', max_length=10, choices=GENDER_CHOICES, blank=True)
+    email2 = models.EmailField('Εναλλακτικό Email', unique=True, blank=True, null=True)
+    orario = models.IntegerField('Ωράριο', blank=True, null=True, help_text='Ώρες εργασίας')
+    father_name = models.CharField('Πατρώνυμο', max_length=50, blank=True)
     
     # Υπηρεσιακά στοιχεία
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
@@ -283,6 +286,46 @@ class User(AbstractUser):
             return self.department.get_department_manager()
         return None
     
+    def get_approving_manager(self):
+        """Επιστρέφει ποιος προϊστάμενος θα εγκρίνει την αίτηση άδειας αυτού του χρήστη"""
+        if not self.department:
+            return None
+        
+        # Ειδική λογική για τμήματα κάτω από την Αυτοτελή Διεύθυνση
+        if (self.department.parent_department and
+            self.department.parent_department.code == 'AUTOTELOUS_DN'):
+            
+            # Αν ο χρήστης είναι απλός υπάλληλος οποιουδήποτε τμήματος κάτω από την Αυτοτελή Διεύθυνση
+            if not self.is_department_manager:
+                return self.department.get_department_manager()
+            
+            # Αν ο χρήστης είναι προϊστάμενος οποιουδήποτε τμήματος κάτω από την Αυτοτελή Διεύθυνση
+            # εγκρίνει ο προϊστάμενος της Αυτοτελούς Διεύθυνσης
+            if self.is_department_manager:
+                return self.department.parent_department.get_department_manager()
+        
+        # Αν ο χρήστης είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης, εγκρίνει ο προϊστάμενος της κύριας ΠΔΕΔΕ
+        if (self.department.code == 'AUTOTELOUS_DN' and self.is_department_manager):
+            from accounts.models import Department
+            pdede_main = Department.objects.filter(code='PDEDE').first()
+            if pdede_main:
+                return pdede_main.get_department_manager()
+            return None
+        
+        # Αν ο χρήστης είναι προϊστάμενος της κύριας ΠΔΕΔΕ, δεν μπορεί να αιτηθεί άδεια
+        if (self.department.code == 'PDEDE' and self.is_department_manager):
+            return None
+        
+        # Για όλους τους άλλους, η στανταρντ λογική
+        return self.manager
+    
+    def can_request_leave(self):
+        """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
+        # Ο προϊστάμενος της κύριας ΠΔΕΔΕ δεν μπορεί να αιτηθεί άδεια
+        if (self.department and self.department.code == 'PDEDE' and self.is_department_manager):
+            return False
+        return True
+    
     def can_approve_leaves(self):
         """Μπορεί να εγκρίνει αιτήσεις αδειών"""
         return self.roles.filter(code__in=['MANAGER', 'HR_OFFICER', 'administrator']).exists()
@@ -310,6 +353,17 @@ class User(AbstractUser):
                 
                 # Ενώνουμε τα conditions με OR
                 conditions = conditions | sdei_condition
+            
+            # Αν είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης, περιλαμβάνουμε χρήστες από τα child departments
+            elif self.department.code == 'AUTOTELOUS_DN':
+                # Προσθέτουμε condition για χρήστες από child departments
+                child_dept_condition = Q(
+                    department__parent_department=self.department,
+                    is_active=True
+                )
+                
+                # Ενώνουμε τα conditions με OR
+                conditions = conditions | child_dept_condition
             
             return User.objects.filter(conditions).distinct()
         return User.objects.none()

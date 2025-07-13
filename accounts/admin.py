@@ -117,7 +117,7 @@ class CustomUserAdmin(UserAdmin):
     # Προσαρμογή fieldsets για email-based authentication (χωρίς username)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'gender', 'phone', 'hire_date')}),
+        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'father_name', 'gender', 'phone', 'email2', 'orario', 'hire_date')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'roles', 'user_category')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('user_description', 'notification')}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
@@ -134,7 +134,7 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Προσωπικά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('first_name', 'last_name', 'phone', 'hire_date')
+            'fields': ('first_name', 'last_name', 'father_name', 'phone', 'email2', 'orario', 'hire_date')
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),

@@ -69,6 +69,14 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     model = LeaveRequest
     form_class = LeaveRequestForm
     template_name = 'leaves/create_leave_request.html'
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Έλεγχος αν ο χρήστης μπορεί να αιτηθεί άδεια
+        if not request.user.can_request_leave():
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied("Δεν έχετε δικαίωμα υποβολής αιτήσεων άδειας.")
+        return super().dispatch(request, *args, **kwargs)
+    
     def get_success_url(self):
         """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""
         user = self.request.user
@@ -379,16 +387,12 @@ def approve_leave_request(request, pk):
         # Υπεύθυνοι προσωπικού μπορούν να εγκρίνουν όλες τις αιτήσεις
         can_approve = True
     elif request.user.is_department_manager:
-        # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις από το ίδιο τμήμα ή υφισταμένων
-        if request.user.department and leave_request.user.department:
-            # Έλεγχος αν είναι από το ίδιο τμήμα
-            can_approve = (request.user.department.id == leave_request.user.department.id)
+        # Νέα λογική: Έλεγχος αν ο χρήστης είναι ο σωστός προϊστάμενος για έγκριση
+        approving_manager = leave_request.user.get_approving_manager()
+        if approving_manager == request.user:
+            can_approve = True
         
-        # Ή αν είναι ο καθορισμένος manager του χρήστη
-        if not can_approve and leave_request.user.manager:
-            can_approve = (leave_request.user.manager == request.user)
-        
-        # Ή αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση είναι από ΣΔΕΥ που ανήκει στο ΚΕΔΑΣΥ
+        # Διατήρηση της υπάρχουσας λογικής για ΚΕΔΑΣΥ/ΣΔΕΥ
         if (not can_approve and
             request.user.department and request.user.department.department_type and
             request.user.department.department_type.code == 'KEDASY' and
@@ -396,6 +400,10 @@ def approve_leave_request(request, pk):
             leave_request.user.department.department_type.code == 'SDEY' and
             leave_request.user.department.parent_department == request.user.department):
             can_approve = True
+        
+        # Διατήρηση της υπάρχουσας λογικής για το ίδιο τμήμα (για συμβατότητα)
+        if not can_approve and request.user.department and leave_request.user.department:
+            can_approve = (request.user.department.id == leave_request.user.department.id)
     
     if not can_approve:
         raise PermissionDenied("Δεν μπορείτε να εγκρίνετε αυτή την αίτηση.")
@@ -463,12 +471,18 @@ def reject_leave_request(request, pk):
     # Έλεγχος αν ο χρήστης είναι ο προϊστάμενος του αιτούντα
     can_reject = False
     
+    # Νέα λογική: Έλεγχος αν ο χρήστης είναι ο σωστός προϊστάμενος για απόρριψη
+    approving_manager = leave_request.user.get_approving_manager()
+    if approving_manager == request.user:
+        can_reject = True
+    
+    # Διατήρηση της υπάρχουσας λογικής για συμβατότητα
     # Έλεγχος αν είναι ο άμεσος προϊστάμενος
-    if leave_request.user.manager == request.user:
+    if not can_reject and leave_request.user.manager == request.user:
         can_reject = True
     
     # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
-    elif (request.user.department and request.user.department.department_type and
+    elif (not can_reject and request.user.department and request.user.department.department_type and
           request.user.department.department_type.code == 'KEDASY' and
           leave_request.user.department and leave_request.user.department.department_type and
           leave_request.user.department.department_type.code == 'SDEY' and
@@ -569,61 +583,83 @@ class UsersListView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        if self.request.user.is_leave_handler:
+        # Έλεγχος αν ο χρήστης είναι και department_manager και leave_handler
+        # Αν είναι και τα δύο, η παράμετρος URL καθορίζει τη λειτουργία
+        view_mode = self.request.GET.get('view', 'department')
+        
+        if self.request.user.is_department_manager and view_mode == 'department':
+            # Προϊστάμενος βλέπει μόνο τους subordinates του (χρήστες που μπορεί να εγκρίνει)
+            return self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+        elif self.request.user.is_leave_handler and view_mode == 'handler':
             # Χειριστής αδειών βλέπει όλους τους χρήστες
             return User.objects.select_related('department').order_by('last_name', 'first_name')
         elif self.request.user.is_department_manager:
-            # Προϊστάμενος βλέπει χρήστες του τμήματός του και όλων των υποτμημάτων
-            if self.request.user.department:
-                # Βρίσκω όλα τα τμήματα (το δικό του και όλα τα υποτμήματα)
-                all_departments = self.request.user.department.get_all_sub_departments()
-                
-                # Επιστρέφω χρήστες από όλα αυτά τα τμήματα
-                return User.objects.filter(
-                    department__in=all_departments
-                ).select_related('department').order_by('last_name', 'first_name')
-            else:
-                # Αν δεν έχει τμήμα, δεν βλέπει κανέναν
-                return User.objects.none()
+            # Προϊστάμενος βλέπει μόνο τους subordinates του (default)
+            return self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+        elif self.request.user.is_leave_handler:
+            # Χειριστής αδειών βλέπει όλους τους χρήστες
+            return User.objects.select_related('department').order_by('last_name', 'first_name')
         return User.objects.none()
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Στατιστικά ανάλογα με τον ρόλο
-        if self.request.user.is_leave_handler:
+        # Προσδιορισμός του view mode
+        view_mode = self.request.GET.get('view', 'department')
+        
+        # Στατιστικά ανάλογα με τον ρόλο και το view mode
+        if self.request.user.is_department_manager and view_mode == 'department':
+            # Στατιστικά για τους subordinates του προϊσταμένου
+            subordinates = self.request.user.get_subordinates()
+            
+            context.update({
+                'total_users': subordinates.count(),
+                'active_users': subordinates.filter(is_active=True).count(),
+                'employees': subordinates.filter(roles__code='EMPLOYEE').distinct().count(),
+                'managers': subordinates.filter(roles__code='MANAGER').distinct().count(),
+                'user_role': 'manager',
+                'department_name': self.request.user.department.name if self.request.user.department else 'Άγνωστο',
+                'view_mode': 'department'
+            })
+        elif self.request.user.is_leave_handler and view_mode == 'handler':
             # Στατιστικά για όλους τους χρήστες
             context.update({
                 'total_users': User.objects.count(),
                 'active_users': User.objects.filter(is_active=True).count(),
-                'employees': User.objects.filter(roles__code='employee').distinct().count(),
-                'managers': User.objects.filter(roles__code='department_manager').distinct().count(),
-                'user_role': 'handler'
+                'employees': User.objects.filter(roles__code='EMPLOYEE').distinct().count(),
+                'managers': User.objects.filter(roles__code='MANAGER').distinct().count(),
+                'user_role': 'handler',
+                'view_mode': 'handler'
             })
         elif self.request.user.is_department_manager:
-            # Στατιστικά για το τμήμα του προϊσταμένου και όλα τα υποτμήματα
-            if self.request.user.department:
-                # Βρίσκω όλα τα τμήματα (το δικό του και όλα τα υποτμήματα)
-                all_departments = self.request.user.department.get_all_sub_departments()
-                department_users = User.objects.filter(department__in=all_departments)
-                
-                context.update({
-                    'total_users': department_users.count(),
-                    'active_users': department_users.filter(is_active=True).count(),
-                    'employees': department_users.filter(roles__code='employee').distinct().count(),
-                    'managers': department_users.filter(roles__code='department_manager').distinct().count(),
-                    'user_role': 'manager',
-                    'department_name': self.request.user.department.name
-                })
-            else:
-                context.update({
-                    'total_users': 0,
-                    'active_users': 0,
-                    'employees': 0,
-                    'managers': 0,
-                    'user_role': 'manager',
-                    'department_name': 'Άγνωστο'
-                })
+            # Default για department manager
+            subordinates = self.request.user.get_subordinates()
+            
+            context.update({
+                'total_users': subordinates.count(),
+                'active_users': subordinates.filter(is_active=True).count(),
+                'employees': subordinates.filter(roles__code='EMPLOYEE').distinct().count(),
+                'managers': subordinates.filter(roles__code='MANAGER').distinct().count(),
+                'user_role': 'manager',
+                'department_name': self.request.user.department.name if self.request.user.department else 'Άγνωστο',
+                'view_mode': 'department'
+            })
+        elif self.request.user.is_leave_handler:
+            # Default για leave handler
+            context.update({
+                'total_users': User.objects.count(),
+                'active_users': User.objects.filter(is_active=True).count(),
+                'employees': User.objects.filter(roles__code='EMPLOYEE').distinct().count(),
+                'managers': User.objects.filter(roles__code='MANAGER').distinct().count(),
+                'user_role': 'handler',
+                'view_mode': 'handler'
+            })
+        
+        # Προσθήκη πληροφοριών για dual-role users
+        context.update({
+            'has_dual_role': self.request.user.is_department_manager and self.request.user.is_leave_handler,
+            'current_view_mode': view_mode
+        })
         
         return context
 
@@ -946,6 +982,12 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             obj.user.department.department_type.code == 'SDEY' and
             obj.user.department.parent_department == user.department):
             can_view = True
+            
+        # Έλεγχος αν είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης και η αίτηση από child departments
+        if (not can_view and user.is_department_manager and
+            user.department and user.department.code == 'AUTOTELOUS_DN' and
+            obj.user.department and obj.user.department.parent_department == user.department):
+            can_view = True
         
         if not can_view:
             raise PermissionDenied("Δεν έχετε δικαίωμα προβολής αυτής της αίτησης.")
@@ -1153,10 +1195,11 @@ def submit_final_request(request):
             
             # Ειδοποιήσεις ανάλογα με τον τύπο άδειας και τμήμα
             if leave_request.leave_type.requires_approval:
-                # Στανταρντ workflow - ειδοποίηση προϊσταμένου
-                if leave_request.user.manager:
+                # Νέα ιεραρχική λογική - ειδοποίηση σωστού προϊσταμένου
+                approving_manager = leave_request.user.get_approving_manager()
+                if approving_manager:
                     create_notification(
-                        user=leave_request.user.manager,
+                        user=approving_manager,
                         title="Νέα Αίτηση Άδειας",
                         message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name}",
                         related_object=leave_request

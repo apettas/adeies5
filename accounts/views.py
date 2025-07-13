@@ -185,7 +185,26 @@ class UserRoleManagementView(LoginRequiredMixin, TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['users'] = User.objects.select_related('department').prefetch_related('roles').order_by('last_name', 'first_name')
+        
+        # Φιλτράρισμα χρηστών βάσει ρόλου
+        if self.request.user.is_superuser:
+            # Superuser βλέπει όλους
+            users = User.objects.select_related('department').prefetch_related('roles')
+        elif self.request.user.is_administrator:
+            # Administrator βλέπει όλους
+            users = User.objects.select_related('department').prefetch_related('roles')
+        elif self.request.user.is_department_manager:
+            # Department manager βλέπει μόνο τους χρήστες του τμήματός του και των υποτμημάτων
+            subordinates = self.request.user.get_subordinates()
+            users = subordinates.select_related('department').prefetch_related('roles')
+        elif self.request.user.is_leave_handler:
+            # Leave handler βλέπει όλους (χρειάζεται για διαχείριση αδειών)
+            users = User.objects.select_related('department').prefetch_related('roles')
+        else:
+            # Άλλοι χρήστες δεν βλέπουν κανέναν
+            users = User.objects.none()
+        
+        context['users'] = users.order_by('last_name', 'first_name')
         context['all_roles'] = Role.objects.filter(is_active=True).order_by('name')
         context['departments'] = Department.objects.filter(is_active=True).order_by('name')
         return context
