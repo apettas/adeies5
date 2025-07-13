@@ -21,7 +21,79 @@
     </div>
 </div>
 
-<div class="row">
+<!-- Leave Balance Dashboard -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-date"></i> Υπόλοιπα Αδειών</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-2 text-success mb-2">{{ leave_balance.total_days|default:0 }}</div>
+                            <h6>Συνολικές Διαθέσιμες Άδειες</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-2 text-info mb-2">{{ leave_balance.carryover_days|default:0 }}</div>
+                            <h6>Προηγούμενου Έτους</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-2 text-primary mb-2">{{ leave_balance.current_year_days|default:0 }}</div>
+                            <h6>Τρέχοντος Έτους</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-2 text-warning mb-2">{{ leave_balance.annual_entitlement|default:0 }}</div>
+                            <h6>Ετήσιο Δικαίωμα</h6>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-info" role="progressbar"
+                             style="width: {{ carryover_percentage }}%"
+                             aria-valuenow="{{ leave_balance.carryover_days }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ leave_balance.total_days }}">
+                            Προηγούμενου
+                        </div>
+                        <div class="progress-bar bg-primary" role="progressbar"
+                             style="width: {{ current_year_percentage }}%"
+                             aria-valuenow="{{ leave_balance.current_year_days }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ leave_balance.total_days }}">
+                            Τρέχοντος
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Οι άδειες καταναλώνονται πρώτα από το προηγούμενο έτος
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">
+                            Τελευταία ενημέρωση: {{ user.last_login|date:"d/m/Y H:i"|default:"Ποτέ" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
     <div class="col-md-4 mb-3">
         <div class="card text-center card-hover">
             <div class="card-body">

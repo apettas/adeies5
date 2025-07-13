@@ -239,6 +239,21 @@ class User(AbstractUser):
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     
+    # Κατάσταση Αδειών
+    annual_leave_entitlement = models.IntegerField('Δικαιούμενες Ημέρες Κανονικής Άδειας', default=25,
+                                                 help_text='Οι ημέρες κανονικής άδειας που δικαιούται κάθε χρόνο')
+    carryover_leave_days = models.IntegerField('Υπόλοιπο Κανονικών Αδειών Προηγούμενου Έτους', default=0,
+                                             help_text='Μη εξαντλημένες κανονικές άδειες από το προηγούμενο έτος')
+    current_year_leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών Τρέχοντος Έτους', default=0,
+                                                   help_text='Διαθέσιμες κανονικές άδειες για το τρέχον έτος')
+    leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών', default=0,
+                                      help_text='Συνολικό υπόλοιπο κανονικών αδειών (προηγούμενο + τρέχον έτος)')
+    sick_leave_with_declaration = models.IntegerField('Αναρρωτικές Άδειες με Υπεύθυνη Δήλωση', default=2,
+                                                    help_text='Διαθέσιμες αναρρωτικές άδειες με υπεύθυνη δήλωση')
+    total_sick_leave_last_5_years = models.IntegerField('Σύνολο Αναρρωτικών Αδειών Τελευταίας Πενταετίας',
+                                                      default=0, blank=True, null=True,
+                                                      help_text='Συνολικές αναρρωτικές άδειες των τελευταίων 5 ετών')
+    
     # Django fields - χρησιμοποιούμε email ως username για SSO
     username = None  # Αφαιρούμε το username field εντελώς
     USERNAME_FIELD = 'email'
@@ -440,3 +455,83 @@ class User(AbstractUser):
     def can_access_system(self):
         """Ελέγχει αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα"""
         return self.is_superuser or (self.is_approved and self.is_active)
+    
+    # Μέθοδοι διαχείρισης κανονικών αδειών
+    def calculate_total_leave_balance(self):
+        """Υπολογίζει το συνολικό υπόλοιπο κανονικών αδειών"""
+        return self.carryover_leave_days + self.current_year_leave_balance
+    
+    def update_leave_balance(self):
+        """Ενημερώνει το πεδίο leave_balance με βάση τα υπόλοιπα"""
+        self.leave_balance = self.calculate_total_leave_balance()
+        self.save()
+    
+    def can_request_leave_days(self, requested_days):
+        """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί συγκεκριμένο αριθμό ημερών"""
+        return self.leave_balance >= requested_days
+    
+    def use_leave_days(self, days_used):
+        """
+        Χρησιμοποιεί ημέρες κανονικής άδειας
+        Πρώτα εξαντλούνται οι άδειες προηγούμενου έτους, μετά του τρέχοντος
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"use_leave_days called for user {self.username} with days_used={days_used}")
+        logger.info(f"Before: carryover_leave_days={self.carryover_leave_days}, current_year_leave_balance={self.current_year_leave_balance}, leave_balance={self.leave_balance}")
+        
+        if days_used <= 0:
+            logger.info("days_used <= 0, returning False")
+            return False
+        
+        if not self.can_request_leave_days(days_used):
+            logger.info("can_request_leave_days returned False, returning False")
+            return False
+        
+        remaining_days = days_used
+        
+        # Πρώτα αφαιρούμε από το υπόλοιπο προηγούμενου έτους
+        if self.carryover_leave_days > 0:
+            days_from_carryover = min(remaining_days, self.carryover_leave_days)
+            self.carryover_leave_days -= days_from_carryover
+            remaining_days -= days_from_carryover
+            logger.info(f"Used {days_from_carryover} from carryover, remaining_days={remaining_days}")
+        
+        # Μετά αφαιρούμε από το τρέχον έτος
+        if remaining_days > 0:
+            self.current_year_leave_balance -= remaining_days
+            logger.info(f"Used {remaining_days} from current year")
+        
+        # Ενημερώνουμε το συνολικό υπόλοιπο
+        self.leave_balance = self.calculate_total_leave_balance()
+        logger.info(f"After: carryover_leave_days={self.carryover_leave_days}, current_year_leave_balance={self.current_year_leave_balance}, leave_balance={self.leave_balance}")
+        
+        self.save()
+        logger.info("User saved successfully")
+        
+        return True
+    
+    def reset_yearly_leave_balance(self):
+        """
+        Μηδενίζει τα υπόλοιπα στην αρχή του έτους
+        Μεταφέρει το τρέχον υπόλοιπο στο προηγούμενο έτος
+        """
+        # Μεταφορά υπολοίπου τρέχοντος έτους στο προηγούμενο
+        self.carryover_leave_days = self.current_year_leave_balance
+        
+        # Νέες άδειες για το τρέχον έτος
+        self.current_year_leave_balance = self.annual_leave_entitlement
+        
+        # Ενημέρωση συνολικού υπολοίπου
+        self.leave_balance = self.calculate_total_leave_balance()
+        self.save()
+    
+    def get_leave_balance_breakdown(self):
+        """Επιστρέφει αναλυτικά τα υπόλοιπα αδειών"""
+        return {
+            'carryover_days': self.carryover_leave_days,
+            'current_year_days': self.current_year_leave_balance,
+            'total_days': self.calculate_total_leave_balance(),
+            'annual_entitlement': self.annual_leave_entitlement
+        }

@@ -120,6 +120,7 @@ class CustomUserAdmin(UserAdmin):
         ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'father_name', 'gender', 'phone', 'email2', 'orario', 'hire_date')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'roles', 'user_category')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('user_description', 'notification')}),
+        ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
         ('Δικαιώματα', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Σημαντικές Ημερομηνίες', {'fields': ('last_login', 'date_joined')}),
@@ -139,5 +140,9 @@ class CustomUserAdmin(UserAdmin):
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),
             'fields': ('department', 'specialty', 'roles', 'user_category')
+        }),
+        ('Κατάσταση Αδειών', {
+            'classes': ('wide',),
+            'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')
         }),
     )

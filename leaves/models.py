@@ -312,6 +312,11 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
+            # Έλεγχος αν ο χρήστης έχει αρκετές ημέρες άδειας ΜΟΝΟ για κανονικές άδειες
+            if self.leave_type.name == '1 Κανονική Άδεια':
+                if not self.user.can_request_leave_days(self.total_days):
+                    raise ValueError(f"Ανεπαρκές υπόλοιπο αδειών. Διαθέσιμες: {self.user.leave_balance}, Αιτούμενες: {self.total_days}")
+            
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
             else:
@@ -382,6 +387,8 @@ class LeaveRequest(models.Model):
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
             self.save()
+            # Ενημέρωση leave balance
+            self._update_leave_balance_on_completion()
             return True
         return False
     
@@ -398,8 +405,35 @@ class LeaveRequest(models.Model):
             if comments:
                 self.processing_comments = comments
             self.save()
+            # Ενημέρωση leave balance
+            self._update_leave_balance_on_completion()
             return True
         return False
+    
+    def _update_leave_balance_on_completion(self):
+        """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται - ΜΟΝΟ για κανονικές άδειες"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"_update_leave_balance_on_completion called for request {self.id}")
+        logger.info(f"Status: {self.status}")
+        logger.info(f"Leave type: {self.leave_type.name}")
+        logger.info(f"Total days: {self.total_days}")
+        logger.info(f"User: {self.user.username}")
+        logger.info(f"User leave balance before: {self.user.leave_balance}")
+        
+        if self.status == 'COMPLETED' and self.leave_type.name == '1 Κανονική Άδεια':
+            # Χρησιμοποιούμε τη μέθοδο use_leave_days του user
+            days_used = self.total_days
+            if days_used > 0:
+                logger.info(f"Calling use_leave_days({days_used})")
+                result = self.user.use_leave_days(days_used)
+                logger.info(f"use_leave_days result: {result}")
+                logger.info(f"User leave balance after: {self.user.leave_balance}")
+            else:
+                logger.info("No days to use (days_used <= 0)")
+        else:
+            logger.info("Condition not met - not updating leave balance")
     
     def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""

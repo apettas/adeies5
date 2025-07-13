@@ -64,6 +64,34 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             # Αν το leaves app δεν είναι διαθέσιμο ακόμα
             pass
         
+        # Υπολογισμός υπολοίπων αδειών
+        try:
+            user.update_leave_balance()
+            leave_balance = user.get_leave_balance_breakdown()
+            context['leave_balance'] = leave_balance
+            
+            # Υπολογισμός percentages για progress bar
+            total_days = leave_balance.get('total_days', 0)
+            if total_days > 0:
+                carryover_percentage = (leave_balance.get('carryover_days', 0) / total_days) * 100
+                current_year_percentage = (leave_balance.get('current_year_days', 0) / total_days) * 100
+            else:
+                carryover_percentage = 0
+                current_year_percentage = 0
+                
+            context['carryover_percentage'] = carryover_percentage
+            context['current_year_percentage'] = current_year_percentage
+        except Exception as e:
+            # Fallback values σε περίπτωση σφάλματος
+            context['leave_balance'] = {
+                'carryover_days': 0,
+                'current_year_days': 0,
+                'total_days': 0,
+                'annual_entitlement': 0
+            }
+            context['carryover_percentage'] = 0
+            context['current_year_percentage'] = 0
+        
         return context
 
 

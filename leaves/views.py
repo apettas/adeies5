@@ -1201,20 +1201,12 @@ def submit_final_request(request):
             if new_description:
                 leave_request.description = new_description
             
-            # Αλλάζουμε την κατάσταση ανάλογα με το αν απαιτεί έγκριση από προϊστάμενο
-            if leave_request.leave_type.requires_approval:
-                leave_request.status = 'SUBMITTED'
-            else:
-                # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ με parent ΚΕΔΑΣΥ
-                if leave_request.is_kedasy_kepea_department():
-                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ακόμη και οι αναρρωτικές άδειες χρειάζονται πρωτόκολλο
-                    # Δεν θέτουμε manager_approved_at γιατί θέλουμε να τη δει ο προϊστάμενος
-                    leave_request.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
-                else:
-                    # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
-                    leave_request.status = 'APPROVED_MANAGER'
-            leave_request.submitted_at = timezone.now()
-            leave_request.save()
+            # Χρησιμοποιούμε τη μέθοδο submit() από το model που έχει τον έλεγχο για το leave balance
+            try:
+                leave_request.submit()
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect('leaves:create_leave_request')
             
             # Ειδοποιήσεις ανάλογα με τον τύπο άδειας και τμήμα
             if leave_request.leave_type.requires_approval:
