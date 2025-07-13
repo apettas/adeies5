@@ -4,6 +4,7 @@ from .decision_views import (
     prepare_decision_preview, generate_final_decision_pdf, serve_decision_pdf,
     upload_exact_copy_pdf, serve_exact_copy_pdf, complete_leave_request_final
 )
+from .calendar_views import leave_calendar_view
 
 app_name = 'leaves'
 
@@ -20,6 +21,8 @@ urlpatterns = [
     
     # Manager URLs
     path('manager/', views.ManagerDashboardView.as_view(), name='manager_dashboard'),
+    path('calendar/', leave_calendar_view, name='calendar'),
+    path('calendar/<int:year>/<int:month>/', leave_calendar_view, name='calendar'),
     path('approve/<int:pk>/', views.approve_leave_request, name='approve_leave_request'),
     path('reject/<int:pk>/', views.reject_leave_request, name='reject_leave_request'),
     

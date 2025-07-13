@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+
+{% block title %}Ημερολόγιο Αδειών - Αλκίνοος{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .calendar-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem;
+    }
+    
+    .calendar-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .calendar-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: #495057;
+    }
+    
+    .calendar-nav-btn {
+        background: none;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .calendar-nav-btn:hover {
+        background: #e9ecef;
+        color: #495057;
+        text-decoration: none;
+    }
+    
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+    }
+    
+    .calendar-day-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 0.5rem;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #495057;
+    }
+    
+    .calendar-day {
+        min-height: 120px;
+        border-right: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.25rem;
+        position: relative;
+        background: white;
+    }
+    
+    .calendar-day:nth-child(7n) {
+        border-right: none;
+    }
+    
+    .calendar-day.weekend {
+        background: #f8f9fa;
+    }
+    
+    .calendar-day.today {
+        background: #e3f2fd;
+    }
+    
+    .calendar-day.today.weekend {
+        background: #f0f0f0;
+    }
+    
+    .calendar-day-number {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #495057;
+        margin-bottom: 0.25rem;
+    }
+    
+    .calendar-day.today .calendar-day-number {
+        color: #1976d2;
+        background: #1976d2;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+    
+    .calendar-day.weekend .calendar-day-number {
+        color: #6c757d;
+    }
+    
+    .calendar-event {
+        background: #007bff;
+        color: white;
+        padding: 2px 4px;
+        margin-bottom: 2px;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        word-wrap: break-word;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .calendar-event:hover {
+        opacity: 0.8;
+    }
+    
+    .calendar-event.status-COMPLETED {
+        background: #28a745;
+    }
+    
+    .calendar-event.status-APPROVED_MANAGER {
+        background: #17a2b8;
+    }
+    
+    .calendar-event.status-UNDER_PROCESSING {
+        background: #6f42c1;
+    }
+    
+    .calendar-event.status-PENDING_DOCUMENTS {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .calendar-stats {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .legend {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+    
+    .legend-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    .legend-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+    
+    @media (max-width: 768px) {
+        .calendar-day {
+            min-height: 80px;
+        }
+        
+        .calendar-event {
+            font-size: 0.6rem;
+            padding: 1px 2px;
+        }
+        
+        .calendar-nav {
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: center;
+        }
+        
+        .legend-items {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+    
+    .empty-day {
+        background: #fafafa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar3"></i> Ημερολόγιο Αδειών</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
+                </a>
+                <span class="badge bg-info fs-6">Προϊστάμενος Τμήματος</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="calendar-container">
+            <!-- Header με πλοήγηση -->
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <a href="{% url 'leaves:calendar' prev_year prev_month %}" class="calendar-nav-btn">
+                        <i class="bi bi-chevron-left"></i> Προηγούμενος
+                    </a>
+                    <h3 class="calendar-title">{{ current_month }} {{ current_year }}</h3>
+                    <a href="{% url 'leaves:calendar' next_year next_month %}" class="calendar-nav-btn">
+                        Επόμενος <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Στατιστικά -->
+            <div class="calendar-stats">
+                <span><i class="bi bi-people"></i> {{ total_employees }} Υπάλληλοι</span>
+                <span><i class="bi bi-calendar-event"></i> {{ total_requests }} Περίοδοι Αδειών</span>
+                <span><i class="bi bi-calendar-month"></i> {{ current_month }} {{ current_year }}</span>
+            </div>
+            
+            <!-- Κεφαλίδες ημερών -->
+            <div class="calendar-grid">
+                {% for day_name in day_names %}
+                <div class="calendar-day-header">{{ day_name }}</div>
+                {% endfor %}
+                
+                <!-- Ημέρες του μήνα -->
+                {% for week in calendar_weeks %}
+                    {% for day in week %}
+                    <div class="calendar-day{% if day.is_weekend %} weekend{% endif %}{% if day.is_today %} today{% endif %}{% if not day.day %} empty-day{% endif %}">
+                        {% if day.day %}
+                        <div class="calendar-day-number">{{ day.day }}</div>
+                        
+                        <!-- Events για αυτή την ημέρα -->
+                        {% for event in day.events %}
+                        <div class="calendar-event status-{{ event.status }}"
+                             style="background-color: {{ event.color }};"
+                             title="{{ event.user_name }} - {{ event.leave_type }} ({{ event.status }})"
+                             data-request-id="{{ event.request_id }}">
+                            {{ event.user_name }} - {{ event.leave_type }}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="legend">
+            <div class="legend-title">Υπόμνημα Κατάστασης Αιτήσεων</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #17a2b8;"></div>
+                    <span>Εγκρίθηκε από Προϊστάμενο</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #6f42c1;"></div>
+                    <span>Υπό Επεξεργασία</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ffc107;"></div>
+                    <span>Αναμονή Δικαιολογητικών</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #28a745;"></div>
+                    <span>Ολοκληρώθηκε</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Προσθήκη tooltip για events
+    const events = document.querySelectorAll('.calendar-event');
+    events.forEach(event => {
+        event.addEventListener('mouseenter', function() {
+            this.style.zIndex = '1000';
+            this.style.position = 'relative';
+            this.style.transform = 'scale(1.02)';
+        });
+        
+        event.addEventListener('mouseleave', function() {
+            this.style.zIndex = '';
+            this.style.position = '';
+            this.style.transform = '';
+        });
+        
+        // Click handler για navigation σε detail page
+        event.addEventListener('click', function() {
+            const requestId = this.dataset.requestId;
+            if (requestId) {
+                window.location.href = `/leaves/detail/${requestId}/`;
+            }
+        });
+    });
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowLeft' && e.ctrlKey) {
+            const prevLink = document.querySelector('.calendar-nav a[href*="prev"]');
+            if (prevLink) prevLink.click();
+        } else if (e.key === 'ArrowRight' && e.ctrlKey) {
+            const nextLink = document.querySelector('.calendar-nav a[href*="next"]');
+            if (nextLink) nextLink.click();
+        } else if (e.key === 'Home' && e.ctrlKey) {
+            // Navigate to current month
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            window.location.href = `/leaves/calendar/${currentYear}/${currentMonth}/`;
+        }
+    });
+    
+    // Highlight today's date
+    const today = new Date();
+    const todayDateString = today.getDate().toString();
+    const calendarDays = document.querySelectorAll('.calendar-day');
+    
+    calendarDays.forEach(day => {
+        const dayNumber = day.querySelector('.calendar-day-number');
+        if (dayNumber && dayNumber.textContent.trim() === todayDateString) {
+            day.classList.add('today');
+        }
+    });
+    
+    // Responsive navigation για mobile
+    const navTitle = document.querySelector('.calendar-title');
+    if (navTitle && window.innerWidth < 768) {
+        navTitle.style.fontSize = '1.2rem';
+    }
+    
+    // Event count display
+    const eventCounts = {};
+    events.forEach(event => {
+        const dayElement = event.closest('.calendar-day');
+        if (dayElement) {
+            const dayNumber = dayElement.querySelector('.calendar-day-number')?.textContent.trim();
+            if (dayNumber) {
+                eventCounts[dayNumber] = (eventCounts[dayNumber] || 0) + 1;
+            }
+        }
+    });
+    
+    // Show help text
+    const helpShortcut = document.createElement('div');
+    helpShortcut.innerHTML = `
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i>
+            Χρήση: Ctrl+← (προηγούμενος), Ctrl+→ (επόμενος), Ctrl+Home (σημερινός μήνας)
+        </small>
+    `;
+    helpShortcut.className = 'mt-3 text-center';
+    document.querySelector('.calendar-container').after(helpShortcut);
+});
+</script>
+{% endblock %}
