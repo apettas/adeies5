@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.contrib.messages import get_messages
 from accounts.tests.test_data import TestDataMixin
-from leaves.models import LeaveRequest, LeaveType, LeaveBalance
+from leaves.models import LeaveRequest, LeaveType
 from unittest.mock import patch
 
 User = get_user_model()
@@ -31,15 +31,10 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
             max_days=25
         )
         
-        # Δημιουργία LeaveBalances
+        # Ρύθμιση leave balance στους χρήστες
         for user in [self.employee, self.dept_manager, self.kizilou, self.delegkos]:
-            LeaveBalance.objects.create(
-                user=user,
-                leave_type=self.leave_type,
-                total_days=25,
-                used_days=0,
-                remaining_days=25
-            )
+            user.leave_balance = 25
+            user.save()
             
     def test_complete_employee_approval_workflow(self):
         """
@@ -87,8 +82,8 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         # Έλεγχος ότι έγινε approve
         leave_request.refresh_from_db()
         self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
-        self.assertEqual(leave_request.approved_by, self.dept_manager)
-        self.assertIsNotNone(leave_request.approved_at)
+        self.assertEqual(leave_request.manager_approved_by, self.dept_manager)
+        self.assertIsNotNone(leave_request.manager_approved_at)
         
         # STEP 3: Leave Handler processes
         self.client.force_login(self.leave_handler)
@@ -105,7 +100,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         
         # Final verification
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_FINAL')
+        self.assertEqual(leave_request.status, 'COMPLETED')
         self.assertEqual(leave_request.processed_by, self.leave_handler)
         self.assertIsNotNone(leave_request.processed_at)
         
@@ -148,7 +143,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         
         leave_request.refresh_from_db()
         self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
-        self.assertEqual(leave_request.approved_by, self.kizilou)
+        self.assertEqual(leave_request.manager_approved_by, self.kizilou)
         
         # STEP 3: Leave Handler processes
         self.client.force_login(self.leave_handler)
@@ -159,7 +154,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_FINAL')
+        self.assertEqual(leave_request.status, 'COMPLETED')
         self.assertEqual(leave_request.processed_by, self.leave_handler)
         
     def test_complete_kizilou_approval_workflow(self):
@@ -192,7 +187,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         
         leave_request.refresh_from_db()
         self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
-        self.assertEqual(leave_request.approved_by, self.delegkos)
+        self.assertEqual(leave_request.manager_approved_by, self.delegkos)
         
         # STEP 3: Leave Handler processes
         self.client.force_login(self.leave_handler)
@@ -203,7 +198,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_FINAL')
+        self.assertEqual(leave_request.status, 'COMPLETED')
         
     def test_complete_delegkos_approval_workflow(self):
         """
@@ -247,7 +242,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         # Για τον έλεγχο, θα κάνουμε manual approval πρώτα
         if leave_request.status == 'SUBMITTED':
             leave_request.status = 'APPROVED_MANAGER'
-            leave_request.approved_by = self.delegkos
+            leave_request.manager_approved_by = self.delegkos
             leave_request.save()
             
             response = self.client.post(
@@ -257,7 +252,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_FINAL')
+        self.assertEqual(leave_request.status, 'COMPLETED')
 
 
 class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
@@ -307,7 +302,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Verification
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'REJECTED')
+        self.assertEqual(leave_request.status, 'REJECTED_MANAGER')
         self.assertEqual(leave_request.rejected_by, self.dept_manager)
         self.assertEqual(leave_request.rejection_reason, 'Insufficient leave balance')
         self.assertIsNotNone(leave_request.rejected_at)
@@ -319,7 +314,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
             reverse('leaves:leave_request_detail', kwargs={'pk': leave_request.pk})
         )
         
-        self.assertContains(response, 'REJECTED')
+        self.assertContains(response, 'REJECTED_MANAGER')
         self.assertContains(response, 'Insufficient leave balance')
         self.assertNotContains(response, 'Έγκριση')  # No approval buttons
         
@@ -349,8 +344,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Verification
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'CANCELLED')
-        self.assertIsNotNone(leave_request.cancelled_at)
+        self.assertEqual(leave_request.status, 'WITHDRAWN_BY_REQUESTER')
         
         # STEP 3: Manager cannot approve cancelled request
         self.client.force_login(self.dept_manager)
@@ -361,7 +355,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Should fail or redirect
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'CANCELLED')  # Status unchanged
+        self.assertEqual(leave_request.status, 'WITHDRAWN_BY_REQUESTER')  # Status unchanged
 
 
 class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
@@ -413,7 +407,7 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
         for request in self.requests:
             request.refresh_from_db()
             self.assertEqual(request.status, 'APPROVED_MANAGER')
-            self.assertEqual(request.approved_by, self.dept_manager)
+            self.assertEqual(request.manager_approved_by, self.dept_manager)
             
     def test_mixed_approval_rejection_workflow(self):
         """
@@ -441,16 +435,16 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
             if i < 3:
                 self.assertEqual(request.status, 'APPROVED_MANAGER')
             else:
-                self.assertEqual(request.status, 'REJECTED')
+                self.assertEqual(request.status, 'REJECTED_MANAGER')
                 
     def test_dashboard_filtering_with_multiple_requests(self):
         """
         Test: Dashboard filtering με multiple requests
         """
         # Approve some requests
-        self.requests[0].approve_request(self.dept_manager)
-        self.requests[1].approve_request(self.dept_manager)
-        self.requests[2].reject_request(self.dept_manager, 'Test rejection')
+        self.requests[0].approve_by_manager(self.dept_manager)
+        self.requests[1].approve_by_manager(self.dept_manager)
+        self.requests[2].reject_by_manager(self.dept_manager, 'Test rejection')
         
         self.client.force_login(self.dept_manager)
         
@@ -466,8 +460,8 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
         self.assertContains(response, 'Request 2')
         self.assertNotContains(response, 'Request 3')
         
-        # Filter by REJECTED
-        response = self.client.get(reverse('leaves:dashboard'), {'status': 'REJECTED'})
+        # Filter by REJECTED_MANAGER
+        response = self.client.get(reverse('leaves:dashboard'), {'status': 'REJECTED_MANAGER'})
         self.assertContains(response, 'Request 3')
         self.assertNotContains(response, 'Request 1')
 
@@ -490,14 +484,9 @@ class LeaveBalanceIntegrationTests(TestDataMixin, TestCase):
             max_days=25
         )
         
-        # Δημιουργία LeaveBalance με limited days
-        self.leave_balance = LeaveBalance.objects.create(
-            user=self.employee,
-            leave_type=self.leave_type,
-            total_days=25,
-            used_days=20,  # Only 5 days remaining
-            remaining_days=5
-        )
+        # Ρύθμιση leave balance στον χρήστη (μόνο 5 μέρες)
+        self.employee.leave_balance = 5
+        self.employee.save()
         
     def test_leave_balance_validation_workflow(self):
         """

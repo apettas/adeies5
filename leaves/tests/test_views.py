@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.contrib.messages import get_messages
 from accounts.tests.test_data import TestDataMixin
-from leaves.models import LeaveRequest, LeaveType, LeaveBalance
+from leaves.models import LeaveRequest, LeaveType
 from unittest.mock import patch
 
 User = get_user_model()
@@ -31,24 +31,22 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
             max_days=25
         )
         
-        # Δημιουργία LeaveBalance
-        self.leave_balance = LeaveBalance.objects.create(
-            user=self.employee,
-            leave_type=self.leave_type,
-            total_days=25,
-            used_days=0,
-            remaining_days=25
-        )
+        # Ρύθμιση leave balance στον χρήστη
+        self.employee.leave_balance = 25
+        self.employee.save()
         
         # Δημιουργία LeaveRequest
         self.leave_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date="2025-01-15",
-            end_date="2025-01-20",
-            total_days=5,
             description="Κανονική άδεια",
             status="SUBMITTED"
+        )
+        from leaves.models import LeavePeriod
+        LeavePeriod.objects.create(
+            leave_request=self.leave_request,
+            start_date="2025-01-15",
+            end_date="2025-01-20"
         )
         
     def test_leave_request_list_view_employee_access(self):
@@ -203,7 +201,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         # Έλεγχος ότι έγινε approve
         self.leave_request.refresh_from_db()
         self.assertEqual(self.leave_request.status, 'APPROVED_MANAGER')
-        self.assertEqual(self.leave_request.approved_by, self.dept_manager)
+        self.assertEqual(self.leave_request.manager_approved_by, self.dept_manager)
         
         # Έλεγχος success message
         messages = list(get_messages(response.wsgi_request))
@@ -244,7 +242,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε reject
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'REJECTED')
+        self.assertEqual(self.leave_request.status, 'REJECTED_MANAGER')
         self.assertEqual(self.leave_request.rejected_by, self.dept_manager)
         self.assertEqual(self.leave_request.rejection_reason, 'Απόρριψη για τεστ')
         
@@ -281,7 +279,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε cancel
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'CANCELLED')
+        self.assertEqual(self.leave_request.status, 'WITHDRAWN_BY_REQUESTER')
         
     def test_leave_request_cancel_view_by_non_owner(self):
         """
@@ -304,7 +302,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         Test: Processing από leave handler
         """
         # Πρώτα approval από manager
-        self.leave_request.approve_request(self.dept_manager)
+        self.leave_request.approve_by_manager(self.dept_manager)
         
         self.client.force_login(self.leave_handler)
         
@@ -316,7 +314,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε process
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'APPROVED_FINAL')
+        self.assertEqual(self.leave_request.status, 'COMPLETED')
         self.assertEqual(self.leave_request.processed_by, self.leave_handler)
         
     def test_leave_request_process_view_by_non_leave_handler(self):
@@ -324,7 +322,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         Test: Processing από μη leave handler
         """
         # Πρώτα approval από manager
-        self.leave_request.approve_request(self.dept_manager)
+        self.leave_request.approve_by_manager(self.dept_manager)
         
         self.client.force_login(self.employee)
         
@@ -445,8 +443,8 @@ class LeaveRequestDashboardTests(TestDataMixin, TestCase):
         Test: Leave handler βλέπει approved requests
         """
         # Έγκριση requests
-        self.employee_request.approve_request(self.dept_manager)
-        self.dept_manager_request.approve_request(self.kizilou)
+        self.employee_request.approve_by_manager(self.dept_manager)
+        self.dept_manager_request.approve_by_manager(self.kizilou)
         
         self.client.force_login(self.leave_handler)
         
@@ -462,7 +460,7 @@ class LeaveRequestDashboardTests(TestDataMixin, TestCase):
         Test: Dashboard filtering by status
         """
         # Έγκριση ενός request
-        self.employee_request.approve_request(self.dept_manager)
+        self.employee_request.approve_by_manager(self.dept_manager)
         
         self.client.force_login(self.dept_manager)
         
