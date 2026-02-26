@@ -135,6 +135,14 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                 description = self.request.POST.get(description_key, '')
                 if file_obj:
                     try:
+                        # Επικύρωση αρχείου πριν την αποθήκευση
+                        is_valid, error_message = SecureFileHandler.validate_file(file_obj)
+                        if not is_valid:
+                            # Διαγραφή του αιτήματος αν υπάρχει σφάλμα
+                            leave_request.delete()
+                            form.add_error(None, f'Αρχείο "{file_obj.name}": {error_message}')
+                            return self.form_invalid(form)
+                        
                         file_path = os.path.join(
                             private_media_root,
                             'leave_requests',
@@ -192,6 +200,12 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                 description = self.request.POST.get(description_key, '')
                 
                 if not file_obj:
+                    continue
+                
+                # Επικύρωση αρχείου πριν την αποθήκευση
+                is_valid, error_message = SecureFileHandler.validate_file(file_obj)
+                if not is_valid:
+                    messages.error(self.request, f'Αρχείο "{file_obj.name}": {error_message}')
                     continue
                 
                 try:
@@ -1287,6 +1301,11 @@ def submit_final_request(request):
                     description_key = f'attachment_description_{index}'
                     description = request.POST.get(description_key, '')
                     if file_obj:
+                        # Επικύρωση αρχείου πριν την αποθήκευση
+                        is_valid, error_message = SecureFileHandler.validate_file(file_obj)
+                        if not is_valid:
+                            return JsonResponse({'success': False, 'error': f'Αρχείο "{file_obj.name}": {error_message}'}, status=400)
+                        
                         try:
                             file_path = os.path.join(
                                 private_media_root,

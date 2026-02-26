@@ -104,7 +104,7 @@ def secure_file_path(instance, filename):
 class SecureFile(models.Model):
     """Κρυπτογραφημένο αρχείο"""
     
-    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png']
+    ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     
     leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='attachments')

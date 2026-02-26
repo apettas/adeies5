@@ -81,7 +81,7 @@
                                 <i class="bi bi-paperclip"></i> Επισύναψη Αρχείων (Προαιρετικό)
                             </label>
                             <div class="attachment-group mb-3" data-index="1">
-                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input">
+                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                                 <div class="form-text">
                                     Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
                                 </div>
@@ -179,15 +179,15 @@
                     <label class="form-label">
                         <i class="bi bi-calendar"></i> Ημερομηνία Έναρξης
                     </label>
-                    <input type="text" class="form-control period-start-date" placeholder="ηη/μμ/εεεε" required>
-                    <div class="date-help-text">Εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>
+                    <input type="date" class="form-control period-start-date" required>
+                    <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">
                         <i class="bi bi-calendar-check"></i> Ημερομηνία Λήξης
                     </label>
-                    <input type="text" class="form-control period-end-date" placeholder="ηη/μμ/εεεε" required>
-                    <div class="date-help-text">Εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>
+                    <input type="date" class="form-control period-end-date" required>
+                    <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Ημέρες</label>
@@ -201,253 +201,45 @@
 
 {% block extra_css %}
 <style>
-/* jQuery UI Datepicker CSS Fixes για Bootstrap */
+/* jQuery UI Datepicker - Force visibility */
 .ui-datepicker {
-    z-index: 9999 !important;
-    font-size: 14px !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-    border-radius: 4px !important;
-    padding: 0 !important;
-}
-
-.ui-datepicker-header {
-    background: #007bff !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 4px 4px 0 0 !important;
-    padding: 8px !important;
-}
-
-.ui-datepicker-title {
-    color: white !important;
-    font-weight: bold !important;
-}
-
-.ui-datepicker-prev,
-.ui-datepicker-next {
-    background: transparent !important;
-    border: none !important;
-    color: white !important;
-    cursor: pointer !important;
-}
-
-.ui-datepicker-prev:hover,
-.ui-datepicker-next:hover {
-    background: rgba(255,255,255,0.2) !important;
-    border-radius: 3px !important;
-}
-
-.ui-datepicker-calendar {
-    margin: 0 !important;
-    width: 100% !important;
-}
-
-.ui-datepicker-calendar th,
-.ui-datepicker-calendar td {
-    padding: 4px !important;
-    text-align: center !important;
-    border: none !important;
-}
-
-.ui-datepicker-calendar th {
-    background: #f8f9fa !important;
-    font-weight: bold !important;
-    color: #495057 !important;
-}
-
-.ui-datepicker-calendar td a {
-    display: block !important;
-    padding: 6px !important;
-    text-decoration: none !important;
-    color: #495057 !important;
-    border-radius: 3px !important;
-}
-
-.ui-datepicker-calendar td a:hover {
-    background: #007bff !important;
-    color: white !important;
-}
-
-.ui-datepicker-calendar .ui-state-active {
-    background: #007bff !important;
-    color: white !important;
-}
-
-.ui-datepicker-calendar .ui-state-highlight {
-    background: #ffc107 !important;
-    color: #212529 !important;
-}
-
-.ui-datepicker-buttonpane {
-    background: #f8f9fa !important;
-    border-top: 1px solid #ddd !important;
-    padding: 8px !important;
-    text-align: center !important;
-    border-radius: 0 0 4px 4px !important;
-}
-
-.ui-datepicker-buttonpane button {
-    background: #007bff !important;
-    color: white !important;
-    border: none !important;
-    padding: 4px 12px !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
-    margin: 0 4px !important;
-}
-
-.ui-datepicker-buttonpane button:hover {
-    background: #0056b3 !important;
-}
-
-/* Fix position and container issues */
-.ui-datepicker {
+    z-index: 999999 !important;
     position: absolute !important;
     display: block !important;
-    z-index: 99999 !important;
-    top: auto !important;
-    left: auto !important;
-    width: auto !important;
-    height: auto !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    clip: auto !important;
-    transform: none !important;
-}
-
-/* Ensure visibility and override any Bootstrap conflicts */
-.ui-datepicker.ui-widget {
     visibility: visible !important;
     opacity: 1 !important;
-    display: block !important;
 }
 
-/* Fix parent container issues */
-.period-card .col-md-5 {
-    position: relative !important;
-    overflow: visible !important;
-}
-
-/* Force datepicker to appear above everything */
 .ui-datepicker-div {
-    position: absolute !important;
-    z-index: 99999 !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    z-index: 999999 !important;
 }
 
-/* Ensure input containers don't clip the datepicker */
-.form-group {
+/* Ensure datepicker appears above everything */
+.ui-datepicker.ui-widget {
+    z-index: 999999 !important;
+}
+
+/* Fix container positioning for datepicker */
+.period-card .col-md-5 {
+    position: relative;
+    z-index: 1;
+}
+
+.period-card {
+    z-index: 1;
+    position: relative;
+}
+
+#periods-container {
+    position: relative;
+    z-index: 1;
+}
+
+.card {
     overflow: visible !important;
 }
 
-/* Additional aggressive datepicker visibility fixes */
-#ui-datepicker-div.ui-datepicker {
-    width: auto !important;
-    height: auto !important;
-    overflow: visible !important;
-    clip: auto !important;
-    clip-path: none !important;
-    transform: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 2px solid #007bff !important;
-    background: white !important;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important;
-}
-
-/* Force table structure to be visible */
-#ui-datepicker-div table.ui-datepicker-calendar {
-    display: table !important;
-    border-collapse: separate !important;
-    border-spacing: 1px !important;
-    width: 100% !important;
-}
-
-#ui-datepicker-div table.ui-datepicker-calendar tr {
-    display: table-row !important;
-}
-
-#ui-datepicker-div table.ui-datepicker-calendar td,
-#ui-datepicker-div table.ui-datepicker-calendar th {
-    display: table-cell !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    width: 30px !important;
-    height: 30px !important;
-    border: 1px solid #eee !important;
-}
-
-/* Force date links to be visible and clickable */
-#ui-datepicker-div table.ui-datepicker-calendar td a.ui-state-default {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    padding: 5px !important;
-    text-decoration: none !important;
-    color: #333 !important;
-    background: #fff !important;
-    border: 1px solid transparent !important;
-    border-radius: 3px !important;
-    cursor: pointer !important;
-}
-
-/* Hover effects for date links */
-#ui-datepicker-div table.ui-datepicker-calendar td a.ui-state-default:hover {
-    background: #e6f3ff !important;
-    border-color: #007bff !important;
-    color: #007bff !important;
-}
-
-/* Header visibility */
-#ui-datepicker-div .ui-datepicker-header {
-    display: block !important;
-    visibility: visible !important;
-    background: #f8f9fa !important;
-    border-bottom: 1px solid #dee2e6 !important;
-    padding: 10px !important;
-    position: relative !important;
-}
-
-/* Navigation buttons */
-#ui-datepicker-div .ui-datepicker-prev,
-#ui-datepicker-div .ui-datepicker-next {
-    display: block !important;
-    visibility: visible !important;
-    position: absolute !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    cursor: pointer !important;
-    padding: 5px !important;
-    color: #007bff !important;
-    text-decoration: none !important;
-}
-
-#ui-datepicker-div .ui-datepicker-prev {
-    left: 10px !important;
-}
-
-#ui-datepicker-div .ui-datepicker-next {
-    right: 10px !important;
-}
-
-/* Month/year title */
-#ui-datepicker-div .ui-datepicker-title {
-    display: block !important;
-    visibility: visible !important;
-    text-align: center !important;
-    font-weight: bold !important;
-    color: #333 !important;
-    margin: 0 40px !important;
-}
-
-.container-fluid, .container {
+.card-body {
     overflow: visible !important;
 }
 </style>
@@ -463,6 +255,14 @@ $(document).ready(function() {
     const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
     const totalDaysSpan = $('#total-days');
     const daysCalculation = $('#days-calculation');
+    
+    // Initialize datepicker for any existing date inputs
+    console.log('Initializing date inputs, found:', $('.period-start-date, .period-end-date').length);
+    $('.period-start-date, .period-end-date').on('change', function() {
+        updatePeriodDays($(this).closest('.period-card'));
+        updatePeriodsData();
+        calculateTotalDays();
+    });
     
     // Function to add a new period
     function addPeriod() {
@@ -487,67 +287,16 @@ $(document).ready(function() {
             calculateTotalDays();
         });
         
-        // Add input formatting for automatic slash insertion
-        periodElement.find('.period-start-date, .period-end-date').on('input', function() {
-            var value = $(this).val().replace(/\D/g, ''); // Remove non-digits
-            var formatted = '';
-            
-            if (value.length > 0) {
-                formatted = value.substring(0, 2);
-                if (value.length > 2) {
-                    formatted += '/' + value.substring(2, 4);
-                    if (value.length > 4) {
-                        formatted += '/' + value.substring(4, 8);
-                    }
-                }
-            }
-            
-            if (formatted !== $(this).val()) {
-                $(this).val(formatted);
-            }
-        });
-        
-        // Add validation on blur
-        periodElement.find('.period-start-date, .period-end-date').on('blur', function() {
-            var value = $(this).val().trim();
-            var $this = $(this);
-            
-            // Remove previous validation feedback
-            $this.removeClass('is-invalid is-valid');
-            $this.siblings('.invalid-feedback').remove();
-            
-            if (value === '') {
-                return; // Empty is allowed, will be caught by required validation
-            }
-            
-            // Check format
-            if (!value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                $this.addClass('is-invalid');
-                $this.after('<div class="invalid-feedback">Παρακαλώ εισάγετε ημερομηνία σε μορφή ηη/μμ/εεεε</div>');
-                return;
-            }
-            
-            // Validate actual date
-            var parts = value.split('/');
-            var day = parseInt(parts[0], 10);
-            var month = parseInt(parts[1], 10);
-            var year = parseInt(parts[2], 10);
-            
-            var testDate = new Date(year, month - 1, day);
-            if (testDate.getDate() !== day || testDate.getMonth() !== (month - 1) || testDate.getFullYear() !== year) {
-                $this.addClass('is-invalid');
-                $this.after('<div class="invalid-feedback">Μη έγκυρη ημερομηνία</div>');
-                return;
-            }
-            
-            // Valid date
-            $this.addClass('is-valid');
-        });
-        
+
         // Append to container
         periodsContainer.append(periodElement);
         
-        updatePeriodsData();
+        // Add event listeners for date changes
+        periodElement.find('.period-start-date, .period-end-date').on('change', function() {
+            updatePeriodDays(periodElement);
+            updatePeriodsData();
+            calculateTotalDays();
+        });
     }
     
     // Function to remove a period
@@ -578,29 +327,18 @@ $(document).ready(function() {
         const daysField = periodElement.find('.period-days');
         
         if (startDate && endDate) {
-            let start, end;
+            // HTML5 date input uses ISO format (yyyy-mm-dd)
+            const start = new Date(startDate);
+            const end = new Date(endDate);
             
-            // Handle Greek format (dd/mm/yyyy)
-            if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                const startParts = startDate.split('/');
-                start = new Date(startParts[2], startParts[1] - 1, startParts[0]);
-            } else {
-                daysField.val('Μη έγκυρο');
-                return;
-            }
-            
-            if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                const endParts = endDate.split('/');
-                end = new Date(endParts[2], endParts[1] - 1, endParts[0]);
-            } else {
-                daysField.val('Μη έγκυρο');
-                return;
-            }
-            
-            if (start <= end) {
-                const timeDiff = end.getTime() - start.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-                daysField.val(daysDiff);
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                if (start <= end) {
+                    const timeDiff = end.getTime() - start.getTime();
+                    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+                    daysField.val(daysDiff);
+                } else {
+                    daysField.val('Μη έγκυρο');
+                }
             } else {
                 daysField.val('Μη έγκυρο');
             }
@@ -626,17 +364,10 @@ $(document).ready(function() {
                 
                 // Calculate weekend days for this period
                 if (startDate && endDate) {
-                    let start, end;
-                    if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                        const startParts = startDate.split('/');
-                        start = new Date(startParts[2], startParts[1] - 1, startParts[0]);
-                    }
-                    if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                        const endParts = endDate.split('/');
-                        end = new Date(endParts[2], endParts[1] - 1, endParts[0]);
-                    }
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
                     
-                    if (start && end && start <= end) {
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
                         let currentDate = new Date(start);
                         while (currentDate <= end) {
                             const dayOfWeek = currentDate.getDay();
@@ -667,32 +398,14 @@ $(document).ready(function() {
         const periods = [];
         
         $('.period-card').each(function() {
-            let startDate = $(this).find('.period-start-date').val();
-            let endDate = $(this).find('.period-end-date').val();
+            const startDate = $(this).find('.period-start-date').val();
+            const endDate = $(this).find('.period-end-date').val();
             
             if (startDate && endDate) {
-                // Handle Greek format (dd/mm/yyyy)
-                let isoStartDate, isoEndDate;
-                
-                if (startDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                    const startParts = startDate.split('/');
-                    isoStartDate = `${startParts[2]}-${startParts[1].padStart(2, '0')}-${startParts[0].padStart(2, '0')}`;
-                } else {
-                    console.error('Unrecognized date format:', startDate);
-                    return;
-                }
-                
-                if (endDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                    const endParts = endDate.split('/');
-                    isoEndDate = `${endParts[2]}-${endParts[1].padStart(2, '0')}-${endParts[0].padStart(2, '0')}`;
-                } else {
-                    console.error('Unrecognized date format:', endDate);
-                    return;
-                }
-                
+                // HTML5 date input already uses ISO format (yyyy-mm-dd)
                 periods.push({
-                    start_date: isoStartDate,
-                    end_date: isoEndDate
+                    start_date: startDate,
+                    end_date: endDate
                 });
             }
         });
@@ -768,7 +481,7 @@ $(document).ready(function() {
         attachmentCounter++;
         const newAttachmentGroup = `
             <div class="attachment-group mb-3" data-index="${attachmentCounter}">
-                <input type="file" name="attachment_${attachmentCounter}" id="attachment_${attachmentCounter}" class="form-control attachment-input">
+                <input type="file" name="attachment_${attachmentCounter}" id="attachment_${attachmentCounter}" class="form-control attachment-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
                 <div class="form-text">
                     Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
                 </div>
@@ -826,20 +539,10 @@ $(document).ready(function() {
                     addPeriod();
                     const lastPeriod = $('.period-card').last();
                     
-                    // Convert ISO date format to Greek format for display
-                    const startDate = new Date(period.start_date);
-                    const endDate = new Date(period.end_date);
+                    // HTML5 date input uses ISO format (yyyy-mm-dd) - use directly
+                    lastPeriod.find('.period-start-date').val(period.start_date);
+                    lastPeriod.find('.period-end-date').val(period.end_date);
                     
-                    const greekStartDate = startDate.getDate().toString().padStart(2, '0') + '/' +
-                                          (startDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                                          startDate.getFullYear();
-                    
-                    const greekEndDate = endDate.getDate().toString().padStart(2, '0') + '/' +
-                                        (endDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                                        endDate.getFullYear();
-                    
-                    lastPeriod.find('.period-start-date').val(greekStartDate);
-                    lastPeriod.find('.period-end-date').val(greekEndDate);
                     updatePeriodDays(lastPeriod);
                 });
                 

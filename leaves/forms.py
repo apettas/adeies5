@@ -61,10 +61,10 @@ class LeaveRequestForm(forms.ModelForm):
         required=False,
         widget=forms.FileInput(attrs={
             'class': 'form-control',
-            'accept': '.pdf,.jpg,.jpeg,.png'
+            'accept': '.pdf,.doc,.docx,.jpg,.jpeg,.png'
         }),
         label='Επισυνάπτομενο Αρχείο',
-        help_text='Επιτρεπτοί τύποι: PDF, JPG, PNG. Μέγιστο μέγεθος: 10MB'
+        help_text='Επιτρεπτοί τύποι: PDF, DOC, DOCX, JPG, PNG. Μέγιστο μέγεθος: 10MB'
     )
     
     # Κρυφό πεδίο για τα διαστήματα (JSON)
