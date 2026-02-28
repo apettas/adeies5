@@ -85,6 +85,9 @@
                                 <div class="form-text">
                                     Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
                                 </div>
+                                <div class="file-error alert alert-danger mt-2" style="display: none;">
+                                    <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+                                </div>
                                 <div class="mt-2">
                                     <label for="attachment_description_1" class="form-label">
                                         <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1 (Υποχρεωτικό εάν υπάρχει αρχείο)
@@ -126,7 +129,8 @@
         </div>
     </div>
 
-    <!-- Form Validation Errors -->
+    <!-- Form Validation Errors - DISABLED: Using real-time validation instead -->
+    <!-- 
     {% if form.errors %}
     <div class="row justify-content-center mt-3">
         <div class="col-md-10">
@@ -143,6 +147,7 @@
         </div>
     </div>
     {% endif %}
+    -->
 
     <!-- Help Text -->
     <div class="row justify-content-center mt-4">
@@ -199,6 +204,10 @@
                     <label class="form-label">Ημέρες</label>
                     <input type="text" class="form-control period-days" readonly>
                 </div>
+            </div>
+            <!-- Range Error Warning -->
+            <div class="date-range-error alert alert-danger mt-2" style="display: none;">
+                <small><i class="bi bi-exclamation-circle"></i> Η Ημερομηνία Λήξης δεν μπορεί να είναι πριν από την Ημερομηνία Έναρξης</small>
             </div>
             <!-- Overlap Warning -->
             <div class="overlap-warning alert alert-danger mt-2" style="display: none;">
@@ -267,6 +276,12 @@ $(document).ready(function() {
     const daysCalculation = $('#days-calculation');
     const submitBtn = $('button[type="submit"]');
     let hasDateErrors = false;
+    let hasFileErrors = false;
+    
+    // Allowed file types
+    const allowedFileExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+    const allowedMimeTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+    
     
     // Function to check if date is in the past
     function isDateInPast(dateString) {
@@ -300,6 +315,32 @@ $(document).ready(function() {
         }
     }
     
+    // Function to validate date range (start before end)
+    function validateDateRange(periodCard) {
+        const startDate = periodCard.find('.period-start-date').val();
+        const endDate = periodCard.find('.period-end-date').val();
+        const rangeErrorElement = periodCard.find('.date-range-error');
+        
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            if (start > end) {
+                rangeErrorElement.show();
+                periodCard.find('.period-end-date').addClass('border-danger');
+                hasDateErrors = true;
+                updateSubmitButtonState();
+                return false;
+            } else {
+                rangeErrorElement.hide();
+                periodCard.find('.period-end-date').removeClass('border-danger');
+                checkOverallDateErrors();
+                return true;
+            }
+        }
+        return true;
+    }
+    
     // Function to check if there are any date errors in all periods
     function checkOverallDateErrors() {
         hasDateErrors = false;
@@ -307,8 +348,18 @@ $(document).ready(function() {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             
+            // Check for past dates
             if ((startDate && isDateInPast(startDate)) || (endDate && isDateInPast(endDate))) {
                 hasDateErrors = true;
+            }
+            
+            // Check for range errors (end before start)
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (start > end) {
+                    hasDateErrors = true;
+                }
             }
         });
         updateSubmitButtonState();
@@ -316,20 +367,73 @@ $(document).ready(function() {
     
     // Function to update submit button state
     function updateSubmitButtonState() {
-        if (hasDateErrors) {
+        if (hasDateErrors || hasFileErrors) {
             submitBtn.prop('disabled', true);
-            submitBtn.attr('title', 'Διορθώστε τις εσφαλμένες ημερομηνίες πριν την υποβολή');
+            let title = '';
+            if (hasDateErrors) title += 'Διορθώστε τις εσφαλμένες ημερομηνίες. ';
+            if (hasFileErrors) title += 'Διορθώστε τα μη αποδεκτά αρχεία.';
+            submitBtn.attr('title', title.trim());
         } else {
             submitBtn.prop('disabled', false);
             submitBtn.removeAttr('title');
         }
     }
     
+    // Function to check if file type is valid
+    function isValidFileType(fileName) {
+        const fileExtension = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+        return allowedFileExtensions.includes(fileExtension);
+    }
+    
+    // Function to validate file input
+    function validateFileInput(input) {
+        const files = input.files;
+        const fileGroup = $(input).closest('.attachment-group');
+        const fileErrorElement = fileGroup.find('.file-error');
+        const errorMessage = fileGroup.find('.file-error .error-message');
+        
+        let hasError = false;
+        
+        if (files.length > 0) {
+            const file = files[0];
+            
+            // Check file type
+            if (!isValidFileType(file.name)) {
+                errorMessage.text(`Τύπος αρχείου μη αποδεκτός: "${file.name}". Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG`);
+                fileErrorElement.show();
+                $(input).addClass('border-danger');
+                hasError = true;
+            } else {
+                fileErrorElement.hide();
+                $(input).removeClass('border-danger');
+            }
+        } else {
+            fileErrorElement.hide();
+            $(input).removeClass('border-danger');
+        }
+        
+        return !hasError;
+    }
+    
+    // Function to check all file errors
+    function checkOverallFileErrors() {
+        hasFileErrors = false;
+        $('.attachment-input').each(function() {
+            if (!validateFileInput(this)) {
+                hasFileErrors = true;
+            }
+        });
+        updateSubmitButtonState();
+    }
+
+    
     // Initialize datepicker for any existing date inputs
     console.log('Initializing date inputs, found:', $('.period-start-date, .period-end-date').length);
     $('.period-start-date, .period-end-date').on('change', function() {
+        const periodCard = $(this).closest('.period-card');
         validateDateField(this);
-        updatePeriodDays($(this).closest('.period-card'));
+        validateDateRange(periodCard);
+        updatePeriodDays(periodCard);
         updatePeriodsData();
         calculateTotalDays();
         checkOverloaps();
@@ -354,6 +458,7 @@ $(document).ready(function() {
         // Add event listeners for date changes
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
             validateDateField(this);
+            validateDateRange(periodElement);
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
@@ -367,6 +472,7 @@ $(document).ready(function() {
         // Add event listeners for date changes (second call removed as it's now above)
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
             validateDateField(this);
+            validateDateRange(periodElement);
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
@@ -630,6 +736,9 @@ $(document).ready(function() {
                 <div class="form-text">
                     Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
                 </div>
+                <div class="file-error alert alert-danger mt-2" style="display: none;">
+                    <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+                </div>
                 <div class="mt-2">
                     <label for="attachment_description_${attachmentCounter}" class="form-label">
                         <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου ${attachmentCounter} (Υποχρεωτικό εάν υπάρχει αρχείο)
@@ -653,6 +762,7 @@ $(document).ready(function() {
             const group = $(this).closest('.attachment-group');
             group.remove();
             updateFilePreviews();
+            checkOverallFileErrors();
         });
         
         if ($('.attachment-group').length > 1) {
@@ -664,6 +774,8 @@ $(document).ready(function() {
     
     // Initial setup for file input change events
     $(document).on('change', '.attachment-input', function() {
+        validateFileInput(this);
+        checkOverallFileErrors();
         updateFilePreviews();
     });
     
@@ -718,6 +830,7 @@ $(document).ready(function() {
     
     // Check for any existing date errors on page load
     checkOverallDateErrors();
+    checkOverallFileErrors();
 });
 </script>
 {% endblock %}
