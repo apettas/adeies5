@@ -181,7 +181,9 @@
                     </label>
                     <input type="date" class="form-control period-start-date" required>
                     <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
-                    <!-- no inline range display; summary will show ranges -->
+                    <div class="date-error-start alert alert-warning mt-2" style="display: none;">
+                        <small><i class="bi bi-exclamation-circle"></i> Η ημερομηνία πρέπει να είναι μελλοντική</small>
+                    </div>
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">
@@ -189,7 +191,9 @@
                     </label>
                     <input type="date" class="form-control period-end-date" required>
                     <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
-                    <!-- (second column remains unchanged; range container is above) -->
+                    <div class="date-error-end alert alert-warning mt-2" style="display: none;">
+                        <small><i class="bi bi-exclamation-circle"></i> Η ημερομηνία πρέπει να είναι μελλοντική</small>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Ημέρες</label>
@@ -261,10 +265,70 @@ $(document).ready(function() {
     const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
     const totalDaysSpan = $('#total-days');
     const daysCalculation = $('#days-calculation');
+    const submitBtn = $('button[type="submit"]');
+    let hasDateErrors = false;
+    
+    // Function to check if date is in the past
+    function isDateInPast(dateString) {
+        if (!dateString) return false;
+        const selectedDate = new Date(dateString);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return selectedDate < today;
+    }
+    
+    // Function to validate and display date errors
+    function validateDateField(input) {
+        const periodCard = $(input).closest('.period-card');
+        const dateValue = $(input).val();
+        const isStart = $(input).hasClass('period-start-date');
+        const errorElement = isStart ? 
+            periodCard.find('.date-error-start') : 
+            periodCard.find('.date-error-end');
+        
+        if (isDateInPast(dateValue)) {
+            errorElement.show();
+            $(input).addClass('border-danger');
+            hasDateErrors = true;
+            updateSubmitButtonState();
+            return false;
+        } else {
+            errorElement.hide();
+            $(input).removeClass('border-danger');
+            checkOverallDateErrors();
+            return true;
+        }
+    }
+    
+    // Function to check if there are any date errors in all periods
+    function checkOverallDateErrors() {
+        hasDateErrors = false;
+        $('.period-card').each(function() {
+            const startDate = $(this).find('.period-start-date').val();
+            const endDate = $(this).find('.period-end-date').val();
+            
+            if ((startDate && isDateInPast(startDate)) || (endDate && isDateInPast(endDate))) {
+                hasDateErrors = true;
+            }
+        });
+        updateSubmitButtonState();
+    }
+    
+    // Function to update submit button state
+    function updateSubmitButtonState() {
+        if (hasDateErrors) {
+            submitBtn.prop('disabled', true);
+            submitBtn.attr('title', 'Διορθώστε τις εσφαλμένες ημερομηνίες πριν την υποβολή');
+        } else {
+            submitBtn.prop('disabled', false);
+            submitBtn.removeAttr('title');
+        }
+    }
     
     // Initialize datepicker for any existing date inputs
     console.log('Initializing date inputs, found:', $('.period-start-date, .period-end-date').length);
     $('.period-start-date, .period-end-date').on('change', function() {
+        validateDateField(this);
         updatePeriodDays($(this).closest('.period-card'));
         updatePeriodsData();
         calculateTotalDays();
@@ -289,6 +353,7 @@ $(document).ready(function() {
         
         // Add event listeners for date changes
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
+            validateDateField(this);
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
@@ -299,8 +364,9 @@ $(document).ready(function() {
         // Append to container
         periodsContainer.append(periodElement);
         
-        // Add event listeners for date changes
+        // Add event listeners for date changes (second call removed as it's now above)
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
+            validateDateField(this);
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
@@ -649,6 +715,9 @@ $(document).ready(function() {
     } catch (e) {
         console.log('Select2 init error:', e);
     }
+    
+    // Check for any existing date errors on page load
+    checkOverallDateErrors();
 });
 </script>
 {% endblock %}
