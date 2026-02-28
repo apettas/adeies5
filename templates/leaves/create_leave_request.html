@@ -635,6 +635,20 @@ $(document).ready(function() {
         // Add the first period automatically
         addPeriod();
     }
+    
+    // Initialize Select2 for leave type select (searchable dropdown)
+    try {
+        const $leaveType = $('#{{ form.leave_type.id_for_label }}');
+        if ($leaveType.length && $.fn.select2) {
+            $leaveType.select2({
+                placeholder: 'Επιλέξτε τύπο άδειας...',
+                width: '100%',
+                allowClear: true
+            });
+        }
+    } catch (e) {
+        console.log('Select2 init error:', e);
+    }
 });
 </script>
 {% endblock %}
