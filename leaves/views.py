@@ -1407,11 +1407,19 @@ def download_leave_pdf(request, request_id):
     try:
         with open(pdf_path, 'rb') as pdf:
             response = HttpResponse(pdf.read(), content_type='application/pdf')
+            user = leave_request.user
+            date_str = leave_request.created_at.strftime('%d/%m/%Y')
+            
+            filename = f'{user.last_name} {user.first_name} - Αίτηση άδειας - {date_str}.pdf'
+            
+            from django.utils.encoding import iri_to_uri
+            filename_encoded = iri_to_uri(filename)
+
             # If download parameter is set, force download, otherwise inline view
             if request.GET.get('download'):
-                response['Content-Disposition'] = f'attachment; filename=leave_request_{leave_request.id}.pdf'
+                response['Content-Disposition'] = f'attachment; filename="{filename_encoded}"'
             else:
-                response['Content-Disposition'] = f'inline; filename=leave_request_{leave_request.id}.pdf'
+                response['Content-Disposition'] = f'inline; filename="{filename_encoded}"'
             return response
     except Exception:
         raise Http404("Σφάλμα κατά τη λήψη του PDF")

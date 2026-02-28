@@ -296,7 +296,7 @@
                     <div class="d-flex align-items-center">
                         <i class="bi bi-file-earmark-pdf-fill text-danger fs-2 me-3"></i>
                         <div>
-                            <h6 class="mb-1">Αρχική Αίτηση Άδειας #{{ leave_request.id }}</h6>
+                            <h6 class="mb-1">{{ leave_request.user.last_name }} {{ leave_request.user.first_name }} - Αίτηση άδειας - {{ leave_request.created_at|date:"d/m/Y" }}</h6>
                             <small class="text-muted">
                                 Δημιουργήθηκε: {{ leave_request.created_at|date:"d/m/Y H:i" }}
                             </small>
