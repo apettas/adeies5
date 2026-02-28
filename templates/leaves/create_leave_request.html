@@ -196,6 +196,10 @@
                     <input type="text" class="form-control period-days" readonly>
                 </div>
             </div>
+            <!-- Overlap Warning -->
+            <div class="overlap-warning alert alert-danger mt-2" style="display: none;">
+                <small><i class="bi bi-exclamation-circle"></i> <span class="overlap-message"></span></small>
+            </div>
         </div>
     </div>
 </div>
@@ -264,6 +268,7 @@ $(document).ready(function() {
         updatePeriodDays($(this).closest('.period-card'));
         updatePeriodsData();
         calculateTotalDays();
+        checkOverloaps();
     });
     
     // Function to add a new period
@@ -287,6 +292,7 @@ $(document).ready(function() {
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
+            checkOverloaps();
         });
         
 
@@ -298,6 +304,7 @@ $(document).ready(function() {
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
+            checkOverloaps();
         });
     }
     
@@ -313,6 +320,7 @@ $(document).ready(function() {
         updatePeriodNumbers();
         updatePeriodsData();
         calculateTotalDays();
+        checkOverloaps();
     }
     
     // Function to update period numbers
@@ -335,6 +343,51 @@ $(document).ready(function() {
         // capitalize first letter (Intl may return lowercase weekday)
         formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
         return formatted;
+    }
+    
+    // Function to check for overlapping periods
+    function checkOverloaps() {
+        // Clear all overlap warnings first
+        $('.overlap-warning').hide();
+        $('.overlap-message').text('');
+        
+        const periods = [];
+        const periodElements = [];
+        
+        // Collect all periods with valid dates
+        $('.period-card').each(function(index) {
+            const startDate = $(this).find('.period-start-date').val();
+            const endDate = $(this).find('.period-end-date').val();
+            if (startDate && endDate) {
+                periods.push({
+                    index: index,
+                    startDate: new Date(startDate),
+                    endDate: new Date(endDate),
+                    element: $(this)
+                });
+                periodElements[index] = $(this);
+            }
+        });
+        
+        // Check for overlaps
+        for (let i = 0; i < periods.length; i++) {
+            for (let j = i + 1; j < periods.length; j++) {
+                const p1 = periods[i];
+                const p2 = periods[j];
+                
+                // Check if periods overlap: p1.start <= p2.end AND p1.end >= p2.start
+                if (p1.startDate <= p2.endDate && p1.endDate >= p2.startDate) {
+                    // Show overlap warning for both periods
+                    const overlapMsg = `Διάστημα ${p1.index+1} και Διάστημα ${p2.index+1} επικαλύπτονται`;
+                    
+                    p1.element.find('.overlap-warning').show();
+                    p1.element.find('.overlap-message').text(overlapMsg);
+                    
+                    p2.element.find('.overlap-warning').show();
+                    p2.element.find('.overlap-message').text(overlapMsg);
+                }
+            }
+        }
     }
 
     // Function to update period days calculation and formatted range display
@@ -573,6 +626,7 @@ $(document).ready(function() {
                 });
                 
                 calculateTotalDays();
+                checkOverloaps();
             }
         } catch (e) {
             console.log('Error parsing existing periods data:', e);
