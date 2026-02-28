@@ -307,44 +307,64 @@ class User(AbstractUser):
             return self.department.get_department_manager()
         return None
     
+    def is_manager_of_department(self, department):
+        """Ελέγχει αν ο χρήστης είναι manager του συγκεκριμένου τμήματος"""
+        if not department:
+            return False
+        # Ελέγχουμε αν είναι ο ρητά ορισμένος manager του τμήματος
+        if department.manager and department.manager.id == self.id:
+            return True
+        # Ή έχει τον ρόλο MANAGER στο τμήμα
+        return self.roles.filter(code='MANAGER').exists() and self.department_id == department.id
+    
     def get_approving_manager(self):
-        """Επιστρέφει ποιος προϊστάμενος θα εγκρίνει την αίτηση άδειας αυτού του χρήστη"""
+        """
+        Επιστρέφει ποιος προϊστάμενος θα εγκρίνει την αίτηση άδειας αυτού του χρήστη.
+        
+        Λογική:
+        1. Αν ο χρήστης είναι manager του τμήματός του → εγκρίνει ο γονικού τμήματος
+        2. Αν ο χρήστης ΔΕΝ είναι manager → εγκρίνει ο manager του τμήματός του
+        3. Αν δεν υπάρχει manager → ανεβαίνουμε στο γονικό τμήμα
+        """
         if not self.department:
             return None
         
-        # Ειδική λογική για τμήματα κάτω από την Αυτοτελή Διεύθυνση
-        if (self.department.parent_department and
-            self.department.parent_department.code == 'AUTOTELOUS_DN'):
-            
-            # Αν ο χρήστης είναι απλός υπάλληλος οποιουδήποτε τμήματος κάτω από την Αυτοτελή Διεύθυνση
-            if not self.is_department_manager:
-                return self.department.get_department_manager()
-            
-            # Αν ο χρήστης είναι προϊστάμενος οποιουδήποτε τμήματος κάτω από την Αυτοτελή Διεύθυνση
-            # εγκρίνει ο προϊστάμενος της Αυτοτελούς Διεύθυνσης
-            if self.is_department_manager:
-                return self.department.parent_department.get_department_manager()
+        # Αν είναι manager του τμήματός του, ψάχνουμε τον γονικού
+        if self.is_manager_of_department(self.department):
+            if self.department.parent_department:
+                # Αναδρομικά βρίσκουμε τον πρώτο manager πάνω στην ιεραρχία
+                return self._find_manager_in_hierarchy(self.department.parent_department)
+            else:
+                # Είναι root τμήμα, δεν μπορεί να αιτηθεί άδεια
+                return None
         
-        # Αν ο χρήστης είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης, εγκρίνει ο προϊστάμενος της κύριας ΠΔΕΔΕ
-        if (self.department.code == 'AUTOTELOUS_DN' and self.is_department_manager):
-            from accounts.models import Department
-            pdede_main = Department.objects.filter(code='PDEDE').first()
-            if pdede_main:
-                return pdede_main.get_department_manager()
-            return None
+        # Δεν είναι manager, βρίσκουμε τον manager του τμήματός του
+        return self._find_manager_in_hierarchy(self.department)
+    
+    def _find_manager_in_hierarchy(self, department):
+        """
+        Αναζητά τον πρώτο manager ξεκινώντας από το τμήμα και ανεβαίνοντας στην ιεραρχία.
+        """
+        while department:
+            # Πρώτα ελέγχουμε αν υπάρχει ρητά ορισμένος manager
+            if department.manager:
+                return department.manager
+            # Διαφορετικά ψάχνουμε για χρήστη με ρόλο MANAGER
+            manager = department.users.filter(roles__code='MANAGER').first()
+            if manager:
+                return manager
+            # Αν δεν βρούμε, πάμε στο γονικό
+            department = department.parent_department
         
-        # Αν ο χρήστης είναι προϊστάμενος της κύριας ΠΔΕΔΕ, δεν μπορεί να αιτηθεί άδεια
-        if (self.department.code == 'PDEDE' and self.is_department_manager):
-            return None
-        
-        # Για όλους τους άλλους, η στανταρντ λογική
-        return self.manager
+        return None
     
     def can_request_leave(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
-        # Ο προϊστάμενος της κύριας ΠΔΕΔΕ δεν μπορεί να αιτηθεί άδεια
-        if (self.department and self.department.code == 'PDEDE' and self.is_department_manager):
-            return False
+        # Αν είναι manager του τμήματός του (ρητά ή μέσω ρόλου) και δεν έχει γονικό τμήμα, δεν μπορεί να αιτηθεί
+        if self.department and self.is_manager_of_department(self.department):
+            if not self.department.parent_department:
+                # Είναι root τμήμα (π.χ. ΠΔΕΔΕ)
+                return False
         return True
     
     def can_approve_leaves(self):
