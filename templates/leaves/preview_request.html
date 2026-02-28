@@ -124,7 +124,7 @@
                                     
                                     <div>
                                         <p class="fw-bold">Συνημμένα:</p>
-                                        <ul style="padding-left: 20px;">
+                                        <ol style="padding-left: 20px;">
                                             {% for attachment in attachments %}
                                                 <li>
                                                     <strong>{{ attachment.original_filename }}</strong>
@@ -135,7 +135,7 @@
                                             {% empty %}
                                                 <li>Δεν υπάρχουν συνημμένα αρχεία.</li>
                                             {% endfor %}
-                                        </ul>
+                                        </ol>
                                     </div>
                                 </div>
                             </div>
