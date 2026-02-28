@@ -55,7 +55,7 @@
                             
                             <!-- Total Days Display -->
                             <div id="days-calculation" class="alert alert-info mt-3" style="display: none;">
-                                <strong><i class="bi bi-calculator"></i> Συνολικές Ημέρες Άδειας: <span id="total-days">0</span></strong>
+                                <span id="total-days"></span>
                             </div>
                             
                             <!-- Add Period Button - Bottom Right -->
@@ -181,6 +181,7 @@
                     </label>
                     <input type="date" class="form-control period-start-date" required>
                     <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
+                    <!-- no inline range display; summary will show ranges -->
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">
@@ -188,6 +189,7 @@
                     </label>
                     <input type="date" class="form-control period-end-date" required>
                     <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
+                    <!-- (second column remains unchanged; range container is above) -->
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Ημέρες</label>
@@ -320,12 +322,28 @@ $(document).ready(function() {
         });
     }
     
-    // Function to update period days calculation
+    // Helper to produce Greek formatted date string
+    function formatGreekDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        // use Greek locale
+        let formatted = new Intl.DateTimeFormat('el-GR', options).format(date);
+        // remove comma if present
+        formatted = formatted.replace(/,\s*/g, ' ');
+        // capitalize first letter (Intl may return lowercase weekday)
+        formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        return formatted;
+    }
+
+    // Function to update period days calculation and formatted range display
     function updatePeriodDays(periodElement) {
         const startDate = periodElement.find('.period-start-date').val();
         const endDate = periodElement.find('.period-end-date').val();
         const daysField = periodElement.find('.period-days');
         
+        // no inline formatted range any more; overall summary handles display
         if (startDate && endDate) {
             // HTML5 date input uses ISO format (yyyy-mm-dd)
             const start = new Date(startDate);
@@ -347,13 +365,14 @@ $(document).ready(function() {
         }
     }
     
-    // Function to calculate total days and weekend days
+    // Function to calculate total days and show summary per period
     function calculateTotalDays() {
         let totalDays = 0;
         let totalWeekendDays = 0;
         let validPeriods = 0;
+        const lines = [];
         
-        $('.period-card').each(function() {
+        $('.period-card').each(function(index) {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             const daysValue = $(this).find('.period-days').val();
@@ -361,6 +380,11 @@ $(document).ready(function() {
             if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
                 totalDays += parseInt(daysValue);
                 validPeriods++;
+                
+                // add line for this period
+                const startFmt = formatGreekDate(startDate);
+                const endFmt = formatGreekDate(endDate);
+                lines.push(`<strong>Διάστημα ${index+1} : Από ${startFmt} – Έως ${endFmt}, Ημέρες: ${daysValue}</strong>`);
                 
                 // Calculate weekend days for this period
                 if (startDate && endDate) {
@@ -382,11 +406,13 @@ $(document).ready(function() {
         });
         
         if (validPeriods > 0) {
-            let displayText = totalDays;
+            let displayHtml = lines.join('<br>');
+            // append aggregate total on its own line
+            displayHtml += `<br><strong>Συνολικές Ημέρες Άδειας: ${totalDays}</strong>`;
             if (totalWeekendDays > 0) {
-                displayText += ` (εκ των οποίων οι ${totalWeekendDays} είναι μέσα σε Σαββατοκύριακο)`;
+                displayHtml += `<br>(εκ των οποίων οι ${totalWeekendDays} είναι μέσα σε Σαββατοκύριακο)`;
             }
-            totalDaysSpan.text(displayText);
+            totalDaysSpan.html(displayHtml);
             daysCalculation.show();
         } else {
             daysCalculation.hide();
