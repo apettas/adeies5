@@ -106,6 +106,8 @@ class Department(models.Model):
                                  verbose_name='Νομός', related_name='departments')
     headquarters = models.ForeignKey(Headquarters, on_delete=models.SET_NULL, null=True, blank=True,
                                    verbose_name='Έδρα', related_name='departments')
+    manager = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                verbose_name='Προϊστάμενος Τμήματος', related_name='managed_departments')
     is_active = models.BooleanField('Ενεργό', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
@@ -132,6 +134,10 @@ class Department(models.Model):
 
     def get_department_manager(self):
         """Επιστρέφει τον προϊστάμενο του τμήματος"""
+        # Πρώτα ελέγχουμε αν υπάρχει ρητά ορισμένος προϊστάμενος
+        if self.manager:
+            return self.manager
+        # Αν δεν υπάρχει, ψάχνουμε για χρήστη με ρόλο MANAGER στο τμήμα
         return self.users.filter(roles__code='MANAGER').first()
 
 

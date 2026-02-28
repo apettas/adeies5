@@ -24,10 +24,11 @@ class DepartmentTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'department_type', 'parent_department', 'headquarters', 'prefecture', 'is_active')
+    list_display = ('name', 'code', 'department_type', 'parent_department', 'manager', 'headquarters', 'prefecture', 'is_active')
     list_filter = ('department_type', 'is_active', 'headquarters', 'prefecture')
     search_fields = ('name', 'code')
     ordering = ('name',)
+    list_editable = ('manager',)
 
 @admin.register(Headquarters)
 class HeadquartersAdmin(admin.ModelAdmin):
