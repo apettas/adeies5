@@ -312,10 +312,12 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
-            # Έλεγχος αν ο χρήστης έχει αρκετές ημέρες άδειας ΜΟΝΟ για κανονικές άδειες
-            if self.leave_type.name == '1 Κανονική Άδεια':
-                if not self.user.can_request_leave_days(self.total_days):
-                    raise ValueError(f"Ανεπαρκές υπόλοιπο αδειών. Διαθέσιμες: {self.user.leave_balance}, Αιτούμενες: {self.total_days}")
+            # Επειδή προς το παρόν θέλουμε να παρακάμπτουμε τον έλεγχο υπολοίπου,
+            # σχολιάζουμε την αντίστοιχη λογική. Θα επανέλθουμε όταν χρειαστεί.
+            # if self.leave_type.name == '1 Κανονική Άδεια':
+            #     if not self.user.can_request_leave_days(self.total_days):
+            #         raise ValueError(f"Ανεπαρκές υπόλοιπο αδειών. Διαθέσιμες: {self.user.leave_balance}, Αιτούμενες: {self.total_days}")
+            pass
             
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'

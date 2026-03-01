@@ -27,7 +27,10 @@ class Command(BaseCommand):
             tmima_d = Department.objects.get(code='TMIMA_D')
             tmima_g = Department.objects.get(code='TMIMA_G')
             autotelous_dn = Department.objects.get(code='AUTOTELOUS_DN')
-            
+            Pdede = Department.objects.get(code='PDEDE')
+            KEDASY_AITOLIAS = Department.objects.get(code='KEDASY_AITOLIAS')  # Προσθήκη για το KEDASY Αιτωλίας
+            SDEI_1_EIDIKO_AGRINIOU = Department.objects.get(code='SDEI_1_EIDIKO_AGRINIOU')
+           
             # Βρίσκω τους ρόλους
             manager_role = Role.objects.get(code='MANAGER')
             employee_role = Role.objects.get(code='EMPLOYEE')
@@ -112,7 +115,44 @@ class Command(BaseCommand):
                 'department': tmima_d,
                 'gender': 'MALE',
                 'roles': [employee_role],
+            },
+            {
+                'email': 'delegkos@sch.gr',
+                'first_name': 'Νικόλαος',
+                'last_name': 'Δελέγκος',
+                'password': '123',
+                'department': Pdede,
+                'gender': 'MALE',
+                'roles': [employee_role, manager_role],
+            },
+            {
+                'email': 'agorastou@sch.gr',
+                'first_name': 'Κέλυ',
+                'last_name': 'Αγοραστού',
+                'password': '123',
+                'department': KEDASY_AITOLIAS,
+                'gender': 'FEMALE',
+                'roles': [employee_role, manager_role],
+            },
+            {
+                'email': 'xabesis@sch.gr',
+                'first_name': 'Κώστας',
+                'last_name': 'Χαμπεσής',
+                'password': '123',
+                'department': KEDASY_AITOLIAS,
+                'gender': 'MALE',
+                'roles': [employee_role],
+            },
+            {
+                'email': 'sdeiagriniou@sch.gr',
+                'first_name': 'Χρήστης Σδευ',
+                'last_name': 'Αγρινίου',
+                'password': '123',
+                'department': SDEI_1_EIDIKO_AGRINIOU,
+                'gender': 'FEMALE',
+                'roles': [employee_role],
             }
+
         ]
         
         with transaction.atomic():

@@ -10,7 +10,7 @@ class Command(BaseCommand):
         User = get_user_model()
         
         email = 'pdede@sch.gr'
-        password = 'admin123'
+        password = '123'
         first_name = 'Super'
         last_name = 'Admin'
         
