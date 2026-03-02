@@ -372,41 +372,40 @@
                 <div class="card-body">
                     <div class="row">
                         {% for attachment in leave_request.attachments.all %}
-                        <div class="col-md-6 mb-3">
-                            <div class="d-flex align-items-start p-3 border rounded">
-                                <div class="flex-shrink-0 me-3">
+                        <div class="col-12 mb-3">
+                            <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-light">
+                                <div class="d-flex align-items-center">
                                     {% if attachment.file_extension == 'pdf' %}
-                                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+                                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-2 me-3"></i>
                                     {% elif attachment.file_extension in 'jpg,jpeg,png' %}
-                                        <i class="bi bi-file-earmark-image-fill text-primary fs-2"></i>
+                                        <i class="bi bi-file-earmark-image-fill text-primary fs-2 me-3"></i>
                                     {% else %}
-                                        <i class="bi bi-file-earmark-fill text-secondary fs-2"></i>
+                                        <i class="bi bi-file-earmark-fill text-secondary fs-2 me-3"></i>
                                     {% endif %}
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ attachment.original_filename }}</h6>
-                                    {% if attachment.description %}
-                                    <p class="mb-1 small"><strong>Περιγραφή:</strong> {{ attachment.description }}</p>
-                                    {% endif %}
-                                    <small class="text-muted">
-                                        {{ attachment.file_size|filesizeformat }} •
-                                        Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
-                                        {% if attachment.uploaded_by != leave_request.user %}
-                                            <br>από {{ attachment.uploaded_by.full_name }}
-                                        {% endif %}
-                                    </small>
-                                    <div class="mt-2">
-                                        <a href="{{ attachment.get_absolute_url }}"
-                                           class="btn btn-sm btn-outline-primary"
-                                           target="_blank">
-                                            <i class="bi bi-download"></i> Λήψη
-                                        </a>
-                                        <a href="{% url 'leaves:delete_secure_file' attachment.id %}"
-                                           class="btn btn-sm btn-outline-danger ms-2"
-                                           onclick="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το αρχείο;')">
-                                            <i class="bi bi-trash"></i> Διαγραφή
-                                        </a>
+                                    <div>
+                                        <h6 class="mb-1">{{ attachment.original_filename }}</h6>
+                                        <small class="text-muted">
+                                            {{ attachment.file_size|filesizeformat }} •
+                                            Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
+                                            {% if attachment.uploaded_by != leave_request.user %}
+                                                <br>από {{ attachment.uploaded_by.full_name }}
+                                            {% endif %}
+                                        </small>
                                     </div>
+                                </div>
+                                <div>
+                                    <a href="{{ attachment.get_absolute_url }}"
+                                       class="btn btn-outline-primary btn-sm"
+                                       target="_blank"
+                                       title="Προβολή">
+                                        <i class="bi bi-eye"></i> Προβολή
+                                    </a>
+                                    <a href="{{ attachment.get_absolute_url }}"
+                                       class="btn btn-outline-success btn-sm ms-2"
+                                       title="Λήψη"
+                                       download>
+                                        <i class="bi bi-download"></i> Λήψη
+                                    </a>
                                 </div>
                             </div>
                         </div>
