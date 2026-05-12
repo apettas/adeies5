@@ -72,7 +72,7 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
             'pending_documents_requests': pending_documents_requests.count(),
             'pending_documents_list': pending_documents_requests,
             'first_documents_deadline': first_deadline,
-            'can_request_leave': user.can_request_leave(),
+            'can_request_leave': user.has_leave_request_permission(),
         })
         
         return context
@@ -86,7 +86,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     
     def dispatch(self, request, *args, **kwargs):
         # Έλεγχος αν ο χρήστης μπορεί να αιτηθεί άδεια
-        if not request.user.can_request_leave():
+        if not request.user.has_leave_request_permission():
             from django.core.exceptions import PermissionDenied
             raise PermissionDenied("Δεν έχετε δικαίωμα υποβολής αιτήσεων άδειας.")
         return super().dispatch(request, *args, **kwargs)

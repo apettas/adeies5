@@ -90,7 +90,7 @@ class Command(BaseCommand):
                 self.stdout.write(f'   ❌ Δεν βρέθηκε προϊστάμενος έγκρισης')
             
             # Δοκιμάζουμε can_request_leave()
-            can_request = user.can_request_leave()
+            can_request = user.has_leave_request_permission()
             if can_request:
                 self.stdout.write(f'   ✅ Μπορεί να αιτηθεί άδεια')
             else:
@@ -129,7 +129,7 @@ class Command(BaseCommand):
                     else:
                         self.stdout.write(f'      ❌ Δεν βρέθηκε προϊστάμενος')
                     
-                    can_request = user.can_request_leave()
+                    can_request = user.has_leave_request_permission()
                     status = "✅ Μπορεί" if can_request else "❌ ΔΕΝ μπορεί"
                     self.stdout.write(f'      {status} να αιτηθεί άδεια')
                     

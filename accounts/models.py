@@ -372,7 +372,7 @@ class User(AbstractUser):
         
         return None
     
-    def can_request_leave(self):
+    def has_leave_request_permission(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
         # SDEY managers δεν έχουν δικαίωμα αίτησης
         if self.department and self.department.department_type:
