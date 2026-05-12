@@ -363,6 +363,17 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             id__in=subordinates.values_list('id', flat=True),
             sick_days_current_year__gt=8
         ).select_related('department')
+
+        # Οικιακές αιτήσεις του manager
+        context['my_leave_requests'] = LeaveRequest.objects.filter(
+            user=self.request.user
+        ).select_related('leave_type').order_by('-created_at')[:10]
+
+        # Υπόλοιπο αδειών του manager
+        context['my_leave_balance'] = self.request.user.leave_balance
+        context['my_current_year_days'] = self.request.user.current_year_leave_balance
+        context['my_carryover_days'] = self.request.user.carryover_leave_days
+        context['my_annual_entitlement'] = self.request.user.annual_leave_entitlement
         
         # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα
         if (self.request.user.department and

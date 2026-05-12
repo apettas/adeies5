@@ -77,6 +77,103 @@
     </div>
 </div>
 
+<!-- Υπόλοιπο Αδειών Προϊσταμένου -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Το Υπόλοιπο Αδειών Μου</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="text-primary">{{ my_leave_balance }}</h3>
+                            <small class="text-muted">Συνολικό Υπόλοιπο</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="text-success">{{ my_current_year_days }}</h3>
+                            <small class="text-muted">Τρέχον Έτος</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="border-end">
+                            <h3 class="text-info">{{ my_carryover_days }}</h3>
+                            <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="text-secondary">{{ my_annual_entitlement }}</h3>
+                        <small class="text-muted">Ετήσιο Δικαίωμα</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Οι Αιτήσεις Μου -->
+{% if my_leave_requests %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-person-badge"></i> Οι Αιτήσεις Μου</h5>
+                <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-sm btn-light">
+                    <i class="bi bi-arrow-right"></i> Όλες οι Αιτήσεις
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Τύπος Άδειας</th>
+                                <th>Ημερομηνίες</th>
+                                <th>Ημέρες</th>
+                                <th>Κατάσταση</th>
+                                <th>Ενέργειες</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in my_leave_requests %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ request.leave_type.name }}</span></td>
+                                <td>{{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}</td>
+                                <td><span class="badge bg-info">{{ request.total_days }} ημέρες</span></td>
+                                <td>
+                                    {% if request.status == 'COMPLETED' %}
+                                        <span class="badge bg-success">Ολοκληρώθηκε</span>
+                                    {% elif request.status == 'SUBMITTED' %}
+                                        <span class="badge bg-warning">Υποβλήθηκε</span>
+                                    {% elif request.status == 'APPROVED_MANAGER' %}
+                                        <span class="badge bg-info">Εγκρίθηκε</span>
+                                    {% elif request.status == 'UNDER_PROCESSING' %}
+                                        <span class="badge bg-primary">Προς Επεξεργασία</span>
+                                    {% elif request.status == 'REJECTED_MANAGER' or request.status == 'REJECTED_OPERATOR' %}
+                                        <span class="badge bg-danger">Απορρίφθηκε</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ request.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'leaves:leave_request_detail' request.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Στατιστικά ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα -->
 {% if is_kedasy_kepea_manager %}
 <div class="row mb-4">
