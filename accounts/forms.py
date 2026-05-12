@@ -131,8 +131,7 @@ class UserRegistrationForm(UserCreationForm):
         user.last_name = self.cleaned_data['last_name']
         user.department = self.cleaned_data['department']
         user.specialty = self.cleaned_data['specialty']
-        user.phone = self.cleaned_data.get('phone', '')
-        user.address = self.cleaned_data.get('address', '')
+        user.phone1 = self.cleaned_data.get('phone', '')
         
         # Κρίσιμο: Proper password hashing
         user.set_password(self.cleaned_data['password1'])

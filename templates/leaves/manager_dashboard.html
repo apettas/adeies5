@@ -47,6 +47,24 @@
             </div>
         </div>
     </div>
+
+{% if sick_days_alert_users %}
+<!-- Alert για Υγειονομική Επιτροπή -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Υγειονομική Επιτροπή</h5>
+            <p>Οι παρακάτω υπάλληλοι έχουν ξεπεράσει τις 8 αναρρωτικές ημέρες τρέχοντος έτους:</p>
+            <ul class="mb-0">
+                {% for user in sick_days_alert_users %}
+                <li><strong>{{ user.get_full_name }}</strong> ({{ user.department.name }}) - {{ user.sick_days_current_year }} ημέρες</li>
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+</div>
+{% endif %}
     
     <div class="col-md-4 mb-3">
         <div class="card text-center bg-success bg-opacity-10">

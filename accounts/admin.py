@@ -2,7 +2,11 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import User, Department, DepartmentType, Role, Specialty, Headquarters, Prefecture
+from .models import (
+    User, Department, DepartmentType, Role, Specialty,
+    Headquarters, Prefecture,
+    EmployeeType, EmployeeHistory, GDPRConsent
+)
 
 
 @admin.register(Role)
@@ -120,8 +124,9 @@ class CustomUserAdmin(UserAdmin):
         (None, {'fields': ('email', 'password')}),
         ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'father_name', 'gender', 'phone', 'email2', 'orario', 'hire_date')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'roles', 'user_category')}),
-        ('Πρόσθετα Στοιχεία', {'fields': ('user_description', 'notification')}),
-        ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')}),
+        ('Πρόσθετα Στοιχεία', {'fields': ('role_description', 'notification_recipients')}),
+        ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
+        ('Δικαιώματα Άδειας', {'fields': ('can_request_leave', 'can_approve_own_leave')}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
         ('Δικαιώματα', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Σημαντικές Ημερομηνίες', {'fields': ('last_login', 'date_joined')}),
@@ -147,3 +152,40 @@ class CustomUserAdmin(UserAdmin):
             'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')
         }),
     )
+
+
+@admin.register(EmployeeType)
+class EmployeeTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
+    readonly_fields = ('created_at',)
+
+
+@admin.register(EmployeeHistory)
+class EmployeeHistoryAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'field_name', 'old_value', 'new_value', 'changed_by', 'change_date')
+    list_filter = ('field_name', 'change_date')
+    search_fields = ('employee__email', 'employee__first_name', 'employee__last_name', 'notes')
+    readonly_fields = ('employee', 'changed_by', 'change_date', 'field_name', 'old_value', 'new_value', 'notes')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(GDPRConsent)
+class GDPRConsentAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'version', 'consented_at', 'ip_address')
+    list_filter = ('version', 'consented_at')
+    search_fields = ('employee__email', 'employee__first_name', 'employee__last_name')
+    readonly_fields = ('employee', 'consent_text', 'consented_at', 'ip_address', 'version')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

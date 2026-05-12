@@ -137,6 +137,24 @@ def leave_calendar_view(request, year=None, month=None):
                 })
         calendar_weeks.append(calendar_days)
     
+    # Δημόσιες αργίες για τον μήνα
+    from .models import PublicHoliday
+    month_holidays = PublicHoliday.objects.filter(
+        date__gte=first_day,
+        date__lte=last_day,
+        is_active=True
+    ).order_by('date')
+
+    holiday_dates = {}
+    for holiday in month_holidays:
+        holiday_dates[holiday.date] = holiday.name
+
+    # Προσθήκη αργιών στο ημερολόγιο
+    for week in calendar_weeks:
+        for day in week:
+            if day['date'] and day['date'] in holiday_dates:
+                day['holiday_name'] = holiday_dates[day['date']]
+
     # Χρώματα για τους τύπους αδειών
     leave_type_colors = get_leave_type_colors()
     

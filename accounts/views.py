@@ -141,31 +141,24 @@ def register_view(request):
     
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
-        
-        # DEBUG: Εκτύπωση των δεδομένων που λαμβάνονται
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"DEBUG: POST data received: {request.POST}")
-        logger.error(f"DEBUG: Form data: {form.data}")
-        logger.error(f"DEBUG: Form is_valid: {form.is_valid()}")
-        
-        if not form.is_valid():
-            logger.error(f"DEBUG: Form errors: {form.errors}")
-        
+
         if form.is_valid():
             try:
                 user = form.save()
-                logger.error(f"DEBUG: User created successfully: {user.email}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"New user registered: {user.email}")
                 messages.success(request,
                     f'Η εγγραφή σας ολοκληρώθηκε επιτυχώς! '
                     f'Η αίτησή σας στάλθηκε για έγκριση. '
                     f'Θα ενημερωθείτε όταν εγκριθεί η πρόσβασή σας στο σύστημα.')
                 return redirect('accounts:registration_pending')
             except Exception as e:
-                logger.error(f"DEBUG: Error saving user: {e}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error saving user during registration: {e}")
                 messages.error(request, f'Σφάλμα κατά την εγγραφή: {e}')
         else:
-            # Προσθήκη errors στα messages για debugging
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f'{field}: {error}')

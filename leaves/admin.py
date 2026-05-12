@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import LeaveType, LeaveRequest, LeavePeriod, SecureFile, Logo, Info, Ypopsin, Signee
+from .models import (
+    LeaveType, LeaveRequest, LeavePeriod, SecureFile,
+    Logo, Info, Ypopsin, Signee,
+    PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead
+)
 
 
 @admin.register(LeaveType)
@@ -132,3 +136,62 @@ class SigneeAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(PublicHoliday)
+class PublicHolidayAdmin(admin.ModelAdmin):
+    list_display = ('name', 'date', 'year', 'is_movable', 'is_active')
+    list_filter = ('is_active', 'is_movable', 'year')
+    search_fields = ('name',)
+    date_hierarchy = 'date'
+
+
+@admin.register(LeaveActionLog)
+class LeaveActionLogAdmin(admin.ModelAdmin):
+    list_display = ('leave_request', 'action', 'user', 'previous_status', 'new_status', 'timestamp')
+    list_filter = ('action', 'previous_status', 'new_status', 'timestamp')
+    search_fields = ('leave_request__user__first_name', 'leave_request__user__last_name', 'notes')
+    readonly_fields = ('leave_request', 'user', 'action', 'previous_status', 'new_status',
+                       'timestamp', 'notes', 'ip_address')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LeaveAccessLog)
+class LeaveAccessLogAdmin(admin.ModelAdmin):
+    list_display = ('leave_request', 'accessed_by', 'access_type', 'timestamp', 'ip_address')
+    list_filter = ('access_type', 'timestamp')
+    search_fields = ('leave_request__user__first_name', 'leave_request__user__last_name', 'accessed_by__email')
+    readonly_fields = ('leave_request', 'accessed_by', 'access_type', 'timestamp', 'ip_address')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Letterhead)
+class LetterheadAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'address', 'postal_code', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('header_text', 'address')
+    fieldsets = (
+        ('Κείμενο Επικεφαλίδας', {
+            'fields': ('header_text',)
+        }),
+        ('Στοιχεία Επικοινωνίας', {
+            'fields': ('address', 'postal_code', 'contact_info_template')
+        }),
+        ('Έμβλημα', {
+            'fields': ('coat_of_arms',)
+        }),
+        ('Κατάσταση', {
+            'fields': ('is_active', 'created_by')
+        }),
+    )
+    readonly_fields = ('created_at', 'created_by')

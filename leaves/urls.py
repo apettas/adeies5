@@ -59,4 +59,14 @@ urlpatterns = [
     path('files/<int:file_id>/', views.serve_secure_file, name='serve_secure_file'),
     path('files/<int:file_id>/delete/', views.delete_secure_file, name='delete_secure_file'),
     path('protocol-pdf/<int:pk>/', views.serve_protocol_pdf, name='serve_protocol_pdf'),
+
+    # Locking mechanism
+    path('lock/<int:pk>/', views.lock_leave_request, name='lock_leave_request'),
+    path('unlock/<int:pk>/', views.unlock_leave_request, name='unlock_leave_request'),
+
+    # Delete by handler
+    path('delete/<int:pk>/', views.delete_leave_request, name='delete_leave_request'),
+
+    # Withdraw completed leave
+    path('withdraw-completed/<int:pk>/', views.withdraw_completed_leave, name='withdraw_completed_leave'),
 ]

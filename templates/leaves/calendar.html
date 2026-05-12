@@ -78,6 +78,10 @@
         background: #f8f9fa;
     }
     
+    .calendar-day.holiday {
+        background: #fff3cd;
+    }
+    
     .calendar-day.today {
         background: #e3f2fd;
     }
@@ -266,9 +270,9 @@
                 <!-- Ημέρες του μήνα -->
                 {% for week in calendar_weeks %}
                     {% for day in week %}
-                    <div class="calendar-day{% if day.is_weekend %} weekend{% endif %}{% if day.is_today %} today{% endif %}{% if not day.day %} empty-day{% endif %}">
+                    <div class="calendar-day{% if day.is_weekend %} weekend{% endif %}{% if day.holiday_name %} holiday{% endif %}{% if day.is_today %} today{% endif %}{% if not day.day %} empty-day{% endif %}">
                         {% if day.day %}
-                        <div class="calendar-day-number">{{ day.day }}</div>
+                        <div class="calendar-day-number">{{ day.day }}{% if day.holiday_name %}<br><small class="text-danger">🇬🇷 {{ day.holiday_name }}</small>{% endif %}</div>
                         
                         <!-- Events για αυτή την ημέρα -->
                         {% for event in day.events %}

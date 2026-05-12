@@ -108,6 +108,8 @@ class Department(models.Model):
                                    verbose_name='Έδρα', related_name='departments')
     manager = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Προϊστάμενος Τμήματος', related_name='managed_departments')
+    is_virtual = models.BooleanField('Εικονικό Τμήμα', default=False,
+                                     help_text='True για ΣΔΕΥ - κληρονομούν προϊστάμενο από το γονικό ΚΕΔΑΣΥ')
     is_active = models.BooleanField('Ενεργό', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
@@ -205,7 +207,9 @@ class User(AbstractUser):
     first_name = models.CharField('Όνομα', max_length=50)
     last_name = models.CharField('Επίθετο', max_length=50)
     email = models.EmailField('Email', unique=True)
-    phone = models.CharField('Τηλέφωνο', max_length=15, blank=True)
+    phone1 = models.CharField('Τηλέφωνο 1', max_length=15, blank=True)
+    phone2 = models.CharField('Τηλέφωνο 2', max_length=20, blank=True)
+    personal_email = models.EmailField('Προσωπικό Email', blank=True, null=True)
     GENDER_CHOICES = [
         ('MALE', 'Άνδρας'),
         ('FEMALE', 'Γυναίκα'),
@@ -222,13 +226,15 @@ class User(AbstractUser):
     roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
     user_category = models.CharField('Κατηγορία Χρήστη', max_length=20, choices=USER_CATEGORIES,
                                    default='OTHER', blank=True)
+    employee_type = models.ForeignKey('EmployeeType', on_delete=models.SET_NULL, null=True, blank=True,
+                                     verbose_name='Τύπος Υπαλλήλου', related_name='users')
     specialty = models.ForeignKey(Specialty, on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Ειδικότητα', related_name='users')
     
     # Επιπλέον στοιχεία χρήστη
-    notification = models.TextField('Κοινοποίηση Απόφασης', blank=True,
-                                  help_text='Υπηρεσίες που θα γίνει κοινοποίηση η απόφαση της άδειας')
-    user_description = models.TextField('Περιγραφή Χρήστη', blank=True,
+    notification_recipients = models.TextField('Κοινοποίηση Απόφασης', blank=True,
+                                   help_text='Υπηρεσίες που θα γίνει κοινοποίηση η απόφαση της άδειας')
+    role_description = models.TextField('Περιγραφή Ρόλου', blank=True,
                                       help_text='Ιδιότητα του χρήστη')
     
     # Κατάσταση εγγραφής
@@ -245,6 +251,12 @@ class User(AbstractUser):
     hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     
+    # Δικαιώματα άδειας
+    can_request_leave = models.BooleanField('Δικαίωμα Αίτησης Άδειας', default=True,
+        help_text='Αν είναι False, ο χρήστης δεν μπορεί να κάνει αίτηση άδειας (π.χ. SDEY managers, Περιφ. Δ/ντής)')
+    can_approve_own_leave = models.BooleanField('Έγκριση Δικής Του Άδειας', default=False,
+        help_text='Αν είναι False, δεν μπορεί να εγκρίνει τη δική του αίτηση')
+    
     # Κατάσταση Αδειών
     annual_leave_entitlement = models.IntegerField('Δικαιούμενες Ημέρες Κανονικής Άδειας', default=25,
                                                  help_text='Οι ημέρες κανονικής άδειας που δικαιούται κάθε χρόνο')
@@ -256,6 +268,8 @@ class User(AbstractUser):
                                       help_text='Συνολικό υπόλοιπο κανονικών αδειών (προηγούμενο + τρέχον έτος)')
     sick_leave_with_declaration = models.IntegerField('Αναρρωτικές Άδειες με Υπεύθυνη Δήλωση', default=2,
                                                     help_text='Διαθέσιμες αναρρωτικές άδειες με υπεύθυνη δήλωση')
+    sick_days_current_year = models.IntegerField('Αναρρωτικές Τρέχοντος Έτους', default=0,
+                                                 help_text='Σύνολο αναρρωτικών ημερών τρέχοντος έτους (για alert Υγειονομικής)')
     total_sick_leave_last_5_years = models.IntegerField('Σύνολο Αναρρωτικών Αδειών Τελευταίας Πενταετίας',
                                                       default=0, blank=True, null=True,
                                                       help_text='Συνολικές αναρρωτικές άδειες των τελευταίων 5 ετών')
@@ -360,10 +374,19 @@ class User(AbstractUser):
     
     def can_request_leave(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
-        # Αν είναι manager του τμήματός του (ρητά ή μέσω ρόλου) και δεν έχει γονικό τμήμα, δεν μπορεί να αιτηθεί
+        # SDEY managers δεν έχουν δικαίωμα αίτησης
+        if self.department and self.department.department_type:
+            if self.department.department_type.code == 'SDEY':
+                return False
+
+        # Αν το πεδίο can_request_leave είναι False, δεν μπορεί
+        field_value = self._meta.get_field('can_request_leave').value_from_object(self)
+        if not field_value:
+            return False
+
+        # Αν είναι manager του τμήματός του και δεν έχει γονικό τμήμα, δεν μπορεί
         if self.department and self.is_manager_of_department(self.department):
             if not self.department.parent_department:
-                # Είναι root τμήμα (π.χ. ΠΔΕΔΕ)
                 return False
         return True
     
@@ -503,39 +526,31 @@ class User(AbstractUser):
         """
         import logging
         logger = logging.getLogger(__name__)
-        
-        logger.info(f"use_leave_days called for user {self.username} with days_used={days_used}")
-        logger.info(f"Before: carryover_leave_days={self.carryover_leave_days}, current_year_leave_balance={self.current_year_leave_balance}, leave_balance={self.leave_balance}")
-        
+
         if days_used <= 0:
-            logger.info("days_used <= 0, returning False")
             return False
-        
+
         if not self.can_request_leave_days(days_used):
-            logger.info("can_request_leave_days returned False, returning False")
             return False
-        
+
         remaining_days = days_used
-        
+
         # Πρώτα αφαιρούμε από το υπόλοιπο προηγούμενου έτους
         if self.carryover_leave_days > 0:
             days_from_carryover = min(remaining_days, self.carryover_leave_days)
             self.carryover_leave_days -= days_from_carryover
             remaining_days -= days_from_carryover
-            logger.info(f"Used {days_from_carryover} from carryover, remaining_days={remaining_days}")
-        
+
         # Μετά αφαιρούμε από το τρέχον έτος
         if remaining_days > 0:
             self.current_year_leave_balance -= remaining_days
-            logger.info(f"Used {remaining_days} from current year")
-        
+
         # Ενημερώνουμε το συνολικό υπόλοιπο
         self.leave_balance = self.calculate_total_leave_balance()
-        logger.info(f"After: carryover_leave_days={self.carryover_leave_days}, current_year_leave_balance={self.current_year_leave_balance}, leave_balance={self.leave_balance}")
-        
         self.save()
-        logger.info("User saved successfully")
-        
+
+        logger.info(f"Used {days_used} leave days for user {self.email}")
+
         return True
     
     def reset_yearly_leave_balance(self):
@@ -561,3 +576,81 @@ class User(AbstractUser):
             'total_days': self.calculate_total_leave_balance(),
             'annual_entitlement': self.annual_leave_entitlement
         }
+
+
+class EmployeeType(models.Model):
+    """Τύποι υπαλλήλων (αντικαθιστά το hardcoded USER_CATEGORIES)"""
+    name = models.CharField('Όνομα Τύπου', max_length=100, unique=True)
+    description = models.TextField('Περιγραφή', blank=True)
+    is_active = models.BooleanField('Ενεργός', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Τύπος Υπαλλήλου'
+        verbose_name_plural = 'Τύποι Υπαλλήλων'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def create_defaults(cls):
+        """Δημιουργεί τους default τύπους αν δεν υπάρχουν"""
+        defaults = [
+            {'name': 'Διοικητικοί', 'description': 'Μόνιμο διοικητικό προσωπικό'},
+            {'name': 'Εκπαιδευτικοί', 'description': 'Μόνιμο εκπαιδευτικό προσωπικό'},
+            {'name': 'Αναπληρωτές', 'description': 'Αναπληρωτές εκπαιδευτικοί'},
+            {'name': 'Κέντρο Στήριξης ΣΔΕΥ', 'description': 'Υπεύθυνοι Κέντρου Στήριξης ΣΔΕΥ'},
+            {'name': 'Δ/ντες Εκπαίδευσης', 'description': 'Περιφερειακός Διευθυντής'},
+            {'name': 'Άλλο', 'description': 'Άλλες κατηγορίες'},
+        ]
+        for d in defaults:
+            cls.objects.get_or_create(name=d['name'], defaults={'description': d['description']})
+
+
+class EmployeeHistory(models.Model):
+    """Ιστορικό αλλαγών στοιχείων υπαλλήλων"""
+    employee = models.ForeignKey(User, on_delete=models.CASCADE,
+                                 related_name='history_records', verbose_name='Υπάλληλος')
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   related_name='made_changes', verbose_name='Αλλαγή από')
+    change_date = models.DateTimeField('Ημερομηνία Αλλαγής', auto_now_add=True)
+    field_name = models.CharField('Πεδίο', max_length=100,
+        help_text='Ποιο πεδίο άλλαξε (specialty, employee_type, department, κλπ)')
+    old_value = models.CharField('Προηγούμενη Τιμή', max_length=200, blank=True)
+    new_value = models.CharField('Νέα Τιμή', max_length=200, blank=True)
+    notes = models.TextField('Σημειώσεις', blank=True)
+
+    class Meta:
+        verbose_name = 'Ιστορικό Αλλαγής Υπαλλήλου'
+        verbose_name_plural = 'Ιστορικό Αλλαγών Υπαλλήλων'
+        ordering = ['-change_date']
+
+    def __str__(self):
+        return f"{self.employee} - {self.field_name} ({self.change_date.strftime('%d/%m/%Y')})"
+
+
+class GDPRConsent(models.Model):
+    """Καταγραφή συναίνεσης GDPR"""
+    employee = models.ForeignKey(User, on_delete=models.CASCADE,
+                                 related_name='gdpr_consents', verbose_name='Υπάλληλος')
+    consent_text = models.TextField('Κείμενο Συναίνεσης')
+    consented_at = models.DateTimeField('Ημερομηνία Συναίνεσης', auto_now_add=True)
+    ip_address = models.GenericIPAddressField('IP Διεύθυνση', null=True, blank=True)
+    version = models.PositiveIntegerField('Έκδοση Κειμένου', default=1,
+        help_text='Version του κειμένου GDPR που αποδέχτηκε')
+
+    class Meta:
+        verbose_name = 'Συναίνεση GDPR'
+        verbose_name_plural = 'Συναινέσεις GDPR'
+        ordering = ['-consented_at']
+
+    def __str__(self):
+        return f"{self.employee} - {self.consented_at.strftime('%d/%m/%Y')}"
+
+    @classmethod
+    def has_current_consent(cls, employee, version=None):
+        """Ελέγχει αν ο υπάλληλος έχει αποδεχτεί την τρέχουσα έκδοση"""
+        if version is None:
+            version = 1  # Default version
+        return cls.objects.filter(employee=employee, version=version).exists()

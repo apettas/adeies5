@@ -114,7 +114,9 @@ class SecureFileHandler:
             return True, key_hex, file_size
             
         except Exception as e:
-            print(f"Error saving encrypted file: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error saving encrypted file: {e}")
             return False, None, 0
     
     @staticmethod
@@ -149,34 +151,7 @@ class SecureFileHandler:
             logger.error(f"Error saving encrypted file: {str(e)}")
             
             raise e
-        try:
-            # Δημιουργία καταλόγου αν δεν υπάρχει
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            
-            # Ανάγνωση περιεχομένου αρχείου
-            file_obj.seek(0)
-            file_content = file_obj.read()
-            
-            # Κρυπτογράφηση
-            encrypted_content, key_hex = SecureFileHandler.encrypt_file(file_content)
-            
-            # Αποθήκευση κρυπτογραφημένου αρχείου
-            with open(file_path, 'wb') as f:
-                f.write(encrypted_content)
-            
-            # Ασφαλής διαγραφή του original content από μνήμη
-            del file_content
-            
-            return True, key_hex, len(encrypted_content)
-            
-        except Exception as e:
-            # Log του σφάλματος (χωρίς sensitive δεδομένα)
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error saving encrypted file: {str(e)}")
-            
-            return False, None, 0
-    
+
     @staticmethod
     def load_encrypted_file(file_path, key_hex):
         """
@@ -315,7 +290,11 @@ class FileAccessController:
     def can_user_access_file(user, secure_file):
         """
         Ελέγχει αν ο χρήστης έχει δικαίωμα πρόσβασης στο αρχείο
-        GDPR Compliance: Μόνο ο χειριστής αδειών έχει πρόσβαση σε συνημμένα
+        GDPR Compliance:
+        - Αναρρωτικές: ΜΟΝΟ αιτών + χειριστής
+        - SDEY managers: ΟΧΙ attachments
+        - Secretary: ΟΧΙ attachments
+        - Manager: ΟΧΙ αναρρωτικές attachments
         
         Args:
             user: User object
@@ -324,41 +303,64 @@ class FileAccessController:
         Returns:
             bool: True αν έχει δικαίωμα πρόσβασης
         """
+        leave_request = secure_file.leave_request
+        
         # Ο χρήστης που ανέβασε το αρχείο έχει πάντα πρόσβαση
         if secure_file.uploaded_by == user:
             return True
         
-        # Χειριστής αδειών έχει πρόσβαση σε όλα (GDPR: μόνο για επεξεργασία)
+        # Ο αιτών έχει πάντα πρόσβαση στα δικά του
+        if leave_request.user == user:
+            return True
+        
+        # SDEY managers δεν έχουν πρόσβαση σε ΚΑΝΕΝΑ attachment
+        if user.department and user.department.department_type:
+            if user.department.department_type.code == 'SDEY':
+                return False
+        
+        # Secretary δεν έχει πρόσβαση σε attachments
+        if user.is_secretary:
+            return False
+        
+        # Χειριστής αδειών έχει πρόσβαση σε όλα
         if user.is_leave_handler:
             return True
         
-        # GDPR: Προϊστάμενοι και άλλοι χρήστες ΔΕΝ έχουν πρόσβαση σε συνημμένα
+        # Προϊστάμενοι - έλεγχος για αναρρωτικές
+        if user.is_department_manager:
+            leave_type_name = leave_request.leave_type.name.lower()
+            is_sick_leave = 'αναρρωτικ' in leave_type_name or 'sick' in leave_type_name.lower()
+            if is_sick_leave:
+                # Προϊστάμενοι ΔΕΝ βλέπουν αναρρωτικές attachments
+                return False
+        
+        # Admin έχει πρόσβαση
+        if user.is_administrator:
+            return True
+        
         return False
     
     @staticmethod
-    def log_file_access(user, secure_file, success=True):
+    def log_file_access(user, secure_file, access_type='VIEW', ip_address=None):
         """
-        Καταγραφή προσπάθειας πρόσβασης σε αρχείο
+        Καταγραφή πρόσβασης σε αρχείο για GDPR compliance
         
         Args:
             user: User object
-            secure_file: SecureFile object  
-            success (bool): Αν η πρόσβαση ήταν επιτυχής
+            secure_file: SecureFile object
+            access_type: 'VIEW' ή 'DOWNLOAD'
+            ip_address: IP address του χρήστη
         """
-        import logging
-        logger = logging.getLogger('file_access')
-        
-        log_data = {
-            'user_id': user.id,
-            'username': user.username,
-            'file_id': secure_file.id,
-            'filename': secure_file.original_filename,
-            'leave_request_id': secure_file.leave_request.id,
-            'success': success,
-            'ip_address': None  # Θα συμπληρωθεί από την view
-        }
-        
-        if success:
-            logger.info(f"File access granted: {log_data}")
-        else:
-            logger.warning(f"File access denied: {log_data}")
+        try:
+            from leaves.models import LeaveAccessLog
+            LeaveAccessLog.objects.create(
+                leave_request=secure_file.leave_request,
+                accessed_by=user,
+                access_type=access_type,
+                ip_address=ip_address
+            )
+        except Exception:
+            # Αν αποτύχει το logging, δεν διακόπτουμε τη ροή
+            import logging
+            logger = logging.getLogger('file_access')
+            logger.warning(f"Failed to create LeaveAccessLog for user {user.id}, file {secure_file.id}")

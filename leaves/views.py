@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.conf import settings
+from datetime import timedelta
 import os
 import mimetypes
 from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
@@ -18,6 +19,8 @@ from notifications.utils import create_notification
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+LOCK_TIMEOUT_MINUTES = 30
 
 
 class EmployeeDashboardView(LoginRequiredMixin, ListView):
@@ -46,6 +49,16 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
                 first_deadline = request.documents_deadline
                 break
         
+        # Leave balance information
+        context['leave_balance'] = user.leave_balance
+        context['carryover_days'] = user.carryover_leave_days
+        context['current_year_days'] = user.current_year_leave_balance
+        context['annual_entitlement'] = user.annual_leave_entitlement
+        
+        # Sick leave information
+        context['sick_days_remaining'] = user.sick_leave_with_declaration
+        context['sick_days_current_year'] = user.sick_days_current_year
+        
         # Στατιστικά
         context.update({
             'total_requests': self.get_queryset().count(),
@@ -59,6 +72,7 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
             'pending_documents_requests': pending_documents_requests.count(),
             'pending_documents_list': pending_documents_requests,
             'first_documents_deadline': first_deadline,
+            'can_request_leave': user.can_request_leave(),
         })
         
         return context
@@ -340,8 +354,15 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
                 status='APPROVED_MANAGER',
                 manager_approved_at__month=timezone.now().month
             ).count(),
-            'today': timezone.now().date(),  # Για default τιμή στα πεδία ημερομηνίας
+            'today': timezone.now().date(),
         })
+
+        # Sick days alert - υπάλληλοι με >8 αναρρωτικές ημέρες τρέχοντος έτους
+        from accounts.models import User
+        context['sick_days_alert_users'] = User.objects.filter(
+            id__in=subordinates.values_list('id', flat=True),
+            sick_days_current_year__gt=8
+        ).select_related('department')
         
         # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα
         if (self.request.user.department and
@@ -558,9 +579,26 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο ή παρακάμπτουν τον προϊστάμενο και περιμένουν επεξεργασία
-        return LeaveRequest.objects.filter(
+        # Ταξινόμηση κατά προτεραιότητα: ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ > ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ > ΣΕ ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ > άλλα
+        priority_order = {
+            'FOR_PROTOCOL_PDEDE': 1,
+            'UNDER_PROCESSING': 2,
+            'PENDING_DOCUMENTS': 3,
+            'APPROVED_MANAGER': 4,
+            'PENDING_KEDASY_KEPEA_PROTOCOL': 5,
+        }
+
+        queryset = LeaveRequest.objects.filter(
             status__in=['APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
-        ).select_related('user', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
+        ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
+
+        # Clean up expired locks
+        cutoff_time = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
+        queryset.filter(
+            locked_at__lt=cutoff_time
+        ).update(locking_user=None, locked_at=None)
+
+        return queryset.order_by('-manager_approved_at', '-submitted_at')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -839,8 +877,9 @@ def send_to_protocol_pdede(request, pk):
                     related_object=leave_request
                 )
             except Exception as notification_error:
-                # Αν αποτύχει το notification, συνεχίζουμε χωρίς να διακόπτουμε τη διαδικασία
-                print(f"Notification error: {notification_error}")
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Notification error in send_to_protocol_pdede: {notification_error}")
             
             messages.success(request, 'Η αίτηση στάλθηκε επιτυχώς για πρωτόκολλο στο ΣΗΔΕ!')
             
@@ -911,8 +950,9 @@ def upload_protocol_pdf(request, pk):
                         related_object=leave_request
                     )
                 except Exception as notification_error:
-                    # Αν αποτύχει το notification, συνεχίζουμε χωρίς να διακόπτουμε τη διαδικασία
-                    print(f"Notification error: {notification_error}")
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Notification error in upload_protocol_pdf: {notification_error}")
                 
                 messages.success(request, f'Το πρωτοκολλημένο PDF ανέβηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}')
             else:
@@ -1033,9 +1073,53 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Προσθήκη attachments στο context
-        attachments = self.object.attachments.all()
-        context['attachments'] = attachments
+        leave_request = self.object
+        user = self.request.user
+
+        # Attachments
+        context['attachments'] = leave_request.attachments.all()
+
+        # Audit trail
+        context['action_logs'] = leave_request.action_logs.all().order_by('-timestamp')
+
+        # Locking status
+        context['is_locked'] = leave_request.locking_user is not None
+        context['locked_by'] = leave_request.locking_user
+        context['locked_at'] = leave_request.locked_at
+        context['lock_expired'] = False
+        if leave_request.locked_at:
+            from datetime import timedelta
+            cutoff = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
+            context['lock_expired'] = leave_request.locked_at < cutoff
+
+        # Revocation eligibility
+        context['can_withdraw'] = False
+        context['can_withdraw_completed'] = False
+        if user == leave_request.user:
+            # Ανάκληση αίτησης (μέχρι ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ)
+            if leave_request.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE']:
+                context['can_withdraw'] = True
+            # Ανάκληση ολοκληρωμένης
+            if leave_request.status == 'COMPLETED':
+                context['can_withdraw_completed'] = True
+
+        # Delete by handler (μόνο σε UNDER_PROCESSING)
+        context['can_delete'] = user.is_leave_handler and leave_request.status == 'UNDER_PROCESSING'
+
+        # Sick leave attachment restriction
+        context['is_sick_leave'] = leave_request.leave_type.name.lower().find('αναρρωτικ') >= 0
+        context['can_view_attachments'] = True
+        if context['is_sick_leave'] and user.is_department_manager and user != leave_request.user:
+            context['can_view_attachments'] = False
+        if user.is_department_manager and leave_request.user.department and \
+           leave_request.user.department.department_type and \
+           leave_request.user.department.department_type.code == 'SDEY' and \
+           user.department and user.department.department_type and \
+           user.department.department_type.code == 'KEDASY' and \
+           leave_request.user.department.parent_department == user.department and \
+           context['is_sick_leave']:
+            context['can_view_attachments'] = False
+
         return context
 
 
@@ -1071,7 +1155,8 @@ def serve_secure_file(request, file_id):
             FileAccessController.log_file_access(
                 user=request.user,
                 secure_file=secure_file,
-                success=False
+                access_type='VIEW',
+                ip_address=request.META.get('REMOTE_ADDR')
             )
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτό το αρχείο.")
         
@@ -1082,17 +1167,18 @@ def serve_secure_file(request, file_id):
         )
         
         if decrypted_content is None:
-            # Log του σφάλματος
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to decrypt file {file_id} for user {request.user.id}")
             raise Http404("Το αρχείο δεν μπορεί να φορτωθεί.")
         
-        # Καταγραφή επιτυχούς πρόσβασης
+        # Καταγραφή επιτυχούς πρόσβασης (GDPR)
+        access_type = 'DOWNLOAD' if request.GET.get('download') else 'VIEW'
         FileAccessController.log_file_access(
             user=request.user,
             secure_file=secure_file,
-            success=True
+            access_type=access_type,
+            ip_address=request.META.get('REMOTE_ADDR')
         )
         
         # Προσδιορισμός Content-Type
@@ -1757,3 +1843,125 @@ def provide_documents(request, pk):
             messages.error(request, f'Σφάλμα κατά την παροχή δικαιολογητικών: {str(e)}')
     
     return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def lock_leave_request(request, pk):
+    """Κλείδωμα αίτησης από χειριστή για επεξεργασία"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα κλειδώματος.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if leave_request.status not in ['UNDER_PROCESSING', 'PENDING_DOCUMENTS', 'FOR_PROTOCOL_PDEDE']:
+        messages.error(request, 'Η αίτηση δεν μπορεί να κλειδωθεί σε αυτή τη φάση.')
+        return redirect('leaves:handler_dashboard')
+
+    # Auto-unlock expired locks
+    cutoff_time = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
+    if leave_request.locked_at and leave_request.locked_at < cutoff_time:
+        leave_request.locking_user = None
+        leave_request.locked_at = None
+        leave_request.save()
+
+    # Lock the request
+    leave_request.locking_user = request.user
+    leave_request.locked_at = timezone.now()
+    leave_request.save()
+
+    messages.success(request, 'Η αίτηση κλειδώθηκε για επεξεργασία.')
+    return redirect('leaves:leave_request_detail', pk=pk)
+
+
+@login_required
+def unlock_leave_request(request, pk):
+    """Ξεκλείδωμα αίτησης από χειριστή"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα ξεκλειδώματος.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    # Only the locking user or an admin can unlock
+    if leave_request.locking_user != request.user and not request.user.is_superuser:
+        messages.error(request, 'Δεν μπορείτε να ξεκλειδώσετε αυτή την αίτηση.')
+        return redirect('leaves:leave_request_detail', pk=pk)
+
+    leave_request.locking_user = None
+    leave_request.locked_at = None
+    leave_request.save()
+
+    messages.success(request, 'Η αίτηση ξεκλειδώθηκε.')
+    return redirect('leaves:leave_request_detail', pk=pk)
+
+
+@login_required
+def delete_leave_request(request, pk):
+    """Διαγραφή αίτησης από χειριστή (μόνο σε ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ)"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα διαγραφής.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if leave_request.status != 'UNDER_PROCESSING':
+        messages.error(request, 'Μπορείτε να διαγράψετε μόνο αιτήσεις σε κατάσταση ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ.')
+        return redirect('leaves:leave_request_detail', pk=pk)
+
+    if request.method == 'POST':
+        leave_request.status = 'DELETED_BY_HANDLER'
+        leave_request.save()
+
+        messages.success(request, 'Η αίτηση διαγράφηκε επιτυχώς.')
+        return redirect('leaves:handler_dashboard')
+
+    return render(request, 'leaves/delete_leave_request_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def withdraw_completed_leave(request, pk):
+    """Ανάκληση ολοκληρωμένης άδειας από τον αιτούντα"""
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if leave_request.user != request.user:
+        raise PermissionDenied("Μόνο ο αιτούντας μπορεί να ανακαλέσει την άδεια.")
+
+    if leave_request.status != 'COMPLETED':
+        messages.error(request, 'Μπορείτε να ανακαλέσετε μόνο ολοκληρωμένες άδειες.')
+        return redirect('leaves:employee_dashboard')
+
+    if request.method == 'POST':
+        # Create new leave request for the revocation process
+        new_request = LeaveRequest.objects.create(
+            user=leave_request.user,
+            leave_type=leave_request.leave_type,
+            description=f'Ανάκληση άδειας #{leave_request.id}',
+            status='SUBMITTED',
+            parent_leave=leave_request,
+            submitted_at=timezone.now()
+        )
+
+        # Copy periods
+        for period in leave_request.periods.all():
+            LeavePeriod.objects.create(
+                leave_request=new_request,
+                start_date=period.start_date,
+                end_date=period.end_date
+            )
+
+        # Update original request
+        leave_request.status = 'WITHDRAWN_COMPLETED'
+        leave_request.save()
+
+        # Notify handlers
+        leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+        for handler in leave_handlers:
+            create_notification(
+                user=handler,
+                title="Ανάκληση Ολοκληρωμένης Άδειας",
+                message=f"Ο/Η {leave_request.user.full_name} ανέκαλε την ολοκληρωμένη άδεια #{leave_request.id}",
+                related_object=new_request
+            )
+
+        messages.success(request, 'Η άδεια ανακλήθηκε επιτυχώς. Νέα αίτηση δημιουργήθηκε.')
+        return redirect('leaves:employee_dashboard')
+
+    return render(request, 'leaves/withdraw_completed_confirm.html', {'leave_request': leave_request})

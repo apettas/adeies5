@@ -164,6 +164,9 @@
                                             {% endif %}
                                         {% elif request.status == 'UNDER_PROCESSING' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
+                                            {% if request.locking_user %}
+                                                <br><span class="badge bg-danger"><i class="bi bi-lock"></i> Κλειδωμένο από {{ request.locking_user.get_full_name|default:request.locking_user.email }}</span>
+                                            {% endif %}
                                             {% if request.protocol_created_at %}
                                                 <br><small class="text-muted">Πρωτοκολλήθηκε: {{ request.protocol_created_at|date:"d/m/Y H:i" }}</small>
                                             {% else %}
@@ -208,6 +211,24 @@
                                                     <i class="bi bi-file-earmark-text"></i> Επεξεργασία Απόφασης
                                                 </a>
                                             {% elif request.status == 'UNDER_PROCESSING' %}
+                                                <!-- Locking indicator -->
+                                                {% if request.locking_user %}
+                                                    {% if request.locking_user == user %}
+                                                        <a href="{% url 'leaves:unlock_leave_request' request.pk %}"
+                                                           class="btn btn-sm btn-outline-warning mb-1">
+                                                            <i class="bi bi-unlock"></i> Ξεκλείδωμα
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="badge bg-danger d-block mb-1">
+                                                            <i class="bi bi-lock"></i> {{ request.locking_user.get_full_name }}
+                                                        </span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <a href="{% url 'leaves:lock_leave_request' request.pk %}"
+                                                       class="btn btn-sm btn-warning mb-1">
+                                                        <i class="bi bi-lock"></i> Κλείδωμα
+                                                    </a>
+                                                {% endif %}
                                                 <!-- Τρίτο στάδιο: Ολοκλήρωση -->
                                                 <button type="button"
                                                         class="btn btn-sm btn-success mb-1"
@@ -215,6 +236,11 @@
                                                         data-bs-target="#completeModal{{ request.pk }}">
                                                     <i class="bi bi-check"></i> Ολοκλήρωση
                                                 </button>
+                                                <!-- Διαγραφή -->
+                                                <a href="{% url 'leaves:delete_leave_request' request.pk %}"
+                                                   class="btn btn-sm btn-outline-danger mb-1">
+                                                    <i class="bi bi-trash"></i> Διαγραφή
+                                                </a>
                                             {% elif request.status == 'PENDING_DOCUMENTS' %}
                                                 <!-- Παροχή δικαιολογητικών -->
                                                 <button type="button"

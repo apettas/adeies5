@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">Ανάκληση Ολοκληρωμένης Άδειας</h5>
+        </div>
+        <div class="card-body">
+            <p>Είστε σίγουρος ότι θέλετε να ανακαλέσετε την ακόλουθη ολοκληρωμένη άδεια;</p>
+            <ul>
+                <li><strong>Τύπος:</strong> {{ leave_request.leave_type.name }}</li>
+                <li><strong>Ημερομηνίες:</strong> {{ leave_request.start_date }} - {{ leave_request.end_date }}</li>
+                <li><strong>Ημέρες:</strong> {{ leave_request.total_days }}</li>
+            </ul>
+            <p class="text-muted">Με την ανάκληση θα δημιουργηθεί νέα αίτηση για επεξεργασία.</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-warning">Ανάκληση Άδειας</button>
+                <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">Ακύρωση</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

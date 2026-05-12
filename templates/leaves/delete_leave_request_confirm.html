@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Διαγραφή Αίτησης Άδειας</h5>
+        </div>
+        <div class="card-body">
+            <p>Είστε σίγουρος ότι θέλετε να διαγράψετε την ακόλουθη αίτηση;</p>
+            <ul>
+                <li><strong>Αιτών:</strong> {{ leave_request.user.get_full_name }}</li>
+                <li><strong>Τύπος:</strong> {{ leave_request.leave_type.name }}</li>
+                <li><strong>Ημερομηνίες:</strong> {{ leave_request.start_date }} - {{ leave_request.end_date }}</li>
+                <li><strong>Ημέρες:</strong> {{ leave_request.total_days }}</li>
+            </ul>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Διαγραφή</button>
+                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">Ακύρωση</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -10,22 +10,6 @@ from notifications.models import Notification
 User = get_user_model()
 
 
-class Department(models.Model):
-    """Τμήμα/Υπηρεσία"""
-    name = models.CharField('Όνομα Τμήματος', max_length=200)
-    code = models.CharField('Κωδικός Τμήματος', max_length=50, unique=True)
-    is_active = models.BooleanField('Ενεργό', default=True)
-    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
-    
-    class Meta:
-        verbose_name = 'Τμήμα'
-        verbose_name_plural = 'Τμήματα'
-        ordering = ['name']
-    
-    def __str__(self):
-        return self.name
-
-
 class LeaveType(models.Model):
     """Τύπος άδειας"""
     name = models.CharField('Όνομα Τύπου', max_length=100)
@@ -38,6 +22,13 @@ class LeaveType(models.Model):
     decision_text = models.TextField('Κείμενο Απόφασης', blank=True)
     folder = models.CharField('Φ Φάκελος', max_length=255, blank=True)
     general_category = models.CharField('Γενική Κατηγορία Αδειών', max_length=100, blank=True)
+    counts_against_balance = models.BooleanField('Μετράει σε Υπόλοιπο Αδειών', default=True,
+        help_text='Αν είναι ενεργό, οι ημέρες αυτής της άδειας αφαιρούνται από το υπόλοιπο του χρήστη')
+    id_adeias = models.CharField('Κωδικός Άδειας (ID Αδείας)', max_length=50, blank=True)
+    name_simple = models.CharField('Απλό Όνομα', max_length=100, blank=True)
+    is_simple = models.BooleanField('Απλή Άδεια', default=False,
+        help_text='Για εορταστικές/προφορικές/επιμορφωτικές άδειες')
+    thematic_folder = models.CharField('Θεματικός Φάκελος', max_length=255, blank=True)
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
@@ -104,8 +95,8 @@ def secure_file_path(instance, filename):
 class SecureFile(models.Model):
     """Κρυπτογραφημένο αρχείο"""
     
-    ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png']
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg']
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB per workflow.txt
     
     leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='attachments')
     original_filename = models.CharField('Αρχικό Όνομα Αρχείου', max_length=255)
@@ -141,16 +132,19 @@ class LeaveRequest(models.Model):
     
     STATUS_CHOICES = [
         ('DRAFT', 'Προσχέδιο'),
-        ('SUBMITTED', 'Υποβλήθηκε'),
-        ('APPROVED_MANAGER', 'Εγκρίθηκε από Προϊστάμενο'),
-        ('REJECTED_MANAGER', 'Απορρίφθηκε από Προϊστάμενο'),
-        ('PENDING_KEDASY_KEPEA_PROTOCOL', 'Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ'),
-        ('FOR_PROTOCOL_PDEDE', 'Για Πρωτόκολλο ΠΔΕΔΕ'),
-        ('PENDING_DOCUMENTS', 'Σε Αναμονή Δικαιολογητικών'),
-        ('UNDER_PROCESSING', 'Προς Επεξεργασία'),
-        ('COMPLETED', 'Ολοκληρώθηκε'),
-        ('REJECTED_OPERATOR', 'Απορρίφθηκε από Χειριστή'),
-        ('WITHDRAWN_BY_REQUESTER', 'Ανάκληση Αίτησης από Αιτούντα'),
+        ('SUBMITTED', 'ΚΑΤΑΧΩΡΗΘΗΚΕ'),
+        ('APPROVED_MANAGER', 'ΕΓΚΡΙΣΗ ΑΠΟ ΠΡΟΪΣΤΑΜΕΝΟ'),
+        ('REJECTED_MANAGER', 'ΜΗ ΕΓΚΡΙΣΗ ΑΠΟ ΠΡΟΪΣΤΑΜΕΝΟ'),
+        ('PENDING_KEDASY_KEPEA_PROTOCOL', 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΚΕΔΑΣΥ'),
+        ('FOR_PROTOCOL_PDEDE', 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ'),
+        ('PENDING_DOCUMENTS', 'ΣΕ ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ'),
+        ('UNDER_PROCESSING', 'ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ'),
+        ('COMPLETED', 'ΟΛΟΚΛΗΡΩΜΕΝΗ'),
+        ('REJECTED_OPERATOR', 'ΑΠΟΡΡΙΨΗ ΑΠΟ ΤΜΗΜΑ ΑΔΕΙΩΝ'),
+        ('WITHDRAWN_BY_REQUESTER', 'ΑΝΑΚΛΗΣΗ ΑΙΤΗΣΗΣ ΑΠΟ ΑΙΤΟΥΝΤΑ'),
+        ('WITHDRAWN_COMPLETED', 'ΑΝΑΚΛΗΣΗ ΟΛΟΚΛΗΡΩΜΕΝΗΣ ΑΔΕΙΑΣ'),
+        ('HEALTH_COMMITTEE', 'ΥΓΕΙΟΝΟΜΙΚΗ ΕΠΙΤΡΟΠΗ'),
+        ('DELETED_BY_HANDLER', 'ΔΙΑΓΡΑΦΗ ΑΠΟ ΧΕΙΡΙΣΤΗ'),
     ]
     
     # Βασικά πεδία
@@ -234,6 +228,16 @@ class LeaveRequest(models.Model):
                                             related_name='provided_documents', verbose_name='Παρείχε Δικαιολογητικά')
     documents_notes = models.TextField('Σημειώσεις Δικαιολογητικών', blank=True)
     
+    # Ανάκληση και κλείδωμα
+    parent_leave = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='child_requests', verbose_name='Γονική Αίτηση',
+                                     help_text='Για ανάκληση/μερική ανάκληση - συνδέει με την αρχική αίτηση')
+    revoked_days = models.IntegerField('Ανακληθείσες Ημέρες', default=0,
+                                       help_text='Ημέρες που ανακλήθηκαν από την αρχική αίτηση')
+    locking_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='locked_leaves', verbose_name='Κλειδωμένο από Χειριστή')
+    locked_at = models.DateTimeField('Ώρα Κλειδώματος', null=True, blank=True)
+    
     class Meta:
         verbose_name = 'Αίτηση Άδειας'
         verbose_name_plural = 'Αιτήσεις Αδειών'
@@ -312,13 +316,15 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
-            # Επειδή προς το παρόν θέλουμε να παρακάμπτουμε τον έλεγχο υπολοίπου,
-            # σχολιάζουμε την αντίστοιχη λογική. Θα επανέλθουμε όταν χρειαστεί.
-            # if self.leave_type.name == '1 Κανονική Άδεια':
-            #     if not self.user.can_request_leave_days(self.total_days):
-            #         raise ValueError(f"Ανεπαρκές υπόλοιπο αδειών. Διαθέσιμες: {self.user.leave_balance}, Αιτούμενες: {self.total_days}")
-            pass
-            
+            # Έλεγχος υπολοίπου αν ο τύπος άδειας μετράει στο υπόλοιπο
+            if self.leave_type.counts_against_balance:
+                if not self.user.can_request_leave_days(self.total_days):
+                    raise ValueError(
+                        f"Ανεπαρκές υπόλοιπο αδειών. "
+                        f"Διαθέσιμες: {self.user.leave_balance}, "
+                        f"Αιτούμενες: {self.total_days}"
+                    )
+
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
             else:
@@ -413,29 +419,15 @@ class LeaveRequest(models.Model):
         return False
     
     def _update_leave_balance_on_completion(self):
-        """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται - ΜΟΝΟ για κανονικές άδειες"""
+        """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται"""
         import logging
         logger = logging.getLogger(__name__)
-        
-        logger.info(f"_update_leave_balance_on_completion called for request {self.id}")
-        logger.info(f"Status: {self.status}")
-        logger.info(f"Leave type: {self.leave_type.name}")
-        logger.info(f"Total days: {self.total_days}")
-        logger.info(f"User: {self.user.username}")
-        logger.info(f"User leave balance before: {self.user.leave_balance}")
-        
-        if self.status == 'COMPLETED' and self.leave_type.name == '1 Κανονική Άδεια':
-            # Χρησιμοποιούμε τη μέθοδο use_leave_days του user
+
+        if self.status == 'COMPLETED' and self.leave_type.counts_against_balance:
             days_used = self.total_days
             if days_used > 0:
-                logger.info(f"Calling use_leave_days({days_used})")
-                result = self.user.use_leave_days(days_used)
-                logger.info(f"use_leave_days result: {result}")
-                logger.info(f"User leave balance after: {self.user.leave_balance}")
-            else:
-                logger.info("No days to use (days_used <= 0)")
-        else:
-            logger.info("Condition not met - not updating leave balance")
+                logger.info(f"Deducting {days_used} leave days for user {self.user} on completion of request {self.id}")
+                self.user.use_leave_days(days_used)
     
     def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""
@@ -515,12 +507,6 @@ class LeaveRequest(models.Model):
     def can_provide_documents(self):
         """Ελέγχει αν μπορούν να παρασχεθούν δικαιολογητικά"""
         return self.status == 'PENDING_DOCUMENTS'
-    
-    @property
-    def has_protocol_pdf(self):
-        """Ελέγχει αν υπάρχει πρωτοκολλημένο PDF"""
-        return bool(self.protocol_pdf_path and self.protocol_pdf_encryption_key)
-        return False
     
     def has_protocol_pdf(self):
         """Επιστρέφει True αν υπάρχει πρωτοκολλημένο PDF"""
@@ -836,4 +822,103 @@ class Signee(models.Model):
     @classmethod
     def get_active(cls):
         """Επιστρέφει τον ενεργό υπογράφοντα"""
+        return cls.objects.filter(is_active=True).first()
+
+
+class PublicHoliday(models.Model):
+    """Δημόσιες αργίες για υπολογισμό εργάσιμων ημερών"""
+    name = models.CharField('Όνομα Αργίας', max_length=200)
+    date = models.DateField('Ημερομηνία')
+    is_movable = models.BooleanField('Κινητή Εορτή', default=False,
+        help_text='True για κινητές εορτές (π.χ. Πάσχα), False για σταθερές')
+    year = models.PositiveIntegerField('Έτος')
+    is_active = models.BooleanField('Ενεργή', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name='Δημιουργήθηκε από')
+
+    class Meta:
+        verbose_name = 'Δημόσια Αργία'
+        verbose_name_plural = 'Δημόσιες Αργίες'
+        ordering = ['date']
+        unique_together = ['date', 'name']
+
+    def __str__(self):
+        return f"{self.name} - {self.date.strftime('%d/%m/%Y')}"
+
+
+class LeaveActionLog(models.Model):
+    """Audit trail για όλες τις αλλαγές κατάστασης αδειών"""
+    leave_request = models.ForeignKey(LeaveRequest, on_delete=models.CASCADE,
+                                      related_name='action_logs', verbose_name='Αίτηση Άδειας')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                            related_name='leave_action_logs', verbose_name='Χρήστης')
+    action = models.CharField('Ενέργεια', max_length=100)
+    previous_status = models.CharField('Προηγούμενη Κατάσταση', max_length=50, blank=True)
+    new_status = models.CharField('Νέα Κατάσταση', max_length=50, blank=True)
+    timestamp = models.DateTimeField('Ημερομηνία/Ώρα', auto_now_add=True)
+    notes = models.TextField('Σημειώσεις', blank=True)
+    ip_address = models.GenericIPAddressField('IP Διεύθυνση', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Log Ενέργειας Άδειας'
+        verbose_name_plural = 'Logs Ενεργειών Αδειών'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.action} - {self.leave_request} ({self.timestamp.strftime('%d/%m/%Y %H:%M')})"
+
+
+class LeaveAccessLog(models.Model):
+    """GDPR compliance - tracking ποιος είδε/κατέβασε ποια αίτηση"""
+    leave_request = models.ForeignKey(LeaveRequest, on_delete=models.CASCADE,
+                                      related_name='access_logs', verbose_name='Αίτηση Άδειας')
+    accessed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                    related_name='leave_access_logs', verbose_name='Πρόσβαση από')
+    access_type = models.CharField('Τύπος Πρόσβασης', max_length=20,
+                                   choices=[('VIEW', 'Προβολή'), ('DOWNLOAD', 'Λήψη')])
+    timestamp = models.DateTimeField('Ημερομηνία/Ώρα', auto_now_add=True)
+    ip_address = models.GenericIPAddressField('IP Διεύθυνση', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Log Πρόσβασης Άδειας'
+        verbose_name_plural = 'Logs Πρόσβασης Αδειών'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.accessed_by} → {self.leave_request} ({self.access_type})"
+
+
+class Letterhead(models.Model):
+    """Επικεφαλίδα εγγράφων (PDF decisions) - editable από χειριστές"""
+    header_text = models.TextField('Κείμενο Επικεφαλίδας',
+        help_text='Υπουργείο, Διεύθυνση, Τμήμα - εμφανίζεται σε όλα τα PDF')
+    address = models.CharField('Διεύθυνση', max_length=200, default='Ακτής Δυμαίων 25α, Πάτρα')
+    postal_code = models.CharField('Ταχ. Κώδικας', max_length=10, default='26222')
+    contact_info_template = models.CharField('Πρότυπο Πληροφοριών', max_length=200, blank=True,
+        help_text='Πρότυπο για πληροφορίες επικοινωνίας')
+    coat_of_arms = models.ImageField('Έμβλημα', upload_to='letterhead/', blank=True, null=True,
+        help_text='Coat_of_arms_of_Greece.jpg')
+    is_active = models.BooleanField('Ενεργή', default=True,
+        help_text='Μόνο μία επικεφαλίδα μπορεί να είναι ενεργή')
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name='Δημιουργήθηκε από')
+
+    class Meta:
+        verbose_name = 'Επικεφαλίδα Εγγράφου'
+        verbose_name_plural = 'Επικεφαλίδες Εγγράφων'
+
+    def __str__(self):
+        return f"Επικεφαλίδα ({'Ενεργή' if self.is_active else 'Ανενεργή'})"
+
+    def save(self, *args, **kwargs):
+        """Αν ενεργοποιηθεί, απενεργοποίησε όλες τις άλλες"""
+        if self.is_active:
+            Letterhead.objects.exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_active(cls):
+        """Επιστρέφει την ενεργή επικεφαλίδα"""
         return cls.objects.filter(is_active=True).first()
