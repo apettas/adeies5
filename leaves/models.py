@@ -24,6 +24,8 @@ class LeaveType(models.Model):
     general_category = models.CharField('Γενική Κατηγορία Αδειών', max_length=100, blank=True)
     counts_against_balance = models.BooleanField('Μετράει σε Υπόλοιπο Αδειών', default=True,
         help_text='Αν είναι ενεργό, οι ημέρες αυτής της άδειας αφαιρούνται από το υπόλοιπο του χρήστη')
+    affects_regular_leave_balance = models.BooleanField('Επηρεάζει Υπόλοιπο Κανονικών', default=True,
+        help_text='Αν είναι ενεργό, η ολοκλήρωση αυτής της άδειας δημιουργεί εγγραφή στο ιστορικό υπολοίπου')
     id_adeias = models.CharField('Κωδικός Άδειας (ID Αδείας)', max_length=50, blank=True)
     name_simple = models.CharField('Απλό Όνομα', max_length=100, blank=True)
     is_simple = models.BooleanField('Απλή Άδεια', default=False,
@@ -922,3 +924,58 @@ class Letterhead(models.Model):
     def get_active(cls):
         """Επιστρέφει την ενεργή επικεφαλίδα"""
         return cls.objects.filter(is_active=True).first()
+
+
+class RegularLeaveBalanceEntry(models.Model):
+    """
+    Καρτέλα/Ιστορικό Υπολοίπου Κανονικών Αδειών
+    Append-only ledger — κάθε εγγραφή είναι γεγονός που επηρεάζει ή επιβεβαιώνει το υπόλοιπο.
+    """
+    ENTRY_TYPES = [
+        ('INITIAL_BALANCE', 'Αρχικό Υπόλοιπο'),
+        ('LEAVE_GRANTED', 'Χορήγηση Κανονικής Άδειας'),
+        ('LEAVE_REVOKED', 'Ανάκληση Άδειας'),
+        ('MANUAL_ADJUSTMENT', 'Διοικητική Διόρθωση'),
+        ('CARRYOVER_IMPORT', 'Μεταφορά Υπολοίπου'),
+        ('PREVIOUS_YEAR_CORRECTION', 'Διόρθωση Προηγούμενου Έτους'),
+        ('ADMIN_CORRECTION', 'Διόρθωση Χειριστή'),
+    ]
+
+    employee = models.ForeignKey(User, on_delete=models.CASCADE,
+                                 related_name='regular_leave_balance_entries',
+                                 verbose_name='Υπάλληλος')
+    leave_request = models.ForeignKey(LeaveRequest, on_delete=models.SET_NULL,
+                                      null=True, blank=True,
+                                      related_name='balance_entries',
+                                      verbose_name='Αίτηση Άδειας')
+    entry_type = models.CharField('Τύπος Κίνησης', max_length=30, choices=ENTRY_TYPES)
+    entry_date = models.DateField('Ημερομηνία Κίνησης')
+    description = models.CharField('Περιγραφή', max_length=200)
+    days_delta = models.IntegerField('Μεταβολή Ημερών', null=True, blank=True,
+                                     help_text='Θετικό για επιστροφή, αρνητικό για αφαίρεση')
+    balance_after = models.IntegerField('Υπόλοιπο Μετά',
+                                        help_text='Υπόλοιπο μετά την κίνηση (source of truth)')
+    notes = models.TextField('Σημειώσεις', blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_balance_entries',
+                                   verbose_name='Δημιουργήθηκε από')
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+    is_locked = models.BooleanField('Κλειδωμένο', default=True,
+                                    help_text='Append-only — οι διορθώσεις είναι νέες εγγραφές')
+
+    class Meta:
+        verbose_name = 'Εγγραφή Υπολοίπου Κανονικών Αδειών'
+        verbose_name_plural = 'Ιστορικό Υπολοίπου Κανονικών Αδειών'
+        ordering = ['-entry_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.employee} — {self.get_entry_type_display()} — {self.balance_after} ({self.entry_date.strftime('%d/%m/%Y')})"
+
+    @property
+    def delta_display(self):
+        """Εμφάνιση μεταβολής με πρόσημο"""
+        if self.days_delta is None:
+            return '—'
+        if self.days_delta > 0:
+            return f'+{self.days_delta}'
+        return str(self.days_delta)

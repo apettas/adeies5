@@ -5,6 +5,7 @@ from .decision_views import (
     upload_exact_copy_pdf, serve_exact_copy_pdf, complete_leave_request_final
 )
 from .calendar_views import leave_calendar_view
+from .balance_views import balance_ledger_view, manual_balance_adjustment
 
 app_name = 'leaves'
 
@@ -69,4 +70,8 @@ urlpatterns = [
 
     # Withdraw completed leave
     path('withdraw-completed/<int:pk>/', views.withdraw_completed_leave, name='withdraw_completed_leave'),
+
+    # Balance Ledger
+    path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),
+    path('balance-adjustment/<int:user_id>/', manual_balance_adjustment, name='manual_balance_adjustment'),
 ]

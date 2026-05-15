@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Διόρθωση Υπολοίπου - {{ target_user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-pencil-square"></i> Διόρθωση Υπολοίπου Κανονικών Αδειών</h2>
+            <a href="{% url 'leaves:balance_ledger' target_user.pk %}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Νέα Εγγραφή Υπολοίπου</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="entry_type" class="form-label">Είδος Κίνησης</label>
+                        <select class="form-select" id="entry_type" name="entry_type" required>
+                            {% for value, label in entry_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Περιγραφή</label>
+                        <input type="text" class="form-control" id="description" name="description" 
+                               placeholder="π.χ. Διόρθωση μετά από έλεγχο φακέλου" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="suggested_balance" class="form-label">Τελευταίο Γνωστό Υπόλοιπο</label>
+                            <input type="text" class="form-control" id="suggested_balance" 
+                                   value="{{ suggested_balance }}" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="balance_after" class="form-label">Νέο Υπόλοιπο <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="balance_after" name="balance_after" 
+                                   value="{{ suggested_balance }}" required>
+                            <small class="text-muted">Το υπόλοιπο μετά την πράξη</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="days_delta" class="form-label">Μεταβολή Ημερών (προαιρετικό)</label>
+                        <input type="number" class="form-control" id="days_delta" name="days_delta" 
+                               placeholder="π.χ. -3 ή +2">
+                        <small class="text-muted">Θετικό για επιστροφή, αρνητικό για αφαίρεση</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Σημειώσεις</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Επεξήγηση της διόρθωσης..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Αποθήκευση Εγγραφής
+                        </button>
+                        <a href="{% url 'leaves:balance_ledger' target_user.pk %}" class="btn btn-secondary">
+                            Ακύρωση
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Πληροφορίες</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Υπάλληλος:</strong> {{ target_user.get_full_name }}</p>
+                <p><strong>Τμήμα:</strong> {{ target_user.department.name|default:"—" }}</p>
+                <p class="text-muted small">
+                    <i class="bi bi-info-circle"></i>
+                    Οι διορθώσεις είναι append-only. Δεν μπορούν να αλλάξουν παλιές εγγραφές.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

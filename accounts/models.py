@@ -265,7 +265,9 @@ class User(AbstractUser):
     current_year_leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών Τρέχοντος Έτους', default=0,
                                                    help_text='Διαθέσιμες κανονικές άδειες για το τρέχον έτος')
     leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών', default=0,
-                                      help_text='Συνολικό υπόλοιπο κανονικών αδειών (προηγούμενο + τρέχον έτος)')
+                                       help_text='Συνολικό υπόλοιπο κανονικών αδειών (προηγούμενο + τρέχον έτος)')
+    current_regular_leave_balance = models.IntegerField('Τρέχον Υπόλοιπο Κανονικών (Ledger)', default=0,
+                                                        help_text='Denormalized cache του τελευταίου balance_after από το ledger')
     sick_leave_with_declaration = models.IntegerField('Αναρρωτικές Άδειες με Υπεύθυνη Δήλωση', default=2,
                                                     help_text='Διαθέσιμες αναρρωτικές άδειες με υπεύθυνη δήλωση')
     sick_days_current_year = models.IntegerField('Αναρρωτικές Τρέχοντος Έτους', default=0,

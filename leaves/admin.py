@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     LeaveType, LeaveRequest, LeavePeriod, SecureFile,
     Logo, Info, Ypopsin, Signee,
-    PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead
+    PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead, RegularLeaveBalanceEntry
 )
 
 
@@ -195,3 +195,17 @@ class LetterheadAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created_at', 'created_by')
+
+
+@admin.register(RegularLeaveBalanceEntry)
+class RegularLeaveBalanceEntryAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'entry_type', 'entry_date', 'days_delta', 'balance_after', 'leave_request', 'created_by')
+    list_filter = ('entry_type', 'entry_date', 'is_locked')
+    search_fields = ('employee__email', 'employee__first_name', 'employee__last_name', 'description', 'notes')
+    readonly_fields = ('created_at', 'created_by', 'is_locked')
+    date_hierarchy = 'entry_date'
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

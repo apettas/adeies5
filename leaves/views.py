@@ -54,6 +54,11 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
         context['carryover_days'] = user.carryover_leave_days
         context['current_year_days'] = user.current_year_leave_balance
         context['annual_entitlement'] = user.annual_leave_entitlement
+        context['current_regular_balance'] = user.current_regular_leave_balance
+        
+        # Ledger entries (last 5)
+        from leaves.utils.balance_ledger import get_balance_entries
+        context['recent_balance_entries'] = get_balance_entries(user)[:5]
         
         # Sick leave information
         context['sick_days_remaining'] = user.sick_leave_with_declaration
@@ -806,6 +811,7 @@ def complete_leave_request(request, pk):
     if request.method == 'POST':
         comments = request.POST.get('comments', '')
         protocol_number = request.POST.get('protocol_number', '')
+        balance_after = request.POST.get('balance_after', '')
         
         try:
             # Ενημέρωση πρωτοκόλλου αν υπάρχει
@@ -813,7 +819,41 @@ def complete_leave_request(request, pk):
                 leave_request.protocol_number = protocol_number
                 leave_request.save()
             
+            # Αν η άδεια επηρεάζει το υπόλοιπο κανονικών, απαιτούμε balance_after
+            if leave_request.leave_type.affects_regular_leave_balance:
+                if not balance_after:
+                    messages.error(request, 'Απαιτείται η καταχώρηση του υπολοίπου κανονικών αδειών μετά την πράξη.')
+                    return redirect('leaves:leave_request_detail', pk=pk)
+                
+                try:
+                    balance_after = int(balance_after)
+                except (ValueError, TypeError):
+                    messages.error(request, 'Το υπόλοιπο πρέπει να είναι ακέραιος αριθμός.')
+                    return redirect('leaves:leave_request_detail', pk=pk)
+            
             leave_request.complete_by_handler(request.user, comments)
+            
+            # Δημιουργία εγγραφής στο ledger αν επηρεάζει το υπόλοιπο
+            if leave_request.leave_type.affects_regular_leave_balance and balance_after:
+                from leaves.utils.balance_ledger import create_balance_entry
+                
+                # Βρίσκουμε το προηγούμενο υπόλοιπο για το days_delta
+                from leaves.utils.balance_ledger import get_last_balance
+                last_balance = get_last_balance(leave_request.user)
+                days_delta = None
+                if last_balance is not None:
+                    days_delta = balance_after - last_balance
+                
+                create_balance_entry(
+                    employee=leave_request.user,
+                    entry_type='LEAVE_GRANTED',
+                    description=f'Ολοκλήρωση άδειας #{leave_request.id} — {leave_request.leave_type.name}',
+                    balance_after=balance_after,
+                    leave_request=leave_request,
+                    days_delta=days_delta,
+                    notes=comments or f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
+                    created_by=request.user
+                )
             
             # Ειδοποίηση στον υπάλληλο
             create_notification(
