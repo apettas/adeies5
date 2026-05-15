@@ -31,6 +31,8 @@ class LeaveType(models.Model):
     is_simple = models.BooleanField('Απλή Άδεια', default=False,
         help_text='Για εορταστικές/προφορικές/επιμορφωτικές άδειες')
     thematic_folder = models.CharField('Θεματικός Φάκελος', max_length=255, blank=True)
+    workflow_variant = models.CharField('Workflow Variant', max_length=30, default='STANDARD',
+        help_text='STANDARD, KEDASY, SDEY - καθορίζει το approval path και τα rules')
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
@@ -966,3 +968,116 @@ class RegularLeaveBalanceEntry(models.Model):
         if self.days_delta > 0:
             return f'+{self.days_delta}'
         return str(self.days_delta)
+
+
+# ============================================================
+# Configuration models για KEDASY/SDEY variant architecture
+# ============================================================
+
+class WorkflowVariant(models.Model):
+    """
+    Παραμετροποιήσιμο workflow variant.
+    Επιτρέπει την προσθήκη νέων ροών (STANDARD, KEDASY, SDEY)
+    χωρίς αλλαγή στον βασικό κώδικα.
+    """
+    code = models.CharField('Κωδικός', max_length=30, unique=True,
+                            help_text='STANDARD, KEDASY, SDEY')
+    name = models.CharField('Όνομα', max_length=100)
+    description = models.TextField('Περιγραφή', blank=True)
+    requires_supervisor_approval = models.BooleanField('Απαιτεί Έγκριση Προϊσταμένου', default=True)
+    is_active = models.BooleanField('Ενεργό', default=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Workflow Variant'
+        verbose_name_plural = 'Workflow Variants'
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class ApprovalRule(models.Model):
+    """
+    Κανόνας έγκρισης ανά workflow variant και τύπο τμήματος.
+    Καθορίζει ποιος εγκρίνει και με ποια σειρά.
+    """
+    APPROVER_ROLES = [
+        ('DEPT_MANAGER', 'Προϊστάμενος Τμήματος'),
+        ('KEDASY_HEAD', 'Προϊστάμενος ΚΕΔΑΣΥ'),
+        ('LEAVE_HANDLER', 'Χειριστής Αδειών'),
+        ('REGIONAL_DIRECTOR', 'Περιφερειακός Διευθυντής'),
+    ]
+
+    workflow_variant = models.ForeignKey(WorkflowVariant, on_delete=models.CASCADE,
+                                         related_name='approval_rules',
+                                         verbose_name='Workflow Variant')
+    department_type_code = models.CharField('Τύπος Τμήματος', max_length=30, blank=True,
+                                            help_text='Αφήστε κενό για όλους τους τύπους')
+    approver_role = models.CharField('Ρόλος Εγκρίνοντα', max_length=30, choices=APPROVER_ROLES)
+    approval_order = models.PositiveIntegerField('Σειρά Έγκρισης', default=1,
+                                                  help_text='1 = πρώτος εγκρίνων, 2 = δεύτερος, κλπ')
+    is_active = models.BooleanField('Ενεργό', default=True)
+
+    class Meta:
+        verbose_name = 'Κανόνας Έγκρισης'
+        verbose_name_plural = 'Κανόνες Έγκρισης'
+        ordering = ['workflow_variant', 'department_type_code', 'approval_order']
+
+    def __str__(self):
+        return f"{self.workflow_variant} → {self.get_approver_role_display()} ({self.approval_order})"
+
+
+class RequiredAttachmentRule(models.Model):
+    """
+    Κανόνας απαιτούμενων συνημμένων ανά workflow variant και τύπο άδειας.
+    """
+    workflow_variant = models.ForeignKey(WorkflowVariant, on_delete=models.CASCADE,
+                                         related_name='attachment_rules',
+                                         verbose_name='Workflow Variant')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, null=True, blank=True,
+                                   related_name='attachment_rules',
+                                   verbose_name='Τύπος Άδειας')
+    attachment_name = models.CharField('Όνομα Συνημμένου', max_length=200)
+    description = models.TextField('Περιγραφή', blank=True)
+    is_required = models.BooleanField('Υποχρεωτικό', default=True)
+    is_active = models.BooleanField('Ενεργό', default=True)
+
+    class Meta:
+        verbose_name = 'Κανόνας Συνημμένου'
+        verbose_name_plural = 'Κανόνες Συνημμένων'
+        ordering = ['workflow_variant', 'leave_type', 'attachment_name']
+
+    def __str__(self):
+        lt = self.leave_type.name if self.leave_type else 'Όλοι'
+        return f"{self.workflow_variant} / {lt} → {self.attachment_name}"
+
+
+class DecisionTemplate(models.Model):
+    """
+    Template απόφασης ανά workflow variant και τύπο άδειας.
+    """
+    workflow_variant = models.ForeignKey(WorkflowVariant, on_delete=models.CASCADE,
+                                         related_name='decision_templates',
+                                         verbose_name='Workflow Variant')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, null=True, blank=True,
+                                   related_name='decision_templates',
+                                   verbose_name='Τύπος Άδειας')
+    template_file = models.FileField('Αρχείο Template', upload_to='decision_templates/',
+                                     blank=True, null=True)
+    header_text = models.TextField('Κείμενο Επικεφαλίδας', blank=True,
+                                    help_text='Αντικαθιστά το default header')
+    subject_text = models.TextField('Κείμενο Θέματος', blank=True,
+                                     help_text='Αντικαθιστά το default subject')
+    decision_body_template = models.TextField('Πρότυπο Σώματος Απόφασης', blank=True,
+                                               help_text='Jinja2/Django template body')
+    is_active = models.BooleanField('Ενεργό', default=True)
+
+    class Meta:
+        verbose_name = 'Template Απόφασης'
+        verbose_name_plural = 'Templates Αποφάσεων'
+        ordering = ['workflow_variant', 'leave_type']
+
+    def __str__(self):
+        lt = self.leave_type.name if self.leave_type else 'Όλοι'
+        return f"{self.workflow_variant} / {lt}"

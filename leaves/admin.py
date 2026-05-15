@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     LeaveType, LeaveRequest, LeavePeriod, SecureFile,
     Logo, Info, Ypopsin, Signee,
-    PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead, RegularLeaveBalanceEntry
+    PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead, RegularLeaveBalanceEntry,
+    WorkflowVariant, ApprovalRule, RequiredAttachmentRule, DecisionTemplate
 )
 
 
@@ -203,9 +204,35 @@ class RegularLeaveBalanceEntryAdmin(admin.ModelAdmin):
     list_filter = ('entry_type', 'entry_date', 'is_locked')
     search_fields = ('employee__email', 'employee__first_name', 'employee__last_name', 'description', 'notes')
     readonly_fields = ('created_at', 'created_by', 'is_locked')
-    date_hierarchy = 'entry_date'
 
-    def save_model(self, request, obj, form, change):
-        if not obj.pk:
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
+
+@admin.register(WorkflowVariant)
+class WorkflowVariantAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'requires_supervisor_approval', 'is_active', 'created_at')
+    list_filter = ('is_active', 'requires_supervisor_approval')
+    search_fields = ('code', 'name', 'description')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(ApprovalRule)
+class ApprovalRuleAdmin(admin.ModelAdmin):
+    list_display = ('workflow_variant', 'department_type_code', 'approver_role', 'approval_order', 'is_active')
+    list_filter = ('workflow_variant', 'is_active', 'approver_role')
+    search_fields = ('department_type_code',)
+    ordering = ('workflow_variant', 'department_type_code', 'approval_order')
+
+
+@admin.register(RequiredAttachmentRule)
+class RequiredAttachmentRuleAdmin(admin.ModelAdmin):
+    list_display = ('workflow_variant', 'leave_type', 'attachment_name', 'is_required', 'is_active')
+    list_filter = ('workflow_variant', 'is_required', 'is_active')
+    search_fields = ('attachment_name', 'description')
+    ordering = ('workflow_variant', 'leave_type')
+
+
+@admin.register(DecisionTemplate)
+class DecisionTemplateAdmin(admin.ModelAdmin):
+    list_display = ('workflow_variant', 'leave_type', 'is_active')
+    list_filter = ('workflow_variant', 'is_active')
+    search_fields = ('header_text', 'subject_text')
+    ordering = ('workflow_variant', 'leave_type')
