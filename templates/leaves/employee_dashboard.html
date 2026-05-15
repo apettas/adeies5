@@ -229,6 +229,9 @@
 <!-- Λίστα Αιτήσεων -->
 <div class="row">
     <div class="col-12">
+        <!-- Filter bar -->
+        {% include 'leaves/includes/filter_bar.html' %}
+        
         <div class="card">
             <div class="card-header">
                 <h5><i class="bi bi-calendar-check"></i> Λίστα Αιτήσεων</h5>
@@ -239,20 +242,38 @@
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Τύπος Άδειας</th>
-                                    <th>Ημερομηνίες</th>
-                                    <th>Ημέρες</th>
-                                    <th>Κατάσταση</th>
-                                    <th>Ημερομηνία Υποβολής</th>
+                                    <th>
+                                        <a href="?sort=leave_type__name&dir={% if current_sort == 'leave_type__name' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Τύπος Άδειας {% if current_sort == 'leave_type__name' %}↑{% elif current_sort == '-leave_type__name' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=start_date&dir={% if current_sort == 'start_date' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Ημερομηνίες {% if current_sort == 'start_date' %}↑{% elif current_sort == '-start_date' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=total_days&dir={% if current_sort == 'total_days' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Ημέρες {% if current_sort == 'total_days' %}↑{% elif current_sort == '-total_days' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=status&dir={% if current_sort == 'status' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Κατάσταση {% if current_sort == 'status' %}↑{% elif current_sort == '-status' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=submitted_at&dir={% if current_sort == 'submitted_at' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Υποβολή {% if current_sort == 'submitted_at' %}↑{% elif current_sort == '-submitted_at' %}↓{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Ενέργειες</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for request in leave_requests %}
                                 <tr>
-                                    <td>
-                                        <strong>{{ request.leave_type.name }}</strong>
-                                    </td>
+                                    <td><strong>{{ request.leave_type.name }}</strong></td>
                                     <td>
                                         <span class="date-greek">
                                             {{ request.start_date|date:"d/m/Y" }} - {{ request.end_date|date:"d/m/Y" }}
@@ -262,45 +283,13 @@
                                         <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
                                     </td>
                                     <td>
-                                        {% if request.status == 'SUBMITTED' %}
-                                            <span class="badge bg-warning">Υποβλήθηκε</span>
-                                        {% elif request.status == 'PENDING_PROTOCOL' %}
-                                            <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
-                                        {% elif request.status == 'PENDING_PROTOCOL' %}
-                                            <span class="badge bg-secondary">Για Πρωτόκολλο ΠΔΕΔΕ</span>
-                                        {% elif request.status == 'WAITING_FOR_DOCUMENTS' %}
-                                            <span class="badge bg-warning">Σε Αναμονή Δικαιολογητικών</span>
-                                            {% if request.documents_deadline %}
-                                                <br><small class="text-danger">Προθεσμία: {{ request.documents_deadline|date:"d/m/Y H:i" }}</small>
-                                            {% endif %}
-                                        {% elif request.status == 'IN_REVIEW' %}
-                                            <span class="badge bg-primary">Προς Επεξεργασία</span>
-                                        {% elif request.status == 'COMPLETED' %}
-                                            <span class="badge bg-success">Ολοκληρώθηκε</span>
-                                        {% elif request.status == 'SUPERVISOR_REJECTED' %}
-                                            <span class="badge bg-danger">Απορρίφθηκε από Προϊστάμενο</span>
-                                        {% elif request.status == 'REJECTED_BY_LEAVES_DEPT' %}
-                                            <span class="badge bg-danger">Απορρίφθηκε από Χειριστή</span>
-                                        {% elif request.status == 'CANCELLED_BY_APPLICANT' %}
-                                            <span class="badge bg-secondary">Ανακλήθηκε</span>
-                                        {% endif %}
+                                        <span class="badge bg-{{ request.get_status_display_class }}">{{ request.get_status_display }}</span>
                                     </td>
                                     <td>
-                                        <span class="date-greek">{{ request.created_at|date:"d/m/Y H:i" }}</span>
+                                        <span class="date-greek">{{ request.submitted_at|date:"d/m/Y H:i"|default:request.created_at|date:"d/m/Y H:i" }}</span>
                                     </td>
                                     <td>
-                                        <a href="{% url 'leaves:leave_request_detail' request.pk %}"
-                                           class="btn btn-sm btn-outline-primary me-1">
-                                            <i class="bi bi-eye"></i> Προβολή
-                                        </a>
-                                        {% if request.can_be_withdrawn %}
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-warning"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#withdrawModal{{ request.pk }}">
-                                                <i class="bi bi-arrow-counterclockwise"></i> Ανάκληση
-                                            </button>
-                                        {% endif %}
+                                        {% include 'leaves/includes/action_buttons.html' with actions=request.actions leave_request=request %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -314,10 +303,10 @@
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1">Πρώτη</a>
+                                    <a class="page-link" href="?page=1{% for key, value in query_params.items %}&{{ key }}={{ value }}{% endfor %}">Πρώτη</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in query_params.items %}&{{ key }}={{ value }}{% endfor %}">Προηγούμενη</a>
                                 </li>
                             {% endif %}
                             
@@ -329,10 +318,10 @@
                             
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in query_params.items %}&{{ key }}={{ value }}{% endfor %}">Επόμενη</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Τελευταία</a>
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in query_params.items %}&{{ key }}={{ value }}{% endfor %}">Τελευταία</a>
                                 </li>
                             {% endif %}
                         </ul>
