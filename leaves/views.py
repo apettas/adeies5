@@ -3,8 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views.generic import ListView, CreateView, DetailView
-from django.urls import reverse_lazy
-from django.http import JsonResponse, HttpResponse, Http404
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -15,6 +13,7 @@ import mimetypes
 from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
+from .dashboard_utils import DashboardFilterMixin, get_available_actions
 from notifications.utils import create_notification
 from django.contrib.auth import get_user_model
 
@@ -23,31 +22,30 @@ User = get_user_model()
 LOCK_TIMEOUT_MINUTES = 30
 
 
-class EmployeeDashboardView(LoginRequiredMixin, ListView):
-    """Dashboard για όλους τους ρόλους - Προβολή των προσωπικών αιτήσεων"""
+class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
+    """Dashboard αιτήσεων για τον υπάλληλο - όλες οι προσωπικές του αιτήσεις"""
     model = LeaveRequest
     template_name = 'leaves/employee_dashboard.html'
     context_object_name = 'leave_requests'
-    paginate_by = 10
-    
+    paginate_by = 20
+    sortable_fields = ['leave_type__name', 'start_date', 'end_date', 'total_days', 'status', 'submitted_at', 'id', 'protocol_number']
+    default_sort = '-submitted_at'
+
     def get_queryset(self):
-        return LeaveRequest.objects.filter(user=self.request.user).select_related(
-            'leave_type', 'manager_approved_by', 'processed_by'
-        )
-    
+        queryset = LeaveRequest.objects.filter(user=self.request.user).select_related('leave_type')
+        queryset = self.apply_filters(queryset)
+        sort_param = self.get_sort_params()
+        if sort_param:
+            queryset = queryset.order_by(sort_param)
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        # Αιτήσεις που χρειάζονται δικαιολογητικά με λεπτομέρειες
-        pending_documents_requests = self.get_queryset().filter(status='WAITING_FOR_DOCUMENTS')
-        
-        # Βρίσκω την πρώτη διαθέσιμη προθεσμία
-        first_deadline = None
-        for request in pending_documents_requests:
-            if request.documents_deadline:
-                first_deadline = request.documents_deadline
-                break
+        # Add actions to each leave request
+        for lr in context['leave_requests']:
+            lr.actions = get_available_actions(lr, user)
         
         # Leave balance information
         context['leave_balance'] = user.leave_balance
@@ -65,18 +63,16 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
         context['sick_days_current_year'] = user.sick_days_current_year
         
         # Στατιστικά
+        all_requests = LeaveRequest.objects.filter(user=self.request.user)
         context.update({
-            'total_requests': self.get_queryset().count(),
-            'pending_requests': self.get_queryset().filter(
+            'total_requests': all_requests.count(),
+            'pending_requests': all_requests.filter(
                 status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
             ).count(),
-            'completed_requests': self.get_queryset().filter(status='COMPLETED').count(),
-            'rejected_requests': self.get_queryset().filter(
+            'completed_requests': all_requests.filter(status='COMPLETED').count(),
+            'rejected_requests': all_requests.filter(
                 status__in=['SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT']
             ).count(),
-            'pending_documents_requests': pending_documents_requests.count(),
-            'pending_documents_list': pending_documents_requests,
-            'first_documents_deadline': first_deadline,
             'can_request_leave': user.has_leave_request_permission(),
         })
         
@@ -581,12 +577,14 @@ def reject_leave_request(request, pk):
     return redirect('leaves:manager_dashboard')
 
 
-class HandlerDashboardView(LoginRequiredMixin, ListView):
-    """Dashboard για Χειριστή Αδειών - Αιτήσεις προς επεξεργασία"""
+class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
+    """Dashboard για Χειριστή Αδειών - Επεξεργασία αιτήσεων"""
     model = LeaveRequest
     template_name = 'leaves/handler_dashboard.html'
     context_object_name = 'leave_requests'
-    paginate_by = 10
+    paginate_by = 20
+    sortable_fields = ['leave_type__name', 'protocol_number', 'start_date', 'end_date', 'total_days', 'status', 'submitted_at', 'id']
+    default_sort = '-submitted_at'
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_leave_handler:
@@ -594,62 +592,70 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο ή παρακάμπτουν τον προϊστάμενο και περιμένουν επεξεργασία
-        # Ταξινόμηση κατά προτεραιότητα: ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ > ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ > ΣΕ ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ > άλλα
-        priority_order = {
-            'PENDING_PROTOCOL': 1,
-            'IN_REVIEW': 2,
-            'WAITING_FOR_DOCUMENTS': 3,
-            'PENDING_PROTOCOL': 4,
-            'PENDING_PROTOCOL': 5,
-        }
-
         queryset = LeaveRequest.objects.filter(
-            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED']
         ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
-
+        
+        # Filter by active tab
+        tab = self.request.GET.get('tab', 'all')
+        tab_filters = {
+            'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED'],
+            'protocol': ['PENDING_PROTOCOL'],
+            'processing': ['IN_REVIEW'],
+            'documents': ['WAITING_FOR_DOCUMENTS'],
+            'decision': ['DECISION_PREPARATION'],
+            'signatures': ['PENDING_SIGNATURES'],
+            'completed': ['COMPLETED'],
+        }
+        if tab in tab_filters:
+            queryset = LeaveRequest.objects.filter(
+                status__in=tab_filters[tab]
+            ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
+        
+        queryset = self.apply_filters(queryset)
+        sort_param = self.get_sort_params()
+        if sort_param:
+            queryset = queryset.order_by(sort_param)
+        
         # Clean up expired locks
         cutoff_time = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
-        queryset.filter(
-            locked_at__lt=cutoff_time
-        ).update(locking_user=None, locked_at=None)
-
-        return queryset.order_by('-manager_approved_at', '-submitted_at')
+        LeaveRequest.objects.filter(locked_at__lt=cutoff_time).update(locking_user=None, locked_at=None)
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Στατιστικά
+        # Add actions to each leave request
+        for lr in context['leave_requests']:
+            lr.actions = get_available_actions(lr, self.request.user)
+        
+        # Active tab
+        context['active_tab'] = self.request.GET.get('tab', 'all')
+        
+        # Tab counts
+        all_active = LeaveRequest.objects.filter(
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES']
+        )
+        context['tab_counts'] = {
+            'all': all_active.count(),
+            'protocol': LeaveRequest.objects.filter(status='PENDING_PROTOCOL').count(),
+            'processing': LeaveRequest.objects.filter(status='IN_REVIEW').count(),
+            'documents': LeaveRequest.objects.filter(status='WAITING_FOR_DOCUMENTS').count(),
+            'decision': LeaveRequest.objects.filter(status='DECISION_PREPARATION').count(),
+            'signatures': LeaveRequest.objects.filter(status='PENDING_SIGNATURES').count(),
+            'completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
+        }
+        
+        # Stats
         context.update({
-            'pending_processing': self.get_queryset().count(),
+            'pending_processing': all_active.count(),
             'processed_this_month': LeaveRequest.objects.filter(
                 status='COMPLETED',
                 processed_at__month=timezone.now().month
             ).count(),
             'total_completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
-            # Στατιστικά για ΣΗΔΕ workflows
-            'for_protocol_count': LeaveRequest.objects.filter(
-                status='PENDING_PROTOCOL'
-            ).count(),
-            'under_processing_count': LeaveRequest.objects.filter(
-                status='IN_REVIEW'
-            ).count(),
-            # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ workflow
-            'pending_kedasy_kepea_count': LeaveRequest.objects.filter(
-                status='PENDING_PROTOCOL'
-            ).count(),
-            # Στατιστικά για δικαιολογητικά
-            'pending_documents_count': LeaveRequest.objects.filter(
-                status='WAITING_FOR_DOCUMENTS'
-            ).count(),
         })
-        
-        # Ολοκληρωμένες αιτήσεις (τελευταίες 20)
-        completed_requests = LeaveRequest.objects.filter(
-            status='COMPLETED'
-        ).select_related('user', 'leave_type', 'processed_by').order_by('-processed_at')[:20]
-        
-        context['completed_requests'] = completed_requests
         
         return context
 

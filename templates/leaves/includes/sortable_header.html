@@ -1,0 +1,26 @@
+{% comment %}
+Common sortable table header component
+Usage: {% include 'leaves/includes/sortable_header.html' with field="submitted_at" label="Ημερομηνία Υποβολής" query_params=query_params current_sort=current_sort current_dir=current_dir %}
+{% endcomment %}
+
+{% if query_params %}
+    {% with next_dir='asc' %}
+    {% if current_sort == field and current_dir == 'asc' %}
+        {% with next_dir='desc' %}
+        {% endwith %}
+    {% endif %}
+    {% endwith %}
+{% endif %}
+
+<th class="{% if current_sort == field or current_sort == '-'|add:field %}table-primary{% endif %}">
+    <a href="?sort={{ field }}&dir={% if current_sort == field %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+        {{ label }}
+        {% if current_sort == field %}
+            {% if current_dir == 'asc' %}↑{% else %}↓{% endif %}
+        {% elif current_sort == '-'|add:field %}
+            ↓
+        {% else %}
+            ⇅
+        {% endif %}
+    </a>
+</th>

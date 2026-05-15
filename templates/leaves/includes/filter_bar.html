@@ -1,0 +1,58 @@
+{% comment %}
+Common filter bar component for dashboards
+Usage: {% include 'leaves/includes/filter_bar.html' with query_params=query_params %}
+{% endcomment %}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            {# Preserve current query params #}
+            {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
+            {% if current_dir %}<input type="hidden" name="dir" value="{{ current_dir }}">{% endif %}
+            
+            <div class="col-md-3">
+                <label class="form-label">Τύπος Άδειας</label>
+                <select name="leave_type" class="form-select">
+                    <option value="">Όλοι</option>
+                    {% for lt in leave_types %}
+                    <option value="{{ lt.pk }}" {% if current_leave_type == lt.pk|stringformat:"s" %}selected{% endif %}>{{ lt.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label class="form-label">Κατάσταση</label>
+                <select name="status" class="form-select">
+                    <option value="">Όλες</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Έτος</label>
+                <input type="number" name="year" class="form-control" value="{{ current_year }}" placeholder="π.χ. 2026">
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Από</label>
+                <input type="date" name="date_from" class="form-control" value="{{ current_date_from }}">
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label">Έως</label>
+                <input type="date" name="date_to" class="form-control" value="{{ current_date_to }}">
+            </div>
+            
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Φίλτρα
+                </button>
+                <a href="{{ request.path }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-circle"></i> Καθαρισμός
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
