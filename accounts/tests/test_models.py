@@ -177,10 +177,10 @@ class UserHierarchicalTests(TestDataMixin, TestCase):
         # Δεν έχει manager στο department (καμία user με MANAGER role)
         self.assertIsNone(orphan_user.department.get_department_manager())
         
-        # get_approving_manager() πρέπει να επιστρέφει None ή να χειρίζεται gracefully
+        # get_approving_manager() τώρα κάνει fallback στον PDEDE manager
         approving_manager = orphan_user.get_approving_manager()
-        # Ανάλογα με την implementation, μπορεί να επιστρέφει None ή default manager
-        self.assertIsNone(approving_manager)  # Αν δεν υπάρχει fallback logic
+        # Η fallback logic βρίσκει τον delegkos (PDEDE manager)
+        self.assertIsNotNone(approving_manager)
         
     def test_circular_hierarchy_prevention(self):
         """

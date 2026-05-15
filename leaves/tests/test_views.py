@@ -200,7 +200,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε approve
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(self.leave_request.status, 'PENDING_PROTOCOL')
         self.assertEqual(self.leave_request.manager_approved_by, self.dept_manager)
         
         # Έλεγχος success message
@@ -242,7 +242,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε reject
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'REJECTED_MANAGER')
+        self.assertEqual(self.leave_request.status, 'SUPERVISOR_REJECTED')
         self.assertEqual(self.leave_request.rejected_by, self.dept_manager)
         self.assertEqual(self.leave_request.rejection_reason, 'Απόρριψη για τεστ')
         
@@ -279,7 +279,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε cancel
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'WITHDRAWN_BY_REQUESTER')
+        self.assertEqual(self.leave_request.status, 'CANCELLED_BY_APPLICANT')
         
     def test_leave_request_cancel_view_by_non_owner(self):
         """
@@ -334,7 +334,7 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι ΔΕΝ έγινε process
         self.leave_request.refresh_from_db()
-        self.assertEqual(self.leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(self.leave_request.status, 'PENDING_PROTOCOL')
 
 
 class LeaveRequestDashboardTests(TestDataMixin, TestCase):
@@ -470,7 +470,7 @@ class LeaveRequestDashboardTests(TestDataMixin, TestCase):
         self.assertNotContains(response, "Employee request")
         
         # Filter by APPROVED_MANAGER
-        response = self.client.get(reverse('leaves:dashboard'), {'status': 'APPROVED_MANAGER'})
+        response = self.client.get(reverse('leaves:dashboard'), {'status': 'PENDING_PROTOCOL'})
         self.assertContains(response, "Employee request")
         self.assertNotContains(response, "Department manager request")
         

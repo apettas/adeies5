@@ -81,7 +81,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         
         # Έλεγχος ότι έγινε approve
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(leave_request.status, 'PENDING_PROTOCOL')
         self.assertEqual(leave_request.manager_approved_by, self.dept_manager)
         self.assertIsNotNone(leave_request.manager_approved_at)
         
@@ -142,7 +142,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(leave_request.status, 'PENDING_PROTOCOL')
         self.assertEqual(leave_request.manager_approved_by, self.kizilou)
         
         # STEP 3: Leave Handler processes
@@ -186,7 +186,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(response.status_code, 302)
         
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(leave_request.status, 'PENDING_PROTOCOL')
         self.assertEqual(leave_request.manager_approved_by, self.delegkos)
         
         # STEP 3: Leave Handler processes
@@ -241,7 +241,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         # Αν το request δεν είναι APPROVED_MANAGER, το processing θα αποτύχει
         # Για τον έλεγχο, θα κάνουμε manual approval πρώτα
         if leave_request.status == 'SUBMITTED':
-            leave_request.status = 'APPROVED_MANAGER'
+            leave_request.status = 'PENDING_PROTOCOL'
             leave_request.manager_approved_by = self.delegkos
             leave_request.save()
             
@@ -302,7 +302,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Verification
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'REJECTED_MANAGER')
+        self.assertEqual(leave_request.status, 'SUPERVISOR_REJECTED')
         self.assertEqual(leave_request.rejected_by, self.dept_manager)
         self.assertEqual(leave_request.rejection_reason, 'Insufficient leave balance')
         self.assertIsNotNone(leave_request.rejected_at)
@@ -314,7 +314,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
             reverse('leaves:leave_request_detail', kwargs={'pk': leave_request.pk})
         )
         
-        self.assertContains(response, 'REJECTED_MANAGER')
+        self.assertContains(response, 'SUPERVISOR_REJECTED')
         self.assertContains(response, 'Insufficient leave balance')
         self.assertNotContains(response, 'Έγκριση')  # No approval buttons
         
@@ -344,7 +344,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Verification
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'WITHDRAWN_BY_REQUESTER')
+        self.assertEqual(leave_request.status, 'CANCELLED_BY_APPLICANT')
         
         # STEP 3: Manager cannot approve cancelled request
         self.client.force_login(self.dept_manager)
@@ -355,7 +355,7 @@ class LeaveApprovalRejectionWorkflowTests(TestDataMixin, TestCase):
         
         # Should fail or redirect
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'WITHDRAWN_BY_REQUESTER')  # Status unchanged
+        self.assertEqual(leave_request.status, 'CANCELLED_BY_APPLICANT')  # Status unchanged
 
 
 class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
@@ -406,7 +406,7 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
         # Verify all approved
         for request in self.requests:
             request.refresh_from_db()
-            self.assertEqual(request.status, 'APPROVED_MANAGER')
+            self.assertEqual(request.status, 'PENDING_PROTOCOL')
             self.assertEqual(request.manager_approved_by, self.dept_manager)
             
     def test_mixed_approval_rejection_workflow(self):
@@ -433,9 +433,9 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
         for i, request in enumerate(self.requests):
             request.refresh_from_db()
             if i < 3:
-                self.assertEqual(request.status, 'APPROVED_MANAGER')
+                self.assertEqual(request.status, 'PENDING_PROTOCOL')
             else:
-                self.assertEqual(request.status, 'REJECTED_MANAGER')
+                self.assertEqual(request.status, 'SUPERVISOR_REJECTED')
                 
     def test_dashboard_filtering_with_multiple_requests(self):
         """
@@ -455,13 +455,13 @@ class MultipleRequestsWorkflowTests(TestDataMixin, TestCase):
         self.assertNotContains(response, 'Request 1')
         
         # Filter by APPROVED_MANAGER
-        response = self.client.get(reverse('leaves:dashboard'), {'status': 'APPROVED_MANAGER'})
+        response = self.client.get(reverse('leaves:dashboard'), {'status': 'PENDING_PROTOCOL'})
         self.assertContains(response, 'Request 1')
         self.assertContains(response, 'Request 2')
         self.assertNotContains(response, 'Request 3')
         
         # Filter by REJECTED_MANAGER
-        response = self.client.get(reverse('leaves:dashboard'), {'status': 'REJECTED_MANAGER'})
+        response = self.client.get(reverse('leaves:dashboard'), {'status': 'SUPERVISOR_REJECTED'})
         self.assertContains(response, 'Request 3')
         self.assertNotContains(response, 'Request 1')
 
@@ -627,7 +627,7 @@ class NotificationIntegrationTests(TestDataMixin, TestCase):
         
         response = self.client.get(reverse('leaves:dashboard'))
         self.assertContains(response, 'Dashboard notification test')
-        self.assertContains(response, 'APPROVED_MANAGER')
+        self.assertContains(response, 'PENDING_PROTOCOL')
 
 
 class ErrorHandlingIntegrationTests(TestDataMixin, TestCase):
@@ -682,7 +682,7 @@ class ErrorHandlingIntegrationTests(TestDataMixin, TestCase):
         
         # Request should still be APPROVED_MANAGER by first manager
         leave_request.refresh_from_db()
-        self.assertEqual(leave_request.status, 'APPROVED_MANAGER')
+        self.assertEqual(leave_request.status, 'PENDING_PROTOCOL')
         self.assertEqual(leave_request.approved_by, self.dept_manager)
         
     def test_invalid_request_handling(self):

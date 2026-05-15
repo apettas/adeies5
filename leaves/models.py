@@ -12,6 +12,8 @@ User = get_user_model()
 
 class LeaveType(models.Model):
     """Τύπος άδειας"""
+    code = models.CharField('Κωδικός', max_length=50, unique=True, blank=True,
+                            help_text='Προγραμματικός κωδικός (π.χ. ANNUAL, SICK, BLOOD)')
     name = models.CharField('Όνομα Τύπου', max_length=100)
     description = models.TextField('Περιγραφή', blank=True)
     max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', default=30)

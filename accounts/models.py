@@ -363,9 +363,9 @@ class User(AbstractUser):
             department_type__code='PDEDE_MAIN'
         ).first()
         if pdede:
-            if pdede.manager:
+            if pdede.manager and pdede.manager != self:
                 return pdede.manager
-            manager = pdede.users.filter(roles__code='MANAGER').first()
+            manager = pdede.users.filter(roles__code='MANAGER').exclude(pk=self.pk).first()
             if manager:
                 return manager
         return None
@@ -377,27 +377,17 @@ class User(AbstractUser):
         """
         while department:
             # Πρώτα ελέγχουμε αν υπάρχει ρητά ορισμένος manager
-            if department.manager:
+            if department.manager and department.manager != self:
                 return department.manager
             # Διαφορετικά ψάχνουμε για χρήστη με ρόλο MANAGER
-            manager = department.users.filter(roles__code='MANAGER').first()
+            manager = department.users.filter(roles__code='MANAGER').exclude(pk=self.pk).first()
             if manager:
                 return manager
             # Αν δεν βρούμε, πάμε στο γονικό
             department = department.parent_department
         
         # Αν φτάσαμε εδώ χωρίς parent, ψάχνουμε για PDEDE department
-        pdede = Department.objects.filter(
-            department_type__code='PDEDE_MAIN'
-        ).first()
-        if pdede:
-            if pdede.manager:
-                return pdede.manager
-            manager = pdede.users.filter(roles__code='MANAGER').first()
-            if manager:
-                return manager
-        
-        return None
+        return self._find_pdede_manager()
     
     def has_leave_request_permission(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
