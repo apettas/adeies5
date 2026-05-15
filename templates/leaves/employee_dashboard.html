@@ -253,11 +253,6 @@
                                         </a>
                                     </th>
                                     <th>
-                                        <a href="?sort=total_days&dir={% if current_sort == 'total_days' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
-                                            Ημέρες {% if current_sort == 'total_days' %}↑{% elif current_sort == '-total_days' %}↓{% endif %}
-                                        </a>
-                                    </th>
-                                    <th>
                                         <a href="?sort=status&dir={% if current_sort == 'status' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
                                             Κατάσταση {% if current_sort == 'status' %}↑{% elif current_sort == '-status' %}↓{% endif %}
                                         </a>

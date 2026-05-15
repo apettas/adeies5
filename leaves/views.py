@@ -28,7 +28,7 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
     template_name = 'leaves/employee_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 20
-    sortable_fields = ['leave_type__name', 'start_date', 'end_date', 'total_days', 'status', 'submitted_at', 'id', 'protocol_number']
+    sortable_fields = ['leave_type__name', 'start_date', 'end_date', 'status', 'submitted_at', 'id', 'protocol_number']
     default_sort = '-submitted_at'
 
     def get_queryset(self):
@@ -583,7 +583,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
     template_name = 'leaves/handler_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 20
-    sortable_fields = ['leave_type__name', 'protocol_number', 'start_date', 'end_date', 'total_days', 'status', 'submitted_at', 'id']
+    sortable_fields = ['leave_type__name', 'protocol_number', 'start_date', 'end_date', 'status', 'submitted_at', 'id']
     default_sort = '-submitted_at'
     
     def dispatch(self, request, *args, **kwargs):

@@ -338,28 +338,42 @@ class User(AbstractUser):
         Επιστρέφει ποιος προϊστάμενος θα εγκρίνει την αίτηση άδειας αυτού του χρήστη.
         
         Λογική:
-        1. Αν ο χρήστης είναι manager του τμήματός του → εγκρίνει ο γονικού τμήματος
+        1. Αν ο χρήστης είναι manager του τμήματός του → εγκρίνει ο γονικού τμήματος ή PDEDE
         2. Αν ο χρήστης ΔΕΝ είναι manager → εγκρίνει ο manager του τμήματός του
-        3. Αν δεν υπάρχει manager → ανεβαίνουμε στο γονικό τμήμα
+        3. Αν δεν υπάρχει manager → ανεβαίνουμε στο γονικό τμήμα ή PDEDE
         """
         if not self.department:
             return None
         
-        # Αν είναι manager του τμήματός του, ψάχνουμε τον γονικού
+        # Αν είναι manager του τμήματός του, ψάχνουμε τον γονικού ή PDEDE
         if self.is_manager_of_department(self.department):
             if self.department.parent_department:
                 # Αναδρομικά βρίσκουμε τον πρώτο manager πάνω στην ιεραρχία
                 return self._find_manager_in_hierarchy(self.department.parent_department)
             else:
-                # Είναι root τμήμα, δεν μπορεί να αιτηθεί άδεια
-                return None
+                # Είναι root τμήμα, ψάχνουμε για PDEDE
+                return self._find_pdede_manager()
         
         # Δεν είναι manager, βρίσκουμε τον manager του τμήματός του
         return self._find_manager_in_hierarchy(self.department)
     
+    def _find_pdede_manager(self):
+        """Βρίσκει τον manager του PDEDE department όταν δεν υπάρχει parent."""
+        pdede = Department.objects.filter(
+            department_type__code='PDEDE_MAIN'
+        ).first()
+        if pdede:
+            if pdede.manager:
+                return pdede.manager
+            manager = pdede.users.filter(roles__code='MANAGER').first()
+            if manager:
+                return manager
+        return None
+    
     def _find_manager_in_hierarchy(self, department):
         """
         Αναζητά τον πρώτο manager ξεκινώντας από το τμήμα και ανεβαίνοντας στην ιεραρχία.
+        Αν δεν βρει parent, ψάχνει για PDEDE department.
         """
         while department:
             # Πρώτα ελέγχουμε αν υπάρχει ρητά ορισμένος manager
@@ -371,6 +385,17 @@ class User(AbstractUser):
                 return manager
             # Αν δεν βρούμε, πάμε στο γονικό
             department = department.parent_department
+        
+        # Αν φτάσαμε εδώ χωρίς parent, ψάχνουμε για PDEDE department
+        pdede = Department.objects.filter(
+            department_type__code='PDEDE_MAIN'
+        ).first()
+        if pdede:
+            if pdede.manager:
+                return pdede.manager
+            manager = pdede.users.filter(roles__code='MANAGER').first()
+            if manager:
+                return manager
         
         return None
     
