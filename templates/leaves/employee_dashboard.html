@@ -252,6 +252,8 @@
                                             Ημερομηνίες {% if current_sort == 'start_date' %}↑{% elif current_sort == '-start_date' %}↓{% endif %}
                                         </a>
                                     </th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
                                     <th>
                                         <a href="?sort=status&dir={% if current_sort == 'status' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
                                             Κατάσταση {% if current_sort == 'status' %}↑{% elif current_sort == '-status' %}↓{% endif %}

@@ -251,6 +251,8 @@
                                             Ημέρες {% if current_sort == 'total_days' %}↑{% elif current_sort == '-total_days' %}↓{% endif %}
                                         </a>
                                     </th>
+                                    <th>Ημερομηνίες</th>
+                                    <th>Ημέρες</th>
                                     <th>
                                         <a href="?sort=submitted_at&dir={% if current_sort == 'submitted_at' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
                                             Υποβολή {% if current_sort == 'submitted_at' %}↑{% elif current_sort == '-submitted_at' %}↓{% endif %}
