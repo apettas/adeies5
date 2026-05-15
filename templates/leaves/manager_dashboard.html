@@ -218,6 +218,9 @@
 <!-- Λίστα Αιτήσεων προς Έγκριση -->
 <div class="row">
     <div class="col-12">
+        <!-- Filter bar -->
+        {% include 'leaves/includes/filter_bar.html' %}
+        
         <div class="card">
             <div class="card-header">
                 <h5><i class="bi bi-list-check"></i> Αιτήσεις προς Έγκριση</h5>
@@ -228,11 +231,31 @@
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Υπάλληλος</th>
-                                    <th>Τύπος Άδειας</th>
-                                    <th>Ημερομηνίες</th>
-                                    <th>Ημέρες</th>
-                                    <th>Υποβολή</th>
+                                    <th>
+                                        <a href="?sort=user__last_name&dir={% if current_sort == 'user__last_name' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Υπάλληλος {% if current_sort == 'user__last_name' %}↑{% elif current_sort == '-user__last_name' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=leave_type__name&dir={% if current_sort == 'leave_type__name' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Τύπος Άδειας {% if current_sort == 'leave_type__name' %}↑{% elif current_sort == '-leave_type__name' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=start_date&dir={% if current_sort == 'start_date' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Ημερομηνίες {% if current_sort == 'start_date' %}↑{% elif current_sort == '-start_date' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=total_days&dir={% if current_sort == 'total_days' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Ημέρες {% if current_sort == 'total_days' %}↑{% elif current_sort == '-total_days' %}↓{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="?sort=submitted_at&dir={% if current_sort == 'submitted_at' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
+                                            Υποβολή {% if current_sort == 'submitted_at' %}↑{% elif current_sort == '-submitted_at' %}↓{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Περιγραφή</th>
                                     <th>Workflow</th>
                                     <th>Ενέργειες</th>
@@ -243,7 +266,7 @@
                                 <tr>
                                     <td>
                                         <strong>{{ request.user.full_name }}</strong>
-                                        <br><small class="text-muted">{{ request.user.employee_id }}</small>
+                                        <br><small class="text-muted">{{ request.user.department.name|default:"—" }}</small>
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary">{{ request.leave_type.name }}</span>
@@ -257,7 +280,7 @@
                                         <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
                                     </td>
                                     <td>
-                                        <span class="date-greek">{{ request.created_at|date:"d/m/Y H:i" }}</span>
+                                        <span class="date-greek">{{ request.submitted_at|date:"d/m/Y H:i"|default:request.created_at|date:"d/m/Y H:i" }}</span>
                                     </td>
                                     <td>
                                         {% if request.description %}
@@ -281,40 +304,28 @@
                                     <td>
                                         {% if request.status == 'SUBMITTED' %}
                                             <div class="btn-group" role="group">
-                                                <button type="button"
-                                                        class="btn btn-sm btn-success"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#approveModal{{ request.pk }}">
-                                                    <i class="bi bi-check"></i> Έγκριση
+                                                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ request.pk }}">
+                                                    <i class="bi bi-check"></i>
                                                 </button>
-                                                <button type="button"
-                                                        class="btn btn-sm btn-danger"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#rejectModal{{ request.pk }}">
-                                                    <i class="bi bi-x"></i> Απόρριψη
+                                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ request.pk }}">
+                                                    <i class="bi bi-x"></i>
                                                 </button>
-                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> Προβολή
+                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
                                                 </a>
                                             </div>
                                         {% elif request.status == 'PENDING_PROTOCOL' %}
-                                            <div class="btn-group-vertical" role="group">
-                                                <button type="button"
-                                                        class="btn btn-sm btn-primary mb-1"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#protocolModal{{ request.pk }}">
-                                                    <i class="bi bi-archive"></i> Προσθήκη Πρωτοκόλλου
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#protocolModal{{ request.pk }}">
+                                                    <i class="bi bi-archive"></i>
                                                 </button>
-                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}"
-                                                   class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i> Προβολή
+                                                <a href="{% url 'leaves:leave_request_detail' request.pk %}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
                                                 </a>
                                             </div>
                                         {% else %}
-                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}"
-                                               class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-eye"></i> Προβολή
+                                            <a href="{% url 'leaves:leave_request_detail' request.pk %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
                                             </a>
                                         {% endif %}
                                     </td>
