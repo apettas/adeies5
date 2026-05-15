@@ -520,7 +520,7 @@ def approve_leave_request(request, pk):
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την έγκριση: {str(e)}')
     
-    return redirect('leaves:manager_dashboard')
+    return redirect('leaves:leave_request_detail', pk=pk)
 
 
 @login_required
@@ -574,7 +574,7 @@ def reject_leave_request(request, pk):
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την απόρριψη: {str(e)}')
     
-    return redirect('leaves:manager_dashboard')
+    return redirect('leaves:leave_request_detail', pk=pk)
 
 
 class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):

@@ -100,7 +100,11 @@
                                     <small class="text-muted">{{ entry.notes|truncatechars:50 }}</small>
                                 </td>
                                 <td>
-                                    <small>{{ entry.created_by.get_full_name|default:entry.created_by.email|default:"—" }}</small>
+                                    {% if entry.created_by %}
+                                        <small>{{ entry.created_by.get_full_name|default:entry.created_by.email|default:"—" }}</small>
+                                    {% else %}
+                                        <small class="text-muted">Σύστημα</small>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

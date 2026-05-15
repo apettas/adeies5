@@ -52,18 +52,16 @@ def create_status_change_log(sender, instance, created, **kwargs):
     if hasattr(instance, '_status_changed') and instance._status_changed:
         action_map = {
             'SUBMITTED': 'SUBMIT',
-            'APPROVED_MANAGER': 'MANAGER_APPROVE',
-            'REJECTED_MANAGER': 'MANAGER_REJECT',
-            'PENDING_KEDASY_KEPEA_PROTOCOL': 'SEND_TO_PROTOCOL',
-            'FOR_PROTOCOL_PDEDE': 'FOR_PROTOCOL_PDEDE',
+            'PENDING_PROTOCOL': 'MANAGER_APPROVE',
+            'SUPERVISOR_REJECTED': 'MANAGER_REJECT',
             'PENDING_DOCUMENTS': 'REQUEST_DOCUMENTS',
-            'UNDER_PROCESSING': 'START_PROCESSING',
+            'IN_REVIEW': 'START_PROCESSING',
+            'WAITING_FOR_DOCUMENTS': 'REQUEST_DOCUMENTS',
+            'DECISION_PREPARATION': 'START_DECISION',
+            'PENDING_SIGNATURES': 'SEND_TO_SIGNATURES',
             'COMPLETED': 'COMPLETE',
-            'REJECTED_OPERATOR': 'OPERATOR_REJECT',
-            'WITHDRAWN_BY_REQUESTER': 'WITHDRAW',
-            'WITHDRAWN_COMPLETED': 'WITHDRAW_COMPLETED',
-            'HEALTH_COMMITTEE': 'HEALTH_COMMITTEE',
-            'DELETED_BY_HANDLER': 'DELETED_BY_HANDLER',
+            'REJECTED_BY_LEAVES_DEPT': 'OPERATOR_REJECT',
+            'CANCELLED_BY_APPLICANT': 'WITHDRAW',
         }
 
         action = action_map.get(instance._new_status, 'STATUS_CHANGE')
