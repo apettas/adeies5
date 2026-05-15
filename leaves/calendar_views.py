@@ -58,8 +58,8 @@ def leave_calendar_view(request, year=None, month=None):
     
     # Βρίσκω όλες τις αιτήσεις αδειών που επηρεάζουν αυτόν τον μήνα
     # Συμπεριλαμβάνω αιτήσεις που είναι εγκεκριμένες ή ολοκληρωμένες
-    approved_statuses = ['APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 
-                        'PENDING_DOCUMENTS', 'UNDER_PROCESSING', 'COMPLETED']
+    approved_statuses = ['PENDING_PROTOCOL', 'PENDING_PROTOCOL', 'PENDING_PROTOCOL', 
+                        'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'COMPLETED']
     
     leave_requests = LeaveRequest.objects.filter(
         user__in=employees_to_include,

@@ -264,24 +264,24 @@
                                     <td>
                                         {% if request.status == 'SUBMITTED' %}
                                             <span class="badge bg-warning">Υποβλήθηκε</span>
-                                        {% elif request.status == 'APPROVED_MANAGER' %}
+                                        {% elif request.status == 'PENDING_PROTOCOL' %}
                                             <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
-                                        {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                        {% elif request.status == 'PENDING_PROTOCOL' %}
                                             <span class="badge bg-secondary">Για Πρωτόκολλο ΠΔΕΔΕ</span>
-                                        {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                        {% elif request.status == 'WAITING_FOR_DOCUMENTS' %}
                                             <span class="badge bg-warning">Σε Αναμονή Δικαιολογητικών</span>
                                             {% if request.documents_deadline %}
                                                 <br><small class="text-danger">Προθεσμία: {{ request.documents_deadline|date:"d/m/Y H:i" }}</small>
                                             {% endif %}
-                                        {% elif request.status == 'UNDER_PROCESSING' %}
+                                        {% elif request.status == 'IN_REVIEW' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
                                         {% elif request.status == 'COMPLETED' %}
                                             <span class="badge bg-success">Ολοκληρώθηκε</span>
-                                        {% elif request.status == 'REJECTED_MANAGER' %}
+                                        {% elif request.status == 'SUPERVISOR_REJECTED' %}
                                             <span class="badge bg-danger">Απορρίφθηκε από Προϊστάμενο</span>
-                                        {% elif request.status == 'REJECTED_OPERATOR' %}
+                                        {% elif request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                                             <span class="badge bg-danger">Απορρίφθηκε από Χειριστή</span>
-                                        {% elif request.status == 'WITHDRAWN_BY_REQUESTER' %}
+                                        {% elif request.status == 'CANCELLED_BY_APPLICANT' %}
                                             <span class="badge bg-secondary">Ανακλήθηκε</span>
                                         {% endif %}
                                     </td>
@@ -380,7 +380,7 @@
                                 <li><strong>Τρέχουσα Κατάσταση:</strong>
                                     {% if request.status == 'SUBMITTED' %}
                                         <span class="badge bg-warning">Υποβλήθηκε</span>
-                                    {% elif request.status == 'APPROVED_MANAGER' %}
+                                    {% elif request.status == 'PENDING_PROTOCOL' %}
                                         <span class="badge bg-info">Εγκρίθηκε από Προϊστάμενο</span>
                                     {% endif %}
                                 </li>

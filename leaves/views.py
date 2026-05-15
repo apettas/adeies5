@@ -40,7 +40,7 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
         user = self.request.user
         
         # Αιτήσεις που χρειάζονται δικαιολογητικά με λεπτομέρειες
-        pending_documents_requests = self.get_queryset().filter(status='PENDING_DOCUMENTS')
+        pending_documents_requests = self.get_queryset().filter(status='WAITING_FOR_DOCUMENTS')
         
         # Βρίσκω την πρώτη διαθέσιμη προθεσμία
         first_deadline = None
@@ -68,11 +68,11 @@ class EmployeeDashboardView(LoginRequiredMixin, ListView):
         context.update({
             'total_requests': self.get_queryset().count(),
             'pending_requests': self.get_queryset().filter(
-                status__in=['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
+                status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
             ).count(),
             'completed_requests': self.get_queryset().filter(status='COMPLETED').count(),
             'rejected_requests': self.get_queryset().filter(
-                status__in=['REJECTED_MANAGER', 'REJECTED_OPERATOR']
+                status__in=['SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT']
             ).count(),
             'pending_documents_requests': pending_documents_requests.count(),
             'pending_documents_list': pending_documents_requests,
@@ -356,7 +356,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             'total_subordinates': subordinates.count(),
             'approved_this_month': LeaveRequest.objects.filter(
                 user__in=subordinates,
-                status='APPROVED_MANAGER',
+                status='PENDING_PROTOCOL',
                 manager_approved_at__month=timezone.now().month
             ).count(),
             'today': timezone.now().date(),
@@ -399,7 +399,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             context.update({
                 'is_kedasy_kepea_manager': True,
                 'kedasy_kepea_pending_protocol_count': LeaveRequest.objects.filter(
-                    status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                    status='PENDING_PROTOCOL'
                 ).filter(department_filter).count(),
                 'kedasy_kepea_completed_this_month': LeaveRequest.objects.filter(
                     kedasy_kepea_protocol_date__month=timezone.now().month,
@@ -419,7 +419,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             
             # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτοκόλληση
             kedasy_kepea_pending_requests = LeaveRequest.objects.filter(
-                status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                status='PENDING_PROTOCOL'
             ).filter(department_filter).select_related('user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
             
             context['kedasy_kepea_pending_requests'] = kedasy_kepea_pending_requests
@@ -597,15 +597,15 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
         # Αιτήσεις που έχουν εγκριθεί από προϊστάμενο ή παρακάμπτουν τον προϊστάμενο και περιμένουν επεξεργασία
         # Ταξινόμηση κατά προτεραιότητα: ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ > ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ > ΣΕ ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ > άλλα
         priority_order = {
-            'FOR_PROTOCOL_PDEDE': 1,
-            'UNDER_PROCESSING': 2,
-            'PENDING_DOCUMENTS': 3,
-            'APPROVED_MANAGER': 4,
-            'PENDING_KEDASY_KEPEA_PROTOCOL': 5,
+            'PENDING_PROTOCOL': 1,
+            'IN_REVIEW': 2,
+            'WAITING_FOR_DOCUMENTS': 3,
+            'PENDING_PROTOCOL': 4,
+            'PENDING_PROTOCOL': 5,
         }
 
         queryset = LeaveRequest.objects.filter(
-            status__in=['APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
         ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
 
         # Clean up expired locks
@@ -629,18 +629,18 @@ class HandlerDashboardView(LoginRequiredMixin, ListView):
             'total_completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
             # Στατιστικά για ΣΗΔΕ workflows
             'for_protocol_count': LeaveRequest.objects.filter(
-                status='FOR_PROTOCOL_PDEDE'
+                status='PENDING_PROTOCOL'
             ).count(),
             'under_processing_count': LeaveRequest.objects.filter(
-                status='UNDER_PROCESSING'
+                status='IN_REVIEW'
             ).count(),
             # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ workflow
             'pending_kedasy_kepea_count': LeaveRequest.objects.filter(
-                status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                status='PENDING_PROTOCOL'
             ).count(),
             # Στατιστικά για δικαιολογητικά
             'pending_documents_count': LeaveRequest.objects.filter(
-                status='PENDING_DOCUMENTS'
+                status='WAITING_FOR_DOCUMENTS'
             ).count(),
         })
         
@@ -791,8 +791,8 @@ class UserLeaveHistoryView(LoginRequiredMixin, ListView):
         context.update({
             'total_requests': all_requests.count(),
             'completed_requests': all_requests.filter(status='COMPLETED').count(),
-            'pending_requests': all_requests.filter(status__in=['SUBMITTED', 'APPROVED_MANAGER', 'UNDER_PROCESSING']).count(),
-            'rejected_requests': all_requests.filter(status__in=['REJECTED_MANAGER', 'REJECTED_OPERATOR']).count(),
+            'pending_requests': all_requests.filter(status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW']).count(),
+            'rejected_requests': all_requests.filter(status__in=['SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT']).count(),
             'total_days_used': sum(req.total_days for req in all_requests.filter(status='COMPLETED')),
             'user_role': 'handler' if self.request.user.is_leave_handler else 'manager'
         })
@@ -909,14 +909,14 @@ def send_to_protocol_pdede(request, pk):
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    if leave_request.status != 'APPROVED_MANAGER':
+    if leave_request.status != 'PENDING_PROTOCOL':
         messages.error(request, 'Η αίτηση δεν μπορεί να σταλεί για πρωτόκολλο σε αυτή τη φάση.')
         return redirect('leaves:handler_dashboard')
     
     if request.method == 'POST':
         try:
             # Αλλαγή status σε FOR_PROTOCOL_PDEDE
-            leave_request.status = 'FOR_PROTOCOL_PDEDE'
+            leave_request.status = 'PENDING_PROTOCOL'
             leave_request.save()
             
             # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
@@ -948,7 +948,7 @@ def upload_protocol_pdf(request, pk):
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    if leave_request.status != 'FOR_PROTOCOL_PDEDE':
+    if leave_request.status != 'PENDING_PROTOCOL':
         messages.error(request, 'Δεν μπορείτε να ανεβάσετε πρωτοκολλημένο PDF σε αυτή τη φάση.')
         return redirect('leaves:handler_dashboard')
     
@@ -989,7 +989,7 @@ def upload_protocol_pdf(request, pk):
                 leave_request.protocol_pdf_encryption_key = key_hex
                 leave_request.protocol_pdf_size = file_size
                 leave_request.protocol_created_at = timezone.now()
-                leave_request.status = 'UNDER_PROCESSING'
+                leave_request.status = 'IN_REVIEW'
                 leave_request.save()
                 
                 # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
@@ -1148,14 +1148,14 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         context['can_withdraw_completed'] = False
         if user == leave_request.user:
             # Ανάκληση αίτησης (μέχρι ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ)
-            if leave_request.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE']:
+            if leave_request.status in ['SUBMITTED', 'PENDING_PROTOCOL']:
                 context['can_withdraw'] = True
             # Ανάκληση ολοκληρωμένης
             if leave_request.status == 'COMPLETED':
                 context['can_withdraw_completed'] = True
 
         # Delete by handler (μόνο σε UNDER_PROCESSING)
-        context['can_delete'] = user.is_leave_handler and leave_request.status == 'UNDER_PROCESSING'
+        context['can_delete'] = user.is_leave_handler and leave_request.status == 'IN_REVIEW'
 
         # Sick leave attachment restriction
         context['is_sick_leave'] = leave_request.leave_type.name.lower().find('αναρρωτικ') >= 0
@@ -1578,7 +1578,7 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
         if self.request.user.department:
             # Βασικό κριτήριο: αιτήσεις από το ίδιο τμήμα
             department_filter = Q(
-                status='PENDING_KEDASY_KEPEA_PROTOCOL',
+                status='PENDING_PROTOCOL',
                 user__department=self.request.user.department
             )
             
@@ -1588,7 +1588,7 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
                 
                 # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
                 sdei_condition = Q(
-                    status='PENDING_KEDASY_KEPEA_PROTOCOL',
+                    status='PENDING_PROTOCOL',
                     user__department__department_type__code='SDEY',
                     user__department__parent_department=self.request.user.department
                 )
@@ -1707,7 +1707,7 @@ def add_kedasy_kepea_protocol(request, pk):
         raise PermissionDenied("Δεν έχετε δικαίωμα προσθήκης πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ.")
     
     # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
-    if leave_request.status != 'PENDING_KEDASY_KEPEA_PROTOCOL':
+    if leave_request.status != 'PENDING_PROTOCOL':
         messages.error(request, 'Η αίτηση δεν μπορεί να πρωτοκολληθεί σε αυτή τη φάση.')
         # Ανακατεύθυνση ανάλογα με τον ρόλο
         if request.user.is_secretary:
@@ -1787,7 +1787,7 @@ def request_documents(request, pk):
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
     # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
-    if leave_request.status not in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+    if leave_request.status not in ['PENDING_PROTOCOL']:
         messages.error(request, 'Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση.')
         return redirect('leaves:handler_dashboard')
     
@@ -1857,7 +1857,7 @@ def provide_documents(request, pk):
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
     # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
-    if leave_request.status != 'PENDING_DOCUMENTS':
+    if leave_request.status != 'WAITING_FOR_DOCUMENTS':
         messages.error(request, 'Η αίτηση δεν είναι σε αναμονή δικαιολογητικών.')
         return redirect('leaves:handler_dashboard')
     
@@ -1904,7 +1904,7 @@ def lock_leave_request(request, pk):
 
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
 
-    if leave_request.status not in ['UNDER_PROCESSING', 'PENDING_DOCUMENTS', 'FOR_PROTOCOL_PDEDE']:
+    if leave_request.status not in ['IN_REVIEW', 'WAITING_FOR_DOCUMENTS', 'PENDING_PROTOCOL']:
         messages.error(request, 'Η αίτηση δεν μπορεί να κλειδωθεί σε αυτή τη φάση.')
         return redirect('leaves:handler_dashboard')
 
@@ -1953,12 +1953,12 @@ def delete_leave_request(request, pk):
 
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
 
-    if leave_request.status != 'UNDER_PROCESSING':
+    if leave_request.status != 'IN_REVIEW':
         messages.error(request, 'Μπορείτε να διαγράψετε μόνο αιτήσεις σε κατάσταση ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ.')
         return redirect('leaves:leave_request_detail', pk=pk)
 
     if request.method == 'POST':
-        leave_request.status = 'DELETED_BY_HANDLER'
+        leave_request.status = 'REJECTED_BY_LEAVES_DEPT'
         leave_request.save()
 
         messages.success(request, 'Η αίτηση διαγράφηκε επιτυχώς.')
@@ -1999,7 +1999,7 @@ def withdraw_completed_leave(request, pk):
             )
 
         # Update original request
-        leave_request.status = 'WITHDRAWN_COMPLETED'
+        leave_request.status = 'CANCELLED_BY_APPLICANT'
         leave_request.save()
 
         # Notify handlers

@@ -143,26 +143,26 @@
                                         <span class="badge bg-info">{{ request.total_days }} ημέρες</span>
                                     </td>
                                     <td>
-                                        {% if request.status == 'APPROVED_MANAGER' %}
+                                        {% if request.status == 'PENDING_PROTOCOL' %}
                                             <span class="badge bg-warning">Εγκρίθηκε από Προϊστάμενο</span>
                                             <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
-                                        {% elif request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                        {% elif request.status == 'PENDING_PROTOCOL' %}
                                             <span class="badge bg-secondary">Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</span>
                                             <br><small class="text-muted">Αναμονή Γραμματείας</small>
-                                        {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                        {% elif request.status == 'PENDING_PROTOCOL' %}
                                             <span class="badge bg-info">Για Πρωτόκολλο ΣΗΔΕ</span>
                                             {% if request.manager_approved_at %}
                                                 <br><small class="text-muted">{{ request.manager_approved_at|date:"d/m/Y H:i" }}</small>
                                             {% else %}
                                                 <br><small class="text-muted badge bg-secondary">Παρακάμφθηκε Προϊστάμενος</small>
                                             {% endif %}
-                                        {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                        {% elif request.status == 'WAITING_FOR_DOCUMENTS' %}
                                             <span class="badge bg-warning">Σε Αναμονή Δικαιολογητικών</span>
                                             <br><small class="text-muted">{{ request.documents_requested_at|date:"d/m/Y H:i" }}</small>
                                             {% if request.documents_deadline %}
                                                 <br><small class="text-danger">Προθεσμία: {{ request.documents_deadline|date:"d/m/Y H:i" }}</small>
                                             {% endif %}
-                                        {% elif request.status == 'UNDER_PROCESSING' %}
+                                        {% elif request.status == 'IN_REVIEW' %}
                                             <span class="badge bg-primary">Προς Επεξεργασία</span>
                                             {% if request.locking_user %}
                                                 <br><span class="badge bg-danger"><i class="bi bi-lock"></i> Κλειδωμένο από {{ request.locking_user.get_full_name|default:request.locking_user.email }}</span>
@@ -189,7 +189,7 @@
                                     </td>
                                     <td>
                                         <div class="btn-group-vertical" role="group">
-                                            {% if request.status == 'APPROVED_MANAGER' %}
+                                            {% if request.status == 'PENDING_PROTOCOL' %}
                                                 <!-- Πρώτο στάδιο: Αποστολή για πρωτόκολλο -->
                                                 <button type="button"
                                                         class="btn btn-sm btn-warning mb-1"
@@ -197,7 +197,7 @@
                                                         data-bs-target="#sendProtocolModal{{ request.pk }}">
                                                     <i class="bi bi-send"></i> Στείλε στο ΣΗΔΕ
                                                 </button>
-                                            {% elif request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                            {% elif request.status == 'PENDING_PROTOCOL' %}
                                                 <!-- Δεύτερο στάδιο: Ανέβασμα πρωτοκολλημένου PDF -->
                                                 <button type="button"
                                                         class="btn btn-sm btn-info mb-1"
@@ -210,7 +210,7 @@
                                                    class="btn btn-sm btn-warning mb-1">
                                                     <i class="bi bi-file-earmark-text"></i> Επεξεργασία Απόφασης
                                                 </a>
-                                            {% elif request.status == 'UNDER_PROCESSING' %}
+                                            {% elif request.status == 'IN_REVIEW' %}
                                                 <!-- Locking indicator -->
                                                 {% if request.locking_user %}
                                                     {% if request.locking_user == user %}
@@ -241,7 +241,7 @@
                                                    class="btn btn-sm btn-outline-danger mb-1">
                                                     <i class="bi bi-trash"></i> Διαγραφή
                                                 </a>
-                                            {% elif request.status == 'PENDING_DOCUMENTS' %}
+                                            {% elif request.status == 'WAITING_FOR_DOCUMENTS' %}
                                                 <!-- Παροχή δικαιολογητικών -->
                                                 <button type="button"
                                                         class="btn btn-sm btn-info mb-1"
@@ -252,7 +252,7 @@
                                             {% endif %}
                                             
                                             <!-- Αίτηση δικαιολογητικών - διαθέσιμο για όλες τις καταστάσεις εκτός από REJECTED, APPROVED, PENDING_DOCUMENTS -->
-                                            {% if request.status != 'REJECTED' and request.status != 'APPROVED' and request.status != 'PENDING_DOCUMENTS' %}
+                                            {% if request.status != 'REJECTED' and request.status != 'APPROVED' and request.status != 'WAITING_FOR_DOCUMENTS' %}
                                                 <button type="button"
                                                         class="btn btn-sm btn-warning mb-1"
                                                         data-bs-toggle="modal"

@@ -53,7 +53,7 @@
                         <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
-                        {% if leave_request.status == 'UNDER_PROCESSING' %}
+                        {% if leave_request.status == 'IN_REVIEW' %}
                             <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
                                 <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
                             </a>
@@ -158,19 +158,19 @@
                         <p>
                             {% if leave_request.status == 'SUBMITTED' %}
                                 <span class="badge bg-warning fs-6">Υποβλήθηκε</span>
-                            {% elif leave_request.status == 'APPROVED_MANAGER' %}
+                            {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                                 <span class="badge bg-info fs-6">Εγκρίθηκε από Προϊστάμενο</span>
-                            {% elif leave_request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                            {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                                 <span class="badge bg-warning fs-6">Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</span>
-                            {% elif leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                            {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                                 <span class="badge bg-secondary fs-6">Για Πρωτόκολλο ΠΔΕΔΕ</span>
-                            {% elif leave_request.status == 'UNDER_PROCESSING' %}
+                            {% elif leave_request.status == 'IN_REVIEW' %}
                                 <span class="badge bg-primary fs-6">Προς Επεξεργασία</span>
                             {% elif leave_request.status == 'COMPLETED' %}
                                 <span class="badge bg-success fs-6">Ολοκληρώθηκε</span>
-                            {% elif leave_request.status == 'REJECTED_MANAGER' %}
+                            {% elif leave_request.status == 'SUPERVISOR_REJECTED' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Προϊστάμενο</span>
-                            {% elif leave_request.status == 'REJECTED_OPERATOR' %}
+                            {% elif leave_request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Χειριστή</span>
                             {% endif %}
                         </p>
@@ -623,7 +623,7 @@
                         {% endif %}
                     </div>
                 </div>
-                {% elif leave_request.rejected_by and leave_request.status == 'REJECTED_MANAGER' %}
+                {% elif leave_request.rejected_by and leave_request.status == 'SUPERVISOR_REJECTED' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle-fill text-danger"></i>
@@ -665,7 +665,7 @@
                         {% endif %}
                     </div>
                 </div>
-                {% elif leave_request.rejected_by and leave_request.status == 'REJECTED_OPERATOR' %}
+                {% elif leave_request.rejected_by and leave_request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle-fill text-danger"></i>
@@ -695,7 +695,7 @@
                         {% endif %}
                     </div>
                 </div>
-                {% elif leave_request.status == 'APPROVED_MANAGER' %}
+                {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle text-muted"></i>
@@ -704,7 +704,7 @@
                         <h6 class="mb-1 text-muted">Αναμένει επεξεργασία</h6>
                     </div>
                 </div>
-                {% elif leave_request.status == 'FOR_PROTOCOL_PDEDE' %}
+                {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle text-muted"></i>
@@ -713,7 +713,7 @@
                         <h6 class="mb-1 text-muted">Αναμένει πρωτοκόλληση ΣΗΔΕ</h6>
                     </div>
                 </div>
-                {% elif leave_request.status == 'UNDER_PROCESSING' %}
+                {% elif leave_request.status == 'IN_REVIEW' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle text-muted"></i>

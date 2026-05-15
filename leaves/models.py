@@ -133,20 +133,17 @@ class LeaveRequest(models.Model):
     """Αίτηση άδειας"""
     
     STATUS_CHOICES = [
-        ('DRAFT', 'Προσχέδιο'),
-        ('SUBMITTED', 'ΚΑΤΑΧΩΡΗΘΗΚΕ'),
-        ('APPROVED_MANAGER', 'ΕΓΚΡΙΣΗ ΑΠΟ ΠΡΟΪΣΤΑΜΕΝΟ'),
-        ('REJECTED_MANAGER', 'ΜΗ ΕΓΚΡΙΣΗ ΑΠΟ ΠΡΟΪΣΤΑΜΕΝΟ'),
-        ('PENDING_KEDASY_KEPEA_PROTOCOL', 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΚΕΔΑΣΥ'),
-        ('FOR_PROTOCOL_PDEDE', 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ'),
-        ('PENDING_DOCUMENTS', 'ΣΕ ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ'),
-        ('UNDER_PROCESSING', 'ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ'),
-        ('COMPLETED', 'ΟΛΟΚΛΗΡΩΜΕΝΗ'),
-        ('REJECTED_OPERATOR', 'ΑΠΟΡΡΙΨΗ ΑΠΟ ΤΜΗΜΑ ΑΔΕΙΩΝ'),
-        ('WITHDRAWN_BY_REQUESTER', 'ΑΝΑΚΛΗΣΗ ΑΙΤΗΣΗΣ ΑΠΟ ΑΙΤΟΥΝΤΑ'),
-        ('WITHDRAWN_COMPLETED', 'ΑΝΑΚΛΗΣΗ ΟΛΟΚΛΗΡΩΜΕΝΗΣ ΑΔΕΙΑΣ'),
-        ('HEALTH_COMMITTEE', 'ΥΓΕΙΟΝΟΜΙΚΗ ΕΠΙΤΡΟΠΗ'),
-        ('DELETED_BY_HANDLER', 'ΔΙΑΓΡΑΦΗ ΑΠΟ ΧΕΙΡΙΣΤΗ'),
+        ('DRAFT', 'Πρόχειρη αίτηση'),
+        ('SUBMITTED', 'Υποβληθείσα αίτηση'),
+        ('PENDING_PROTOCOL', 'Για πρωτόκολλο ΠΔΕΔΕ'),
+        ('IN_REVIEW', 'Σε επεξεργασία από τμήμα αδειών'),
+        ('WAITING_FOR_DOCUMENTS', 'Σε αναμονή δικαιολογητικών'),
+        ('DECISION_PREPARATION', 'Ετοιμασία απόφασης'),
+        ('PENDING_SIGNATURES', 'ΣΗΔΕ - προς υπογραφές'),
+        ('COMPLETED', 'Ολοκληρώθηκε'),
+        ('SUPERVISOR_REJECTED', 'Αρνητική έγκριση προϊσταμένου'),
+        ('REJECTED_BY_LEAVES_DEPT', 'Απόρριψη από τμήμα αδειών'),
+        ('CANCELLED_BY_APPLICANT', 'Ανάκληση από αιτούντα'),
     ]
     
     # Βασικά πεδία
@@ -288,12 +285,12 @@ class LeaveRequest(models.Model):
     @property
     def can_be_processed(self):
         """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί από χειριστή"""
-        return self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS']
+        return self.status in ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS']
     
     @property
     def is_pending(self):
         """Ελέγχει αν η αίτηση είναι εκκρεμής"""
-        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL', 'FOR_PROTOCOL_PDEDE', 'PENDING_DOCUMENTS', 'UNDER_PROCESSING']
+        return self.status in ['SUBMITTED', 'PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
     
     @property
     def is_completed(self):
@@ -303,17 +300,17 @@ class LeaveRequest(models.Model):
     @property
     def is_rejected(self):
         """Ελέγχει αν η αίτηση έχει απορριφθεί"""
-        return self.status in ['REJECTED_MANAGER', 'REJECTED_OPERATOR']
+        return self.status in ['SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT']
     
     @property
     def is_withdrawn(self):
         """Ελέγχει αν η αίτηση έχει ανακληθεί"""
-        return self.status == 'WITHDRAWN_BY_REQUESTER'
+        return self.status == 'CANCELLED_BY_APPLICANT'
     
     @property
     def can_be_withdrawn(self):
         """Ελέγχει αν η αίτηση μπορεί να ανακληθεί από τον αιτούντα"""
-        return self.status in ['SUBMITTED', 'APPROVED_MANAGER', 'PENDING_KEDASY_KEPEA_PROTOCOL']
+        return self.status in ['SUBMITTED', 'PENDING_PROTOCOL']
     
     def submit(self):
         """Υποβολή αίτησης"""
@@ -330,13 +327,8 @@ class LeaveRequest(models.Model):
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
             else:
-                # Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ που ανήκει σε ΚΕΔΑΣΥ
-                if self.is_kedasy_kepea_department():
-                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ακόμα και τα αναρρωτικά χρειάζονται πρωτόκολλο
-                    self.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
-                else:
-                    # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
-                    self.status = 'APPROVED_MANAGER'
+                # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
+                self.status = 'PENDING_PROTOCOL'
             self.submitted_at = timezone.now()
             self.save()
             return True
@@ -345,12 +337,7 @@ class LeaveRequest(models.Model):
     def approve_by_manager(self, manager, comments=''):
         """Έγκριση από προϊστάμενο"""
         if self.can_be_approved_by_manager:
-            # Για τμήματα ΚΕΔΑΣΥ/ΚΕΠΕΑ, μετά την έγκριση προϊσταμένου
-            # πάει στην αναμονή για πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ
-            if self.is_kedasy_kepea_department():
-                self.status = 'PENDING_KEDASY_KEPEA_PROTOCOL'
-            else:
-                self.status = 'APPROVED_MANAGER'
+            self.status = 'PENDING_PROTOCOL'
             
             self.manager_approved_by = manager
             self.manager_approved_at = timezone.now()
@@ -362,7 +349,7 @@ class LeaveRequest(models.Model):
     def reject_by_manager(self, manager, reason):
         """Απόρριψη από προϊστάμενο"""
         if self.can_be_approved_by_manager:
-            self.status = 'REJECTED_MANAGER'
+            self.status = 'SUPERVISOR_REJECTED'
             self.rejected_by = manager
             self.rejected_at = timezone.now()
             self.rejection_reason = reason
@@ -372,8 +359,8 @@ class LeaveRequest(models.Model):
     
     def move_to_protocol(self):
         """Μεταφορά για πρωτόκολλο ΠΔΕΔΕ"""
-        if self.status == 'APPROVED_MANAGER':
-            self.status = 'FOR_PROTOCOL_PDEDE'
+        if self.status == 'PENDING_PROTOCOL':
+            self.status = 'PENDING_PROTOCOL'
             self.save()
             return True
         return False
@@ -381,7 +368,7 @@ class LeaveRequest(models.Model):
     def start_processing(self, handler, protocol_number='', comments=''):
         """Έναρξη επεξεργασίας από χειριστή"""
         if self.can_be_processed:
-            self.status = 'UNDER_PROCESSING'
+            self.status = 'IN_REVIEW'
             if protocol_number:
                 self.protocol_number = protocol_number
             self.processing_comments = comments
@@ -393,7 +380,7 @@ class LeaveRequest(models.Model):
     
     def complete(self):
         """Ολοκλήρωση αίτησης"""
-        if self.status == 'UNDER_PROCESSING':
+        if self.status == 'IN_REVIEW':
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
             self.save()
@@ -404,7 +391,7 @@ class LeaveRequest(models.Model):
     
     def complete_by_handler(self, handler, comments=''):
         """Ολοκλήρωση αίτησης από χειριστή"""
-        if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
+        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
             # Ενημερώνουμε τα πεδία επεξεργασίας μόνο κατά την τελική ολοκλήρωση
@@ -433,8 +420,8 @@ class LeaveRequest(models.Model):
     
     def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""
-        if self.status in ['FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
-            self.status = 'REJECTED_OPERATOR'
+        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
+            self.status = 'REJECTED_BY_LEAVES_DEPT'
             self.rejected_by = operator
             self.rejected_at = timezone.now()
             self.rejection_reason = reason
@@ -444,8 +431,8 @@ class LeaveRequest(models.Model):
     
     def reject_by_handler(self, handler, reason):
         """Απόρριψη από χειριστή"""
-        if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE', 'UNDER_PROCESSING']:
-            self.status = 'REJECTED_OPERATOR'
+        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
+            self.status = 'REJECTED_BY_LEAVES_DEPT'
             self.rejected_by = handler
             self.rejected_at = timezone.now()
             self.rejection_reason = reason
@@ -461,7 +448,7 @@ class LeaveRequest(models.Model):
         if not self.can_be_withdrawn:
             raise ValueError("Η αίτηση δεν μπορεί να ανακληθεί σε αυτή τη φάση")
         
-        self.status = 'WITHDRAWN_BY_REQUESTER'
+        self.status = 'CANCELLED_BY_APPLICANT'
         self.rejected_by = user
         self.rejected_at = timezone.now()
         self.rejection_reason = 'Ανάκληση αίτησης από τον αιτούντα'
@@ -470,10 +457,10 @@ class LeaveRequest(models.Model):
     
     def request_documents(self, handler, required_documents, deadline=None):
         """Αίτημα για δικαιολογητικά από χειριστή"""
-        if not self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+        if not self.status in ['PENDING_PROTOCOL']:
             raise ValueError("Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση")
         
-        self.status = 'PENDING_DOCUMENTS'
+        self.status = 'WAITING_FOR_DOCUMENTS'
         self.required_documents = required_documents
         self.documents_deadline = deadline
         self.documents_requested_by = handler
@@ -483,10 +470,10 @@ class LeaveRequest(models.Model):
     
     def provide_documents(self, handler, notes=''):
         """Παροχή δικαιολογητικών (από χειριστή)"""
-        if self.status != 'PENDING_DOCUMENTS':
+        if self.status != 'WAITING_FOR_DOCUMENTS':
             raise ValueError("Δεν είναι σε αναμονή δικαιολογητικών")
         
-        self.status = 'UNDER_PROCESSING'
+        self.status = 'IN_REVIEW'
         self.documents_provided_by = handler
         self.documents_provided_at = timezone.now()
         self.documents_notes = notes
@@ -496,19 +483,19 @@ class LeaveRequest(models.Model):
     @property
     def is_pending_documents(self):
         """Ελέγχει αν η αίτηση είναι σε αναμονή δικαιολογητικών"""
-        return self.status == 'PENDING_DOCUMENTS'
+        return self.status == 'WAITING_FOR_DOCUMENTS'
     
     @property
     def is_documents_overdue(self):
         """Ελέγχει αν η προθεσμία δικαιολογητικών έχει λήξει"""
-        if self.status == 'PENDING_DOCUMENTS' and self.documents_deadline:
+        if self.status == 'WAITING_FOR_DOCUMENTS' and self.documents_deadline:
             return timezone.now() > self.documents_deadline
         return False
     
     @property
     def can_provide_documents(self):
         """Ελέγχει αν μπορούν να παρασχεθούν δικαιολογητικά"""
-        return self.status == 'PENDING_DOCUMENTS'
+        return self.status == 'WAITING_FOR_DOCUMENTS'
     
     def has_protocol_pdf(self):
         """Επιστρέφει True αν υπάρχει πρωτοκολλημένο PDF"""
@@ -545,15 +532,15 @@ class LeaveRequest(models.Model):
     
     def can_upload_exact_copy(self):
         """Ελέγχει αν μπορεί να ανέβει ακριβές αντίγραφο"""
-        return self.has_decision_pdf() and self.status == 'UNDER_PROCESSING'
+        return self.has_decision_pdf() and self.status == 'IN_REVIEW'
     
     def can_complete_request(self):
         """Ελέγχει αν μπορεί να ολοκληρωθεί η αίτηση"""
-        return self.has_exact_copy_pdf() and self.status == 'UNDER_PROCESSING'
+        return self.has_exact_copy_pdf() and self.status == 'IN_REVIEW'
     
     def can_create_decision(self):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
-        return self.status == 'UNDER_PROCESSING'
+        return self.status == 'IN_REVIEW'
     
     def get_end_date(self):
         """Υπολογίζει την ημερομηνία λήξης της άδειας"""
@@ -572,15 +559,15 @@ class LeaveRequest(models.Model):
         status_classes = {
             'DRAFT': 'secondary',
             'SUBMITTED': 'warning',
-            'APPROVED_MANAGER': 'info',
-            'REJECTED_MANAGER': 'danger',
-            'PENDING_KEDASY_KEPEA_PROTOCOL': 'warning',
-            'FOR_PROTOCOL_PDEDE': 'secondary',
-            'PENDING_DOCUMENTS': 'warning',
-            'UNDER_PROCESSING': 'primary',
+            'PENDING_PROTOCOL': 'info',
+            'IN_REVIEW': 'primary',
+            'WAITING_FOR_DOCUMENTS': 'warning',
+            'DECISION_PREPARATION': 'info',
+            'PENDING_SIGNATURES': 'warning',
             'COMPLETED': 'success',
-            'REJECTED_OPERATOR': 'danger',
-            'WITHDRAWN_BY_REQUESTER': 'warning',
+            'SUPERVISOR_REJECTED': 'danger',
+            'REJECTED_BY_LEAVES_DEPT': 'danger',
+            'CANCELLED_BY_APPLICANT': 'warning',
         }
         return status_classes.get(self.status, 'secondary')
     
@@ -637,13 +624,13 @@ class LeaveRequest(models.Model):
         if user.is_leave_handler and self.can_be_processed:
             actions.extend(['process', 'reject'])
             # Εάν η αίτηση είναι εγκεκριμένη ή για πρωτόκολλο, μπορεί να ζητηθούν δικαιολογητικά
-            if self.status in ['APPROVED_MANAGER', 'FOR_PROTOCOL_PDEDE']:
+            if self.status in ['PENDING_PROTOCOL']:
                 actions.append('request_documents')
         
-        if user.is_leave_handler and self.status == 'PENDING_DOCUMENTS':
+        if user.is_leave_handler and self.status == 'WAITING_FOR_DOCUMENTS':
             actions.extend(['provide_documents', 'reject'])
         
-        if user.is_leave_handler and self.status == 'UNDER_PROCESSING':
+        if user.is_leave_handler and self.status == 'IN_REVIEW':
             actions.append('complete')
         
         return actions
@@ -677,7 +664,7 @@ class LeaveRequest(models.Model):
             return False
         
         # Έλεγχος αν το status είναι PENDING_KEDASY_KEPEA_PROTOCOL
-        if self.status != 'PENDING_KEDASY_KEPEA_PROTOCOL':
+        if self.status != 'PENDING_PROTOCOL':
             return False
         
         # Έλεγχος αν ο χρήστης έχει ρόλο Secretary ή Manager
@@ -720,7 +707,7 @@ class LeaveRequest(models.Model):
             self.manager_approved_at = timezone.now()
             self.manager_comments = f"Αυτόματη έγκριση με πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
         
-        self.status = 'FOR_PROTOCOL_PDEDE'
+        self.status = 'PENDING_PROTOCOL'
         self.save()
         
         # Δημιουργία ιστορικού (αν υπάρχει το model)
@@ -730,8 +717,8 @@ class LeaveRequest(models.Model):
                 leave_request=self,
                 action='KEDASY_KEPEA_PROTOCOL_ADDED',
                 user=user,
-                old_status='PENDING_KEDASY_KEPEA_PROTOCOL',
-                new_status='FOR_PROTOCOL_PDEDE',
+                old_status='PENDING_PROTOCOL',
+                new_status='PENDING_PROTOCOL',
                 comments=f"Προστέθηκε πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
             )
         except ImportError:

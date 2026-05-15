@@ -148,11 +148,11 @@
                                         <span class="badge bg-success">Ολοκληρώθηκε</span>
                                     {% elif request.status == 'SUBMITTED' %}
                                         <span class="badge bg-warning">Υποβλήθηκε</span>
-                                    {% elif request.status == 'APPROVED_MANAGER' %}
+                                    {% elif request.status == 'PENDING_PROTOCOL' %}
                                         <span class="badge bg-info">Εγκρίθηκε</span>
-                                    {% elif request.status == 'UNDER_PROCESSING' %}
+                                    {% elif request.status == 'IN_REVIEW' %}
                                         <span class="badge bg-primary">Προς Επεξεργασία</span>
-                                    {% elif request.status == 'REJECTED_MANAGER' or request.status == 'REJECTED_OPERATOR' %}
+                                    {% elif request.status == 'SUPERVISOR_REJECTED' or request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                                         <span class="badge bg-danger">Απορρίφθηκε</span>
                                     {% else %}
                                         <span class="badge bg-secondary">{{ request.get_status_display }}</span>
@@ -298,7 +298,7 @@
                                                     <i class="bi bi-eye"></i> Προβολή
                                                 </a>
                                             </div>
-                                        {% elif request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                        {% elif request.status == 'PENDING_PROTOCOL' %}
                                             <div class="btn-group-vertical" role="group">
                                                 <button type="button"
                                                         class="btn btn-sm btn-primary mb-1"
@@ -405,7 +405,7 @@
                                 </div>
                                 
                                 <!-- Modal Προσθήκης Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ -->
-                                {% if request.status == 'PENDING_KEDASY_KEPEA_PROTOCOL' %}
+                                {% if request.status == 'PENDING_PROTOCOL' %}
                                 <div class="modal fade" id="protocolModal{{ request.pk }}" tabindex="-1">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
@@ -690,9 +690,9 @@
                                     {{ request.kedasy_kepea_protocol_by.full_name }}
                                 </td>
                                 <td>
-                                    {% if request.status == 'FOR_PROTOCOL_PDEDE' %}
+                                    {% if request.status == 'PENDING_PROTOCOL' %}
                                         <span class="badge bg-info">Προς ΣΗΔΕ</span>
-                                    {% elif request.status == 'UNDER_PROCESSING' %}
+                                    {% elif request.status == 'IN_REVIEW' %}
                                         <span class="badge bg-primary">Υπό Επεξεργασία</span>
                                     {% elif request.status == 'COMPLETED' %}
                                         <span class="badge bg-success">Ολοκληρώθηκε</span>

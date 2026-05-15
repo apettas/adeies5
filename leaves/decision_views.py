@@ -149,7 +149,7 @@ def generate_final_decision_pdf(request):
         leave_request.decision_created_at = timezone.now()
         
         # Αυτόματη αλλαγή στάτους - δεν θέτουμε processed_by/processed_at ακόμα
-        leave_request.status = 'UNDER_PROCESSING'
+        leave_request.status = 'IN_REVIEW'
         leave_request.save()
         
         # Προετοιμασία context για PDF
