@@ -247,11 +247,6 @@
                                             Τύπος Άδειας {% if current_sort == 'leave_type__name' %}↑{% elif current_sort == '-leave_type__name' %}↓{% endif %}
                                         </a>
                                     </th>
-                                    <th>
-                                        <a href="?sort=start_date&dir={% if current_sort == 'start_date' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
-                                            Ημερομηνίες {% if current_sort == 'start_date' %}↑{% elif current_sort == '-start_date' %}↓{% endif %}
-                                        </a>
-                                    </th>
                                     <th>Ημερομηνίες</th>
                                     <th>Ημέρες</th>
                                     <th>
