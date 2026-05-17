@@ -57,6 +57,14 @@
                             <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
                                 <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
                             </a>
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
+                                <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                            </button>
+                        {% endif %}
+                        {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
+                            <a href="{% url 'leaves:provide_documents' leave_request.pk %}" class="btn btn-info">
+                                <i class="bi bi-file-earmark-check"></i> Παροχή Δικ/κων
+                            </a>
                         {% endif %}
                         {% if leave_request.has_decision_pdf %}
                             <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}" class="btn btn-info" target="_blank">
@@ -200,6 +208,39 @@
                         <strong>Αριθμός Πρωτοκόλλου:</strong>
                         <p class="mt-2"><span class="badge bg-dark fs-6">{{ leave_request.protocol_number }}</span></p>
                     </div>
+                </div>
+                {% endif %}
+                
+                <!-- Στοιχεία Πρωτοκόλλου ΠΔΕΔΕ -->
+                {% if leave_request.pdede_protocol_number %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-success">
+                            <strong><i class="bi bi-archive"></i> Πρωτόκολλο ΠΔΕΔΕ/ΣΗΔΕ</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>Αριθμός Πρωτοκόλλου ΠΔΕΔΕ:</strong>
+                        <p class="mt-2"><span class="badge bg-dark fs-6">{{ leave_request.pdede_protocol_number }}</span></p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>Ημερομηνία Πρωτοκόλλου ΠΔΕΔΕ:</strong>
+                        <p class="mt-2 date-greek">{{ leave_request.pdede_protocol_date|date:"d/m/Y" }}</p>
+                    </div>
+                    {% if leave_request.pdede_protocol_by %}
+                    <div class="col-12 mb-3">
+                        <strong>Πρωτοκολλήθηκε από:</strong>
+                        <p class="mt-2">{{ leave_request.pdede_protocol_by.full_name }}</p>
+                    </div>
+                    {% endif %}
+                    {% if leave_request.pdede_protocol_details %}
+                    <div class="col-12 mb-3">
+                        <strong>Στοιχεία Πρωτοκόλλου:</strong>
+                        <p class="mt-2" style="white-space: pre-wrap;">{{ leave_request.pdede_protocol_details }}</p>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
                 
@@ -750,4 +791,46 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Επιστροφής Αίτησης στον Αιτούντα -->
+{% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
+<div class="modal fade" id="returnModal{{ leave_request.pk }}" tabindex="-1" aria-labelledby="returnModalLabel{{ leave_request.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="returnModalLabel{{ leave_request.pk }}">
+                    <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:return_leave_to_employee' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Είστε σίγουρος ότι θέλετε να επιστρέψετε την αίτηση στον αιτούντα για διόρθωση;</p>
+                    <ul>
+                        <li><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</li>
+                        <li><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</li>
+                        <li><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</li>
+                        <li><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }}{% if leave_request.end_date and leave_request.start_date != leave_request.end_date %} - {{ leave_request.end_date|date:"d/m/Y" }}{% endif %}</li>
+                    </ul>
+                    <div class="mb-3">
+                        <label for="return_notes" class="form-label fw-bold">Αιτιολογία Επιστροφής <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="return_notes" name="return_notes" rows="4" required
+                                  placeholder="Εισάγετε τον λόγο επιστροφής και ό,τι χρειάζεται να διορθώσει ο υπάλληλος..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x"></i> Ακύρωση
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

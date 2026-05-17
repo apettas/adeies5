@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Επιστροφή Αίτησης{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="bi bi-arrow-return-left"></i> Επιστροφή Αίτησης στον Αιτούντα</h5>
+        </div>
+        <div class="card-body">
+            <p>Είστε σίγουρος ότι θέλετε να επιστρέψετε την ακόλουθη αίτηση στον αιτούντα για διόρθωση ή συμπλήρωση;</p>
+            <ul>
+                <li><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</li>
+                <li><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</li>
+                <li><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</li>
+                <li><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }}{% if leave_request.end_date and leave_request.start_date != leave_request.end_date %} - {{ leave_request.end_date|date:"d/m/Y" }}{% endif %}</li>
+                <li><strong>Ημέρες:</strong> {{ leave_request.total_days }}</li>
+                <li><strong>Κατάσταση:</strong> <span class="badge bg-{{ leave_request.get_status_display_class }}">{{ leave_request.get_status_display }}</span></li>
+            </ul>
+            <div class="mb-3">
+                <label for="return_notes" class="form-label fw-bold">Αιτιολογία Επιστροφής <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="return_notes" name="return_notes" rows="4" required
+                          placeholder="Παρακαλώ συμπληρώστε τον λόγο επιστροφής και ό,τι χρειάζεται να διορθώσει ή να συμπληρώσει ο αιτούντας..."></textarea>
+            </div>
+            <p class="text-warning"><i class="bi bi-exclamation-circle"></i> <strong>Προσοχή:</strong> Η αίτηση θα επιστραφεί στον αιτούντα για διόρθωση.</p>
+            <hr>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-x"></i> Ακύρωση
+                </a>
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

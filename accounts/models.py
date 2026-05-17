@@ -409,7 +409,7 @@ class User(AbstractUser):
     
     def can_approve_leaves(self):
         """Μπορεί να εγκρίνει αιτήσεις αδειών"""
-        return self.roles.filter(code__in=['MANAGER', 'HR_OFFICER', 'administrator']).exists()
+        return self.roles.filter(code__in=['MANAGER', 'LEAVE_HANDLER', 'administrator']).exists()
     
     def get_subordinates(self):
         """Επιστρέφει τους υφισταμένους του χρήστη"""

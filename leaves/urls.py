@@ -35,6 +35,7 @@ urlpatterns = [
     path('upload-protocol-pdf/<int:pk>/', views.upload_protocol_pdf, name='upload_protocol_pdf'),
     path('request-documents/<int:pk>/', views.request_documents, name='request_documents'),
     path('provide-documents/<int:pk>/', views.provide_documents, name='provide_documents'),
+    path('return-to-employee/<int:pk>/', views.return_leave_to_employee, name='return_leave_to_employee'),
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     

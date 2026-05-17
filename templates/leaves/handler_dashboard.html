@@ -56,6 +56,12 @@
             Ολοκληρωμένες {% if tab_counts.completed %}<span class="badge bg-success">{{ tab_counts.completed }}</span>{% endif %}
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'rejected' %}active{% endif %}" 
+           href="?tab=rejected{% for key, value in request.GET.items %}{% if key != 'tab' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+            Απορριφθείσες {% if tab_counts.rejected %}<span class="badge bg-danger">{{ tab_counts.rejected }}</span>{% endif %}
+        </a>
+    </li>
 </ul>
 
 <!-- Filter bar -->
@@ -90,6 +96,15 @@
             </div>
         </div>
     </div>
+    <div class="col-md-4">
+        <div class="card text-center bg-danger bg-opacity-10">
+            <div class="card-body">
+                <i class="bi bi-x-circle fs-3 text-danger"></i>
+                <h5 class="mt-2">{{ tab_counts.rejected }}</h5>
+                <small class="text-muted">Απορριφθείσες</small>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Leave requests table -->
@@ -100,34 +115,18 @@
             <table class="table table-hover">
                 <thead class="table-light">
                     <tr>
-                        {% if 'id' in sortable_fields %}
-                        <th>
-                            <a href="?sort=id&dir={% if current_sort == 'id' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}&tab={{ active_tab }}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' and key != 'tab' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
-                                Αρ. Αίτησης {% if current_sort == 'id' %}↑{% elif current_sort == '-id' %}↓{% endif %}
-                            </a>
-                        </th>
-                        {% endif %}
                         <th>Υπάλληλος</th>
-                        {% if 'leave_type__name' in sortable_fields %}
-                        <th>
-                            <a href="?sort=leave_type__name&dir={% if current_sort == 'leave_type__name' %}{% if current_dir == 'asc' %}desc{% else %}asc{% endif %}{% else %}asc{% endif %}&tab={{ active_tab }}{% for key, value in query_params.items %}{% if key != 'sort' and key != 'dir' and key != 'tab' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="text-decoration-none">
-                                Τύπος Άδειας {% if current_sort == 'leave_type__name' %}↑{% elif current_sort == '-leave_type__name' %}↓{% endif %}
-                            </a>
-                        </th>
-                        {% endif %}
+                        <th>Είδος Άδειας</th>
                         <th>Ημερομηνίες</th>
                         <th>Ημέρες</th>
+                        <th>Αρ. Πρωτοκόλλου ΠΔΕΔΕ</th>
                         <th>Κατάσταση</th>
-                        {% if 'locking_user' in sortable_fields or True %}
-                        <th>Χειριστής</th>
-                        {% endif %}
                         <th>Ενέργειες</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for lr in leave_requests %}
                     <tr class="{% if lr.locking_user %}table-warning{% endif %}">
-                        <td><strong>#{{ lr.pk }}</strong></td>
                         <td>
                             <div>{{ lr.user.get_full_name }}</div>
                             <small class="text-muted">{{ lr.user.department.name|default:"-" }}</small>
@@ -139,15 +138,15 @@
                                 {% if lr.end_date and lr.start_date != lr.end_date %} - {{ lr.end_date|date:"d/m/Y" }}{% endif %}
                             {% else %}—{% endif %}
                         </td>
-                        <td class="text-center"><span class="badge bg-info">{{ lr.total_days }}</span></td>
-                        <td><span class="badge bg-{{ lr.get_status_display_class }}">{{ lr.get_status_display }}</span></td>
+                        <td class="text-center"><span class="badge bg-info">{{ lr.total_days }} ημέρες</span></td>
                         <td>
-                            {% if lr.locking_user %}
-                                <span class="badge bg-danger"><i class="bi bi-lock"></i> {{ lr.locking_user.get_full_name }}</span>
+                            {% if lr.pdede_protocol_number %}
+                                <span class="badge bg-dark">{{ lr.pdede_protocol_number }}</span>
                             {% else %}
                                 <span class="text-muted">—</span>
                             {% endif %}
                         </td>
+                        <td><span class="badge bg-{{ lr.get_status_display_class }}">{{ lr.get_status_display }}</span></td>
                         <td>
                             {% include 'leaves/includes/action_buttons.html' with actions=lr.actions leave_request=lr %}
                         </td>
@@ -186,4 +185,303 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Modals για Καταχώρηση Πρωτοκόλλου ΠΔΕΔΕ -->
+{% for pdede_req in leave_requests %}
+    {% if pdede_req.status == 'PENDING_PROTOCOL' %}
+    <div class="modal fade" id="pdedeProtocolModal{{ pdede_req.pk }}" tabindex="-1" aria-labelledby="pdedeProtocolModalLabel{{ pdede_req.pk }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="pdedeProtocolModalLabel{{ pdede_req.pk }}">
+                        <i class="bi bi-archive"></i> Καταχώρηση Πρωτοκόλλου ΠΔΕΔΕ
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+                </div>
+                <form method="post" action="{% url 'leaves:send_to_protocol_pdede' pdede_req.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p><strong>Αρ. Αίτησης:</strong> #{{ pdede_req.pk }}</p>
+                        <p><strong>Υπάλληλος:</strong> {{ pdede_req.user.full_name }}</p>
+                        <p><strong>Τμήμα:</strong> {{ pdede_req.user.department.name|default:"—" }}</p>
+                        <p><strong>Τύπος Άδειας:</strong> {{ pdede_req.leave_type.name }}</p>
+                        <p><strong>Περίοδος:</strong> {{ pdede_req.start_date|date:"d/m/Y" }}{% if pdede_req.end_date and pdede_req.start_date != pdede_req.end_date %} - {{ pdede_req.end_date|date:"d/m/Y" }}{% endif %}</p>
+                        <p><strong>Ημέρες:</strong> <span class="badge bg-info">{{ pdede_req.total_days }} ημέρες</span></p>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Πληροφορίες:</strong> Εισάγετε τον αριθμό πρωτοκόλλου ΠΔΕΔΕ/ΣΗΔΕ. Μετά την υποβολή η αίτηση θα προχωρήσει σε κατάσταση "Σε επεξεργασία".
+                        </div>
+                        
+                        <div class="mb-3 mt-3">
+                            <label for="pdede_protocol_number_{{ pdede_req.pk }}" class="form-label fw-bold">Αριθμός Πρωτοκόλλου ΠΔΕΔΕ <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="pdede_protocol_number_{{ pdede_req.pk }}" name="protocol_number"
+                                   placeholder="π.χ. ΠΔΕΔΕ/123/2024" required>
+                            <small class="form-text text-muted">Εισάγετε τον αριθμό πρωτοκόλλου ΠΔΕΔΕ/ΣΗΔΕ</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="pdede_protocol_date_{{ pdede_req.pk }}" class="form-label">Ημερομηνία Πρωτοκόλλου</label>
+                            <input type="date" class="form-control" id="pdede_protocol_date_{{ pdede_req.pk }}" name="protocol_date"
+                                   value="{{ today|date:'Y-m-d' }}">
+                            <small class="form-text text-muted">Αν δεν επιλεγεί, θα χρησιμοποιηθεί η σημερινή</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="pdede_protocol_details_{{ pdede_req.pk }}" class="form-label">Στοιχεία Πρωτοκόλλου</label>
+                            <textarea class="form-control" id="pdede_protocol_details_{{ pdede_req.pk }}" name="protocol_details"
+                                      rows="3" placeholder="Εισάγετε οποιαδήποτε άλλα σχετικά στοιχεία ή σημειώσεις για το πρωτόκολλο..."></textarea>
+                            <small class="form-text text-muted">Οποιαδήποτε επιπλέον πληροφορία ή σημειώσεις</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Ακύρωση
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Καταχώρηση & Προώθηση
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<script>
+(function() {
+    'use strict';
+    // Άνοιγμα modal καταχώρησης Πρωτοκόλλου ΠΔΕΔΕ όταν πατηθεί το κουμπί 'ΚΑΤΑΧΩΡΗΣΗ ΠΡΩΤ.'
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="protocol"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var modal = document.getElementById('pdedeProtocolModal' + pk);
+        if (modal) {
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        }
+    });
+    })();
+</script>
+
+<!-- Modals Απόρριψης Αίτησης -->
+{% for lr in leave_requests %}
+    {% if lr.status == 'PENDING_PROTOCOL' or lr.status == 'IN_REVIEW' or lr.status == 'WAITING_FOR_DOCUMENTS' %}
+    <div class="modal fade" id="rejectModal{{ lr.pk }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ lr.pk }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="rejectModalLabel{{ lr.pk }}">
+                        <i class="bi bi-x-circle"></i> Απόρριψη Αίτησης
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+                </div>
+                <form method="post" action="{% url 'leaves:reject_leave_request_by_handler' lr.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p><strong>Αρ. Αίτησης:</strong> #{{ lr.pk }}</p>
+                        <p><strong>Υπάλληλος:</strong> {{ lr.user.full_name }}</p>
+                        <p><strong>Τύπος Άδειας:</strong> {{ lr.leave_type.name }}</p>
+                        <p><strong>Περίοδος:</strong> {{ lr.start_date|date:"d/m/Y" }}{% if lr.end_date and lr.start_date != lr.end_date %} - {{ lr.end_date|date:"d/m/Y" }}{% endif %}</p>
+                        <p><strong>Ημέρες:</strong> {{ lr.total_days }}</p>
+                        <p><strong>Κατάσταση:</strong> <span class="badge bg-{{ lr.get_status_display_class }}">{{ lr.get_status_display }}</span></p>
+                        
+                        <div class="alert alert-danger mt-3">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Προσοχή:</strong> Η απόρριψη είναι μόνιμη και δεν μπορεί να αναιρεθεί.
+                        </div>
+                        
+                        <div class="mb-3 mt-3">
+                            <label for="reject_reason_{{ lr.pk }}" class="form-label fw-bold">Λόγος Απόρριψης <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="reject_reason_{{ lr.pk }}" name="reason" rows="3" required
+                                      placeholder="Παρακαλώ συμπληρώστε τον λόγο απόρριψης..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Ακύρωση
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i> Απόρριψη Αίτησης
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<!-- Modal Παροχής Δικαιολογητικών (για WAITING_FOR_DOCUMENTS) -->
+{% for lr in leave_requests %}
+    {% if lr.status == 'WAITING_FOR_DOCUMENTS' %}
+    <div class="modal fade" id="provideDocsModal{{ lr.pk }}" tabindex="-1" aria-labelledby="provideDocsModalLabel{{ lr.pk }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="provideDocsModalLabel{{ lr.pk }}">
+                        <i class="bi bi-file-earmark-check"></i> Παροχή Δικαιολογητικών
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+                </div>
+                <form method="post" action="{% url 'leaves:provide_documents' lr.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p><strong>Αρ. Αίτησης:</strong> #{{ lr.pk }}</p>
+                        <p><strong>Υπάλληλος:</strong> {{ lr.user.full_name }}</p>
+                        <p><strong>Τύπος Άδειας:</strong> {{ lr.leave_type.name }}</p>
+                        <p><strong>Περίοδος:</strong> {{ lr.start_date|date:"d/m/Y" }}{% if lr.end_date and lr.start_date != lr.end_date %} - {{ lr.end_date|date:"d/m/Y" }}{% endif %}</p>
+                        <p><strong>Ημέρες:</strong> {{ lr.total_days }}</p>
+                        {% if lr.required_documents %}
+                        <p><strong>Απαιτούμενα Δικαιολογητικά:</strong> {{ lr.required_documents }}</p>
+                        {% endif %}
+                        {% if lr.documents_deadline %}
+                        <p><strong>Προθεσμία:</strong> {{ lr.documents_deadline|date:"d/m/Y H:i" }}</p>
+                        {% endif %}
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle"></i>
+                            Η ειδοποίηση έχει σταλεί στον υπάλληλο. Μετά την παροχή των δικαιολογητικών, η αίτηση θα προχωρήσει στο επόμενο στάδιο.
+                        </div>
+                        
+                        <div class="mb-3 mt-3">
+                            <label for="notes_{{ lr.pk }}" class="form-label">Σημειώσεις (προαιρετικά)</label>
+                            <textarea class="form-control" id="notes_{{ lr.pk }}" name="notes" rows="3"
+                                      placeholder="Εισάγετε τυχόν σημειώσεις σχετικά με την παροχή των δικαιολογητικών..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Ακύρωση
+                        </button>
+                        <button type="submit" class="btn btn-info">
+                            <i class="bi bi-check-circle"></i> Παροχή & Προώθηση
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<!-- Modal Επιστροφής στον Αιτούντα (για WAITING_FOR_DOCUMENTS) -->
+{% for lr in leave_requests %}
+    {% if lr.status == 'WAITING_FOR_DOCUMENTS' %}
+    <div class="modal fade" id="returnModal{{ lr.pk }}" tabindex="-1" aria-labelledby="returnModalLabel{{ lr.pk }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="returnModalLabel{{ lr.pk }}">
+                        <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+                </div>
+                <form method="post" action="{% url 'leaves:return_leave_to_employee' lr.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p><strong>Αρ. Αίτησης:</strong> #{{ lr.pk }}</p>
+                        <p><strong>Υπάλληλος:</strong> {{ lr.user.full_name }}</p>
+                        <p><strong>Τύπος Άδειας:</strong> {{ lr.leave_type.name }}</p>
+                        <p><strong>Περίοδος:</strong> {{ lr.start_date|date:"d/m/Y" }}{% if lr.end_date and lr.start_date != lr.end_date %} - {{ lr.end_date|date:"d/m/Y" }}{% endif %}</p>
+                        <p><strong>Ημέρες:</strong> {{ lr.total_days }}</p>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <i class="bi bi-exclamation-circle"></i>
+                            Η ειδοποίηση έχει σταλεί στον υπάλληλο και στην αίτηση επιστρέφει για διόρθωση ή συμπλήρωση.
+                        </div>
+                        
+                        <div class="mb-3 mt-3">
+                            <label for="return_notes_{{ lr.pk }}" class="form-label fw-bold">Αιτιολογία Επιστροφής <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="return_notes_{{ lr.pk }}" name="return_notes" rows="3" required
+                                      placeholder="Εισάγετε τον λόγο επιστροφής και ό,τι χρειάζεται να διορθώσει ο υπάλληλος..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x"></i> Ακύρωση
+                        </button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<script>
+(function() {
+    'use strict';
+    // Άνοιγμα modal απόρριψης όταν πατηθεί το κουμπί 'ΑΠΟΡΡΙΨΗ'
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="reject"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var modal = document.getElementById('rejectModal' + pk);
+        if (modal) {
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        }
+    });
+
+    // Άνοιγμα modal για παροχή δικαιολογητικών όταν πατηθεί το κουμπί 'ΠΑΡΟΧΗ ΔΙΚ/ΚΩΝ'
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="upload_docs"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var modal = document.getElementById('provideDocsModal' + pk);
+        if (modal) {
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        }
+    });
+
+    // Άνοιγμα modal για επιστροφή στον αιτούντα όταν πατηθεί το κουμπί 'ΕΠΙΣΤΡΟΦΗ'
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="return"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var modal = document.getElementById('returnModal' + pk);
+        if (modal) {
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        }
+    });
+
+    // Άνοιγμα modal καταχώρησης Πρωτοκόλλου ΠΔΕΔΕ όταν πατηθεί το κουμπί 'ΚΑΤΑΧΩΡΗΣΗ ΠΡΩΤ.'
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="protocol"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var modal = document.getElementById('pdedeProtocolModal' + pk);
+        if (modal) {
+            var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+            bsModal.show();
+        }
+    });
+
+    // Άνοιγμα σελίδας για παροχή δικαιολογητικών (σελίδα επιβεβαίωσης, όχι modal)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="provide_documents"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        var url = btn.getAttribute('data-url');
+        if (url) {
+            window.location.href = url;
+        }
+    });
+})();
+</script>
+
 {% endblock %}

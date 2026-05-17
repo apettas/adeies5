@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Παροχή Δικαιολογητικών{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-file-earmark-check"></i> Παροχή Δικαιολογητικών</h5>
+        </div>
+        <div class="card-body">
+            <p>Είστε σίγουρος ότι θέλετε να σημειώσετε την παροχή δικαιολογητικών για την ακόλουθη αίτηση;</p>
+            <ul>
+                <li><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</li>
+                <li><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</li>
+                <li><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</li>
+                <li><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }}{% if leave_request.end_date and leave_request.start_date != leave_request.end_date %} - {{ leave_request.end_date|date:"d/m/Y" }}{% endif %}</li>
+                <li><strong>Ημέρες:</strong> {{ leave_request.total_days }}</li>
+                {% if leave_request.required_documents %}
+                <li><strong>Απαιτούμενα Δικαιολογητικά:</strong> {{ leave_request.required_documents }}</li>
+                {% endif %}
+                {% if leave_request.documents_deadline %}
+                <li><strong>Προθεσμία:</strong> {{ leave_request.documents_deadline|date:"d/m/Y H:i" }}</li>
+                {% endif %}
+            </ul>
+            <div class="mb-3">
+                <label for="notes" class="form-label">Σημειώσεις (προαιρετικά)</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3"
+                          placeholder="Εισάγετε τυχόν σημειώσεις σχετικά με την παροχή των δικαιολογητικών..."></textarea>
+            </div>
+            <p class="text-info"><i class="bi bi-info-circle"></i> Με την επιβεβαίωση, η αίτηση θα προχωρήσει στο επόμενο στάδιο επεξεργασίας.</p>
+            <hr>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-x"></i> Ακύρωση
+                </a>
+                <button type="submit" class="btn btn-info">
+                    <i class="bi bi-check-circle"></i> Παροχή Δικαιολογητικών & Προώθηση
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

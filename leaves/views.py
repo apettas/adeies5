@@ -1,3 +1,4 @@
+from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -500,7 +501,7 @@ def approve_leave_request(request, pk):
             
             # Ειδοποίηση στους χειριστές αδειών
             from accounts.models import User
-            leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+            leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
             for handler in leave_handlers:
                 create_notification(
                     user=handler,
@@ -593,19 +594,20 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
     
     def get_queryset(self):
         queryset = LeaveRequest.objects.filter(
-            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
         ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
         
         # Filter by active tab
         tab = self.request.GET.get('tab', 'all')
         tab_filters = {
-            'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED'],
+            'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT'],
             'protocol': ['PENDING_PROTOCOL'],
             'processing': ['IN_REVIEW'],
             'documents': ['WAITING_FOR_DOCUMENTS'],
             'decision': ['DECISION_PREPARATION'],
             'signatures': ['PENDING_SIGNATURES'],
             'completed': ['COMPLETED'],
+            'rejected': ['REJECTED_BY_LEAVES_DEPT'],
         }
         if tab in tab_filters:
             queryset = LeaveRequest.objects.filter(
@@ -635,7 +637,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         
         # Tab counts
         all_active = LeaveRequest.objects.filter(
-            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
         )
         context['tab_counts'] = {
             'all': all_active.count(),
@@ -645,6 +647,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             'decision': LeaveRequest.objects.filter(status='DECISION_PREPARATION').count(),
             'signatures': LeaveRequest.objects.filter(status='PENDING_SIGNATURES').count(),
             'completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
+            'rejected': LeaveRequest.objects.filter(status='REJECTED_BY_LEAVES_DEPT').count(),
         }
         
         # Stats
@@ -656,6 +659,11 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             ).count(),
             'total_completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
         })
+        
+        # Αιτήσεις για Πρωτόκολλο ΠΔΕΔΕ (όλες, για τα modals)
+        context['pdede_pending_requests'] = LeaveRequest.objects.filter(
+            status='PENDING_PROTOCOL'
+        ).select_related('user', 'user__department', 'leave_type').order_by('-submitted_at')
         
         return context
 
@@ -885,8 +893,18 @@ def reject_leave_request_by_handler(request, pk):
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
+    # Έλεγχος αν η αίτηση μπορεί να απορριφθεί από handler
+    if leave_request.status not in ['PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
+                                     'DECISION_PREPARATION', 'PENDING_SIGNATURES']:
+        messages.error(request, 'Η αίτηση δεν μπορεί να απορριφθεί σε αυτή τη φάση.')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+    
     if request.method == 'POST':
-        reason = request.POST.get('reason', '')
+        reason = request.POST.get('reason', '').strip()
+        
+        if not reason:
+            messages.error(request, 'Παρακαλώ συμπληρώστε τον λόγο απόρριψης.')
+            return render(request, 'leaves/reject_confirm.html', {'leave_request': leave_request})
         
         try:
             leave_request.reject_by_handler(request.user, reason)
@@ -899,17 +917,29 @@ def reject_leave_request_by_handler(request, pk):
                 related_object=leave_request
             )
             
+            # Ειδοποίηση στον προϊστάμενο
+            if leave_request.manager_approved_by:
+                create_notification(
+                    user=leave_request.manager_approved_by,
+                    title="Αίτηση Απορρίφθηκε από Χειριστή",
+                    message=f"Η αίτηση του/της {leave_request.user.full_name} για {leave_request.leave_type.name} απορρίφθηκε από τον χειριστή αδειών",
+                    related_object=leave_request
+                )
+            
             messages.success(request, 'Η αίτηση απορρίφθηκε επιτυχώς!')
+            return redirect('leaves:handler_dashboard')
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την απόρριψη: {str(e)}')
+            return render(request, 'leaves/reject_confirm.html', {'leave_request': leave_request})
     
-    return redirect('leaves:handler_dashboard')
+    # GET: Εμφάνιση σελίδας επιβεβαίωσης απόρριψης
+    return render(request, 'leaves/reject_confirm.html', {'leave_request': leave_request})
 
 
 @login_required
 def send_to_protocol_pdede(request, pk):
-    """Στέλνει την αίτηση για πρωτόκολλο στο ΣΗΔΕ"""
+    """Αποθήκευση στοιχείων ΠΔΕΔΕ/ΣΗΔΕ πρωτοκόλλου και προώθηση σε επεξεργασία"""
     if not request.user.is_leave_handler:
         raise PermissionDenied("Δεν έχετε δικαίωμα επεξεργασίας.")
     
@@ -920,17 +950,54 @@ def send_to_protocol_pdede(request, pk):
         return redirect('leaves:handler_dashboard')
     
     if request.method == 'POST':
+        protocol_number = request.POST.get('protocol_number', '').strip()
+        protocol_date_str = request.POST.get('protocol_date', '').strip()
+        
+        if not protocol_number:
+            messages.error(request, 'Παρακαλώ συμπληρώστε τον αριθμό πρωτοκόλλου ΠΔΕΔΕ.')
+            return redirect('leaves:handler_dashboard')
+        
         try:
-            # Αλλαγή status σε FOR_PROTOCOL_PDEDE
-            leave_request.status = 'PENDING_PROTOCOL'
+            # Μετατροπή ημερομηνίας (πεδίο date type=date επιστρέφει YYYY-MM-DD)
+            from datetime import datetime
+            protocol_date = None
+            if protocol_date_str:
+                protocol_date = datetime.strptime(protocol_date_str, '%Y-%m-%d').date()
+                # Μετατροπή σε datetime τοπικής ώρας
+                protocol_date = datetime.combine(protocol_date, datetime.min.time())
+                protocol_date = timezone.make_aware(protocol_date)
+            
+            # Αποθήκευση στοιχείων ΠΔΕΔΕ
+            protocol_details = request.POST.get('protocol_details', '').strip()
+            leave_request.save_pdede_protocol_details(
+                protocol_number=protocol_number,
+                protocol_date=protocol_date,
+                protocol_details=protocol_details,
+                user=request.user
+            )
+            
+            # Αλλαγή status σε IN_REVIEW για να προχωρήσει στην επεξεργασία
+            leave_request.status = 'IN_REVIEW'
             leave_request.save()
             
-            # Ειδοποίηση στον υπάλληλο (προσωρινά απενεργοποιημένη)
+            # Δημιουργία ιστορικού
+            try:
+                from .models import LeaveRequestHistory
+                LeaveRequestHistory.objects.create(
+                    leave_request=leave_request,
+                    action='PDEDE_PROTOCOL_SUBMITTED',
+                    user=request.user,
+                    notes=f'Αποστολή για ΠΔΕΔΕ πρωτόκολλο. Αρ. Πρωτ: {protocol_number}'
+                )
+            except Exception:
+                pass
+            
+            # Ειδοποίηση στον υπάλληλο
             try:
                 create_notification(
                     user=leave_request.user,
-                    title="Αίτηση στάλθηκε για Πρωτόκολλο",
-                    message=f"Η αίτησή σας για {leave_request.leave_type.name} στάλθηκε στο ΣΗΔΕ για πρωτοκόλληση",
+                    title="Αίτηση προχώρησε σε επεξεργασία",
+                    message=f"Η αίτησή σας για {leave_request.leave_type.name} καταχωρήθηκε με αριθμό πρωτοκόλλου ΠΔΕΔΕ {protocol_number} και προχωρά σε επεξεργασία.",
                     related_object=leave_request
                 )
             except Exception as notification_error:
@@ -938,7 +1005,7 @@ def send_to_protocol_pdede(request, pk):
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Notification error in send_to_protocol_pdede: {notification_error}")
             
-            messages.success(request, 'Η αίτηση στάλθηκε επιτυχώς για πρωτόκολλο στο ΣΗΔΕ!')
+            messages.success(request, f'Η αίτηση καταχωρήθηκε με αριθμό πρωτοκόλλου ΠΔΕΔΕ {protocol_number} και προχωρά σε επεξεργασία!')
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την αποστολή: {str(e)}')
@@ -1424,7 +1491,7 @@ def submit_final_request(request):
                         )
                 else:
                     # Παράκαμψη προϊσταμένου - ειδοποίηση χειριστών αδειών
-                    leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+                    leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
                     for handler in leave_handlers:
                         create_notification(
                             user=handler,
@@ -1522,7 +1589,6 @@ def submit_final_request(request):
 @login_required
 def download_leave_pdf(request, request_id):
     """Download PDF for a leave request"""
-    from django.http import HttpResponse, Http404
     from django.conf import settings
     import os
     
@@ -1686,7 +1752,7 @@ def withdraw_leave_request(request, pk):
                 )
             
             # Ειδοποίηση στους χειριστές αδειών
-            leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+            leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
             for handler in leave_handlers:
                 create_notification(
                     user=handler,
@@ -1696,11 +1762,14 @@ def withdraw_leave_request(request, pk):
                 )
             
             messages.success(request, 'Η αίτηση ανακλήθηκε επιτυχώς!')
+            return redirect('leaves:employee_dashboard')
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την ανάκληση: {str(e)}')
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
     
-    return redirect('leaves:employee_dashboard')
+    # GET: Εμφάνιση σελίδας επιβεβαίωσης
+    return render(request, 'leaves/withdraw_confirm.html', {'leave_request': leave_request})
 
 
 @login_required
@@ -1755,7 +1824,7 @@ def add_kedasy_kepea_protocol(request, pk):
             )
             
             # Ειδοποίηση στους χειριστές αδειών
-            leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+            leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
             for handler in leave_handlers:
                 create_notification(
                     user=handler,
@@ -1865,10 +1934,10 @@ def provide_documents(request, pk):
     # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
     if leave_request.status != 'WAITING_FOR_DOCUMENTS':
         messages.error(request, 'Η αίτηση δεν είναι σε αναμονή δικαιολογητικών.')
-        return redirect('leaves:handler_dashboard')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
     
     if request.method == 'POST':
-        notes = request.POST.get('notes', '')
+        notes = request.POST.get('notes', '').strip()
         
         try:
             # Παροχή δικαιολογητικών
@@ -1895,11 +1964,59 @@ def provide_documents(request, pk):
                 )
             
             messages.success(request, 'Τα δικαιολογητικά παρασχέθηκαν επιτυχώς!')
+            return redirect('leaves:handler_dashboard')
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την παροχή δικαιολογητικών: {str(e)}')
     
-    return redirect('leaves:handler_dashboard')
+    # GET: Εμφάνιση σελίδας επιβεβαίωσης παροχής δικαιολογητικών
+    return render(request, 'leaves/provide_documents_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def return_leave_to_employee(request, pk):
+    """Επιστροφή αίτησης στον αιτούντα για διόρθωση"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα επιστροφής αίτησης.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
+    if leave_request.status not in ['WAITING_FOR_DOCUMENTS', 'IN_REVIEW']:
+        messages.error(request, 'Η αίτηση δεν μπορεί να επιστραφεί σε αυτή τη φάση.')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+    
+    if request.method == 'POST':
+        return_notes = request.POST.get('return_notes', '').strip()
+        
+        if not return_notes:
+            messages.error(request, 'Παρακαλώ συμπληρώστε την αιτιολογία επιστροφής.')
+            return render(request, 'leaves/return_to_employee.html', {'leave_request': leave_request})
+        
+        try:
+            # Επιστροφή αίτησης στον αιτούντα σε κατάσταση WAITING_FOR_DOCUMENTS
+            leave_request.status = 'WAITING_FOR_DOCUMENTS'
+            leave_request.return_notes = return_notes
+            leave_request.returned_by = request.user
+            leave_request.returned_at = timezone.now()
+            leave_request.save()
+            
+            # Ειδοποίηση στον υπάλληλο
+            create_notification(
+                user=leave_request.user,
+                title="Αίτηση Επιστράφηκε για Διόρθωση",
+                message=f"Η αίτησή σας για {leave_request.leave_type.name} επιστράφηκε από τον χειριστή αδειών για διόρθωση ή συμπλήρωση.",
+                related_object=leave_request
+            )
+            
+            messages.success(request, 'Η αίτηση επιστράφηκε στον αιτούντα για διόρθωση!')
+            return redirect('leaves:handler_dashboard')
+            
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά την επιστροφή της αίτησης: {str(e)}')
+    
+    # GET: Εμφάνιση σελίδας επιβεβαίωσης επιστροφής
+    return render(request, 'leaves/return_to_employee.html', {'leave_request': leave_request})
 
 
 @login_required

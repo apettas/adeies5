@@ -172,7 +172,14 @@ class LeaveRequest(models.Model):
     kedasy_kepea_protocol_date = models.DateTimeField('Ημερομηνία Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ', null=True, blank=True)
     kedasy_kepea_protocol_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                                related_name='kedasy_kepea_protocols', verbose_name='Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ από')
-    
+
+    # Πρωτόκολλο ΠΔΕΔΕ/ΣΗΔΕ (για τον χειριστή αδειών)
+    pdede_protocol_number = models.CharField('Αριθμός Πρωτοκόλλου ΠΔΕΔΕ', max_length=100, blank=True)
+    pdede_protocol_date = models.DateTimeField('Ημερομηνία Πρωτοκόλλου ΠΔΕΔΕ', null=True, blank=True)
+    pdede_protocol_details = models.TextField('Στοιχεία Πρωτοκόλλου ΠΔΕΔΕ', blank=True)
+    pdede_protocol_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name='pdede_protocols', verbose_name='Πρωτοκολλήθηκε από (ΠΔΕΔΕ)')
+
     # Επεξεργασία από χειριστή
     protocol_number = models.CharField('Αριθμός Πρωτοκόλλου', max_length=100, blank=True)
     protocol_pdf_path = models.CharField('Διαδρομή Πρωτοκολλημένου PDF', max_length=500, blank=True)
@@ -289,7 +296,7 @@ class LeaveRequest(models.Model):
     @property
     def can_be_processed(self):
         """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί από χειριστή"""
-        return self.status in ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS']
+        return self.status in ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
     
     @property
     def is_pending(self):
@@ -435,7 +442,7 @@ class LeaveRequest(models.Model):
     
     def reject_by_handler(self, handler, reason):
         """Απόρριψη από χειριστή"""
-        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
+        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS']:
             self.status = 'REJECTED_BY_LEAVES_DEPT'
             self.rejected_by = handler
             self.rejected_at = timezone.now()
@@ -626,17 +633,18 @@ class LeaveRequest(models.Model):
             actions.extend(['approve', 'reject'])
         
         if user.is_leave_handler and self.can_be_processed:
-            actions.extend(['process', 'reject'])
-            # Εάν η αίτηση είναι εγκεκριμένη ή για πρωτόκολλο, μπορεί να ζητηθούν δικαιολογητικά
-            if self.status in ['PENDING_PROTOCOL']:
-                actions.append('request_documents')
-        
-        if user.is_leave_handler and self.status == 'WAITING_FOR_DOCUMENTS':
-            actions.extend(['provide_documents', 'reject'])
+            if self.status == 'PENDING_PROTOCOL':
+                actions.extend(['reject', 'request_documents'])
         
         if user.is_leave_handler and self.status == 'IN_REVIEW':
-            actions.append('complete')
+            actions.extend(['complete', 'reject', 'return'])
         
+        if user.is_leave_handler and self.status == 'WAITING_FOR_DOCUMENTS':
+            actions.extend(['upload_docs', 'return', 'reject'])
+        
+        if user.is_leave_handler and self.status in ['DECISION_PREPARATION', 'PENDING_SIGNATURES']:
+            actions.append('reject')
+
         return actions
     
     def is_kedasy_kepea_department(self):
@@ -695,6 +703,16 @@ class LeaveRequest(models.Model):
         
         return False
     
+    def save_pdede_protocol_details(self, protocol_number, protocol_date, protocol_details='', user=None):
+        """Αποθήκευση στοιχείων ΠΔΕΔΕ/ΣΗΔΕ πρωτοκόλλου"""
+        self.pdede_protocol_number = protocol_number
+        self.pdede_protocol_date = protocol_date
+        self.pdede_protocol_details = protocol_details
+        if user:
+            self.pdede_protocol_by = user
+        self.save()
+        return True
+
     def add_kedasy_kepea_protocol(self, protocol_number, protocol_date, user):
         """Προσθήκη πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ"""
         if not self.can_add_kedasy_kepea_protocol(user):

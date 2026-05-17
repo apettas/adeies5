@@ -121,6 +121,7 @@ def get_available_actions(leave_request, user):
         if status == 'PENDING_PROTOCOL':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('protocol', 'ΚΑΤΑΧΩΡΗΣΗ ΠΡΩΤ.', None))
+            actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
         elif status == 'IN_REVIEW':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('documents', 'ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ', None))
@@ -128,8 +129,9 @@ def get_available_actions(leave_request, user):
             actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', None))
         elif status == 'WAITING_FOR_DOCUMENTS':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
-            actions.append(('upload_docs', 'UPLOAD ΔΙΚ/ΚΩΝ', None))
-            actions.append(('return', 'ΕΠΙΣΤΡΟΦΗ', None))
+            actions.append(('upload_docs', 'ΠΑΡΟΧΗ ΔΙΚ/ΚΩΝ', f'leaves:provide_documents'))
+            actions.append(('return', 'ΕΠΙΣΤΡΟΦΗ', f'leaves:return_leave_to_employee'))
+            actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
         elif status == 'DECISION_PREPARATION':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('edit_decision', 'ΕΠΕΞΕΡΓΑΣΙΑ', None))
