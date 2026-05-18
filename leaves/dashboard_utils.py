@@ -98,6 +98,10 @@ def get_available_actions(leave_request, user):
     Returns: [(action_code, label, url_name_or_None), ...]
     """
     actions = []
+    
+    if not leave_request:
+        return actions
+    
     status = leave_request.status
     is_owner = leave_request.user == user
     is_handler = user.is_leave_handler

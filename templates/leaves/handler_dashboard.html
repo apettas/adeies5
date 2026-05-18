@@ -64,48 +64,41 @@
     </li>
 </ul>
 
-<!-- Filter bar -->
-{% include 'leaves/includes/filter_bar.html' %}
-
-<!-- Stats -->
+<!-- Υπόλοιπο Κανονικών Αδειών (Χειριστή) -->
+{% if handler_leave_balance is not None and handler_regular_balance is not None %}
 <div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-hourglass-split fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ pending_processing }}</h5>
-                <small class="text-muted">Σε Εκκρεμότητα</small>
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Υπόλοιπο Κανονικών Αδειών (Χειριστής)</h5>
             </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center bg-success bg-opacity-10">
             <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ processed_this_month }}</h5>
-                <small class="text-muted">Ολοκληρώθηκαν Μήνα</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center bg-light">
-            <div class="card-body">
-                <i class="bi bi-archive fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_completed }}</h5>
-                <small class="text-muted">Σύνολο Ολοκληρωμένων</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-center bg-danger bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-x-circle fs-3 text-danger"></i>
-                <h5 class="mt-2">{{ tab_counts.rejected }}</h5>
-                <small class="text-muted">Απορριφθείσες</small>
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h2 class="text-primary">{{ handler_regular_balance|default:0 }}</h2>
+                        <small class="text-muted">Τρέχον Υπόλοιπο</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-success">{{ handler_current_year_days|default:0 }}</h2>
+                        <small class="text-muted">Τρέχον Έτος</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-info">{{ handler_carryover_days|default:0 }}</h2>
+                        <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h2 class="text-secondary">{{ handler_annual_entitlement|default:0 }}</h2>
+                        <small class="text-muted">Ετήσιο Δικαίωμα</small>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
+
+<!-- Filter bar -->
+{% include 'leaves/includes/filter_bar.html' %}
 
 <!-- Leave requests table -->
 {% if leave_requests %}
@@ -480,6 +473,60 @@
         if (url) {
             window.location.href = url;
         }
+    });
+
+    // Άνοιγμα σελίδας Ετοιμασία Απόφασης (IN_REVIEW)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="decision"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/decision/prepare/' + pk + '/';
+    });
+
+    // Άνοιγμα σελίδας Επεξεργασία Απόφασης (DECISION_PREPARATION)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="edit_decision"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/decision/prepare/' + pk + '/';
+    });
+
+    // Άνοιγμα σελίδας Προς Υπογραφές (DECISION_PREPARATION)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="send_signatures"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/decision/generate/?leave_request=' + pk;
+    });
+
+    // Άνοιγμα σελίδας Upload Τελικής (PENDING_SIGNATURES)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="upload_final"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/complete-final/' + pk + '/';
+    });
+
+    // Άνοιγμα σελίδας για αίτημα δικαιολογητικών (IN_REVIEW - κουμπί ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="documents"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/request-documents/' + pk + '/';
+    });
+
+    // Κουμπί ΟΛΟΚΛΗΡΩΣΗ (PENDING_SIGNATURES)
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-action="complete"]');
+        if (!btn) return;
+        var pk = btn.getAttribute('data-pk');
+        if (!pk) return;
+        window.location.href = '/leaves/complete-final/' + pk + '/';
     });
 })();
 </script>

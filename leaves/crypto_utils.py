@@ -277,7 +277,9 @@ class SecureFileHandler:
             'pdf': 'application/pdf',
             'jpg': 'image/jpeg',
             'jpeg': 'image/jpeg',
-            'png': 'image/png'
+            'png': 'image/png',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         }
         
         return content_types.get(extension, 'application/octet-stream')

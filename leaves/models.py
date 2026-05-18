@@ -101,7 +101,7 @@ def secure_file_path(instance, filename):
 class SecureFile(models.Model):
     """Κρυπτογραφημένο αρχείο"""
     
-    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg']
+    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB per workflow.txt
     
     leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='attachments')
@@ -199,6 +199,12 @@ class LeaveRequest(models.Model):
                                   related_name='rejected_leaves', verbose_name='Απορρίφθηκε από')
     rejected_at = models.DateTimeField('Ημερομηνία Απόρριψης', null=True, blank=True)
     rejection_reason = models.TextField('Λόγος Απόρριψης', blank=True)
+    
+    # Επιστροφή στον αιτούντα
+    return_notes = models.TextField('Σημειώσεις Επιστροφής', blank=True)
+    returned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='returned_leaves', verbose_name='Επιστράφηκε από')
+    returned_at = models.DateTimeField('Ημερομηνία Επιστροφής', null=True, blank=True)
     
     # Notifications
     notifications = GenericRelation(Notification)

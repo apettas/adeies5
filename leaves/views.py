@@ -650,15 +650,15 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             'rejected': LeaveRequest.objects.filter(status='REJECTED_BY_LEAVES_DEPT').count(),
         }
         
-        # Stats
-        context.update({
-            'pending_processing': all_active.count(),
-            'processed_this_month': LeaveRequest.objects.filter(
-                status='COMPLETED',
-                processed_at__month=timezone.now().month
-            ).count(),
-            'total_completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
-        })
+
+        
+        # Υπόλοιπο Κανονικών Αδειών του χειριστή
+        handler_user = self.request.user
+        context['handler_leave_balance'] = handler_user.leave_balance
+        context['handler_carryover_days'] = handler_user.carryover_leave_days
+        context['handler_current_year_days'] = handler_user.current_year_leave_balance
+        context['handler_annual_entitlement'] = handler_user.annual_leave_entitlement
+        context['handler_regular_balance'] = handler_user.current_regular_leave_balance
         
         # Αιτήσεις για Πρωτόκολλο ΠΔΕΔΕ (όλες, για τα modals)
         context['pdede_pending_requests'] = LeaveRequest.objects.filter(
