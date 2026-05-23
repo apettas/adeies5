@@ -1,0 +1,36 @@
+{% comment %}
+Πεδία επισύναψης αρχείων με υποχρεωτική περιγραφή αν υπάρχει αρχείο.
+Παράμετροι: container_id (προαιρετικό, default attachments-container)
+{% endcomment %}
+<div class="mb-3" id="{% if container_id %}{{ container_id }}{% else %}attachments-container{% endif %}">
+    <label class="form-label">
+        <i class="bi bi-paperclip"></i> Συνημμένα Δικαιολογητικά
+    </label>
+    <p class="form-text text-muted mb-2">
+        Επισυνάψτε τα δικαιολογητικά που παρασχέθηκαν. Για κάθε αρχείο απαιτείται περιγραφή.
+        Μέγιστο μέγεθος: 5MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG.
+    </p>
+    <div class="attachment-group mb-3" data-index="1">
+        <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input"
+               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <div class="file-error alert alert-danger mt-2" style="display: none;">
+            <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+        </div>
+        <div class="mt-2">
+            <label for="attachment_description_1" class="form-label">
+                <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1
+            </label>
+            <textarea name="attachment_description_1" id="attachment_description_1"
+                      class="form-control attachment-description" rows="2"
+                      placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+        </div>
+        <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
+            <i class="bi bi-trash"></i> Αφαίρεση
+        </button>
+    </div>
+    <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-success btn-sm add-attachment-btn">
+            <i class="bi bi-plus-circle"></i> Προσθήκη Επιπλέον Συνημμένου
+        </button>
+    </div>
+</div>

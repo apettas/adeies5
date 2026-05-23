@@ -320,7 +320,7 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
                 </div>
-                <form method="post" action="{% url 'leaves:provide_documents' lr.pk %}">
+                <form method="post" action="{% url 'leaves:provide_documents' lr.pk %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="modal-body">
                         <p><strong>Αρ. Αίτησης:</strong> #{{ lr.pk }}</p>
@@ -338,6 +338,20 @@
                         <div class="alert alert-info mt-3">
                             <i class="bi bi-info-circle"></i>
                             Η ειδοποίηση έχει σταλεί στον υπάλληλο. Μετά την παροχή των δικαιολογητικών, η αίτηση θα προχωρήσει στο επόμενο στάδιο.
+                        </div>
+
+                        <p class="small text-muted mb-2">
+                            Για πλήρη φόρμα με πολλαπλά συνημμένα,
+                            <a href="{% url 'leaves:provide_documents' lr.pk %}">ανοίξτε τη σελίδα παροχής δικαιολογητικών</a>.
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-paperclip"></i> Συνημμένο (προαιρετικό)</label>
+                            <input type="file" name="attachment_1" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <label for="attachment_description_1_{{ lr.pk }}" class="form-label mt-2">Περιγραφή συνημμένου</label>
+                            <textarea name="attachment_description_1" id="attachment_description_1_{{ lr.pk }}"
+                                      class="form-control" rows="2"
+                                      placeholder="Υποχρεωτική αν επισυνάψετε αρχείο"></textarea>
                         </div>
                         
                         <div class="mb-3 mt-3">
@@ -499,7 +513,7 @@
         if (!btn) return;
         var pk = btn.getAttribute('data-pk');
         if (!pk) return;
-        window.location.href = '/leaves/decision/generate/?leave_request=' + pk;
+        window.location.href = '/leaves/decision/send-signatures/' + pk + '/';
     });
 
     // Άνοιγμα σελίδας Upload Τελικής (PENDING_SIGNATURES)
@@ -508,7 +522,7 @@
         if (!btn) return;
         var pk = btn.getAttribute('data-pk');
         if (!pk) return;
-        window.location.href = '/leaves/complete-final/' + pk + '/';
+        window.location.href = '/leaves/detail/' + pk + '/#exact-copy-upload';
     });
 
     // Άνοιγμα σελίδας για αίτημα δικαιολογητικών (IN_REVIEW - κουμπί ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ)

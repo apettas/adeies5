@@ -53,18 +53,26 @@
                         <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
+                        {% if leave_request.status == 'PENDING_PROTOCOL' or leave_request.status == 'IN_REVIEW' %}
+                            <a href="{% url 'leaves:request_documents' leave_request.pk %}" class="btn btn-warning">
+                                <i class="bi bi-file-earmark-excel"></i> Αναμονή Δικαιολογητικών
+                            </a>
+                        {% endif %}
                         {% if leave_request.status == 'IN_REVIEW' %}
                             <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
                                 <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
                             </a>
-                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
-                                <i class="bi bi-arrow-return-left"></i> Επιστροφή στον Αιτούντα
+                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
+                                <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
                             </button>
                         {% endif %}
                         {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
                             <a href="{% url 'leaves:provide_documents' leave_request.pk %}" class="btn btn-info">
                                 <i class="bi bi-file-earmark-check"></i> Παροχή Δικ/κων
                             </a>
+                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
+                                <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
+                            </button>
                         {% endif %}
                         {% if leave_request.has_decision_pdf %}
                             <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}" class="btn btn-info" target="_blank">
@@ -198,6 +206,50 @@
                     <div class="col-12">
                         <strong>Περιγραφή/Αιτιολογία:</strong>
                         <p class="mt-2">{{ leave_request.description }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-warning mt-2">
+                            <h6 class="alert-heading"><i class="bi bi-file-earmark-excel"></i> Αναμονή Δικαιολογητικών</h6>
+                            {% if leave_request.required_documents %}
+                            <p class="mb-1"><strong>Απαιτούνται:</strong></p>
+                            <p class="mb-2">{{ leave_request.required_documents|linebreaks }}</p>
+                            {% endif %}
+                            {% if leave_request.documents_deadline %}
+                            <p class="mb-1"><strong>Προθεσμία:</strong> {{ leave_request.documents_deadline|date:"d/m/Y H:i" }}</p>
+                            {% endif %}
+                            {% if leave_request.documents_requested_by %}
+                            <p class="mb-0 small text-muted">
+                                Αίτημα από {{ leave_request.documents_requested_by.full_name }}
+                                {% if leave_request.documents_requested_at %} — {{ leave_request.documents_requested_at|date:"d/m/Y H:i" }}{% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if leave_request.documents_provided_at %}
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-info mt-2">
+                            <h6 class="alert-heading"><i class="bi bi-file-earmark-check"></i> Παροχή Δικαιολογητικών</h6>
+                            <p class="mb-1">
+                                <strong>Ημερομηνία:</strong> {{ leave_request.documents_provided_at|date:"d/m/Y H:i" }}
+                            </p>
+                            {% if leave_request.documents_provided_by %}
+                            <p class="mb-1">
+                                <strong>Από:</strong> {{ leave_request.documents_provided_by.full_name }}
+                            </p>
+                            {% endif %}
+                            {% if leave_request.documents_notes %}
+                            <p class="mb-0"><strong>Σημειώσεις:</strong> {{ leave_request.documents_notes|linebreaks }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 {% endif %}
@@ -425,6 +477,9 @@
                                     {% endif %}
                                     <div>
                                         <h6 class="mb-1">{{ attachment.original_filename }}</h6>
+                                        {% if attachment.description %}
+                                        <p class="mb-1 small">{{ attachment.description }}</p>
+                                        {% endif %}
                                         <small class="text-muted">
                                             {{ attachment.file_size|filesizeformat }} •
                                             Ανέβηκε: {{ attachment.uploaded_at|date:"d/m/Y H:i" }}
@@ -570,7 +625,7 @@
                 </div>
                 {% elif user.is_leave_handler and leave_request.can_upload_exact_copy %}
                 <!-- Φόρμα Upload Ακριβούς Αντιγράφου -->
-                <div class="p-3 border rounded bg-light mb-3">
+                <div id="exact-copy-upload" class="p-3 border rounded bg-light mb-3">
                     <h6 class="mb-3">
                         <i class="bi bi-cloud-upload text-primary me-2"></i>
                         Αποστολή Ακριβούς Αντιγράφου από ΣΗΔΕ
@@ -793,7 +848,7 @@
 </div>
 
 <!-- Modal Επιστροφής Αίτησης στον Αιτούντα -->
-{% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
+{% if leave_request.status == 'IN_REVIEW' or leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
 <div class="modal fade" id="returnModal{{ leave_request.pk }}" tabindex="-1" aria-labelledby="returnModalLabel{{ leave_request.pk }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

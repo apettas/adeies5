@@ -4,6 +4,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
+from django.utils.http import content_disposition_header
 from django.contrib import messages
 from django.urls import reverse
 import os
@@ -11,6 +12,7 @@ from datetime import datetime
 
 from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee
 from leaves.crypto_utils import SecureFileHandler
+from leaves.decision_helpers import build_decision_pdf_filename
 
 
 @login_required
@@ -29,6 +31,9 @@ def prepare_decision_preview(request, leave_request_id):
     if not leave_request.can_create_decision():
         messages.error(request, 'Δεν μπορεί να δημιουργηθεί απόφαση για αυτή την αίτηση.')
         return redirect('leaves:detail', pk=leave_request.id)
+    
+    if leave_request.status == 'IN_REVIEW':
+        leave_request.start_decision_preparation(request.user)
     
     # Φόρτωση δεδομένων από βάση
     logos = Logo.objects.filter(is_active=True)
@@ -148,8 +153,8 @@ def generate_final_decision_pdf(request):
         leave_request.final_decision_text = f"Info: {edited_info_text}\nYpopsin: {edited_ypopsin_text}\nSignee: {edited_signee_text}"
         leave_request.decision_created_at = timezone.now()
         
-        # Αυτόματη αλλαγή στάτους - δεν θέτουμε processed_by/processed_at ακόμα
-        leave_request.status = 'IN_REVIEW'
+        if leave_request.status == 'IN_REVIEW':
+            leave_request.start_decision_preparation(request.user)
         leave_request.save()
         
         # Προετοιμασία context για PDF
@@ -169,14 +174,12 @@ def generate_final_decision_pdf(request):
         html = HTML(string=html_string)
         pdf_content = html.write_pdf()
         
-        # Αποθήκευση PDF
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'decision_{leave_request.id}_{timestamp}.pdf'
-        
+        filename = build_decision_pdf_filename(leave_request)
+
         # Δημιουργία directory αν δεν υπάρχει
         pdf_dir = os.path.join('media', 'private_media', 'leave_decisions', str(leave_request.id))
         os.makedirs(pdf_dir, exist_ok=True)
-        
+
         # Κρυπτογράφηση και αποθήκευση με τη νέα μέθοδο
         pdf_path = os.path.join(pdf_dir, filename)
         handler = SecureFileHandler()
@@ -186,13 +189,15 @@ def generate_final_decision_pdf(request):
         leave_request.decision_pdf_path = encrypted_path
         leave_request.decision_pdf_encryption_key = encryption_key
         leave_request.decision_pdf_size = len(pdf_content)
-        leave_request.save()
+        leave_request.send_to_signatures(request.user)
         
-        messages.success(request, 'Η απόφαση PDF δημιουργήθηκε επιτυχώς!')
+        messages.success(request, 'Η απόφαση PDF δημιουργήθηκε και η αίτηση προωθήθηκε προς υπογραφές.')
         
         # Επιστροφή PDF στον χρήστη
         response = HttpResponse(pdf_content, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Disposition'] = content_disposition_header(
+            as_attachment=True, filename=filename
+        )
         return response
         
     except Exception as e:
@@ -229,15 +234,13 @@ def serve_decision_pdf(request, pk):
         # Έλεγχος αν είναι για download ή preview
         is_download = request.GET.get('download') == '1'
         
+        filename = build_decision_pdf_filename(leave_request)
+
         # Δημιουργία response
         response = HttpResponse(pdf_content, content_type='application/pdf')
-        
-        if is_download:
-            # Για download
-            response['Content-Disposition'] = f'attachment; filename="decision_{leave_request.id}.pdf"'
-        else:
-            # Για preview στο browser
-            response['Content-Disposition'] = f'inline; filename="decision_{leave_request.id}.pdf"'
+        response['Content-Disposition'] = content_disposition_header(
+            as_attachment=is_download, filename=filename
+        )
         
         return response
         
@@ -373,19 +376,32 @@ def complete_leave_request_final(request, pk):
         return redirect('leaves:detail', pk=leave_request.id)
     
     try:
-        # Ολοκλήρωση αίτησης
-        leave_request.status = 'COMPLETED'
-        leave_request.completed_at = timezone.now()
-        # Ενημερώνουμε τα πεδία επεξεργασίας μόνο αν δεν έχουν ήδη θεσεί
-        if not leave_request.processed_by:
-            leave_request.processed_by = request.user
-        if not leave_request.processed_at:
-            leave_request.processed_at = timezone.now()
-        leave_request.save()
-        
-        messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
-        
+        if leave_request.finalize_with_exact_copy(request.user):
+            messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
+        else:
+            messages.error(request, 'Δεν ήταν δυνατή η ολοκλήρωση της αίτησης.')
     except Exception as e:
         messages.error(request, f'Σφάλμα κατά την ολοκλήρωση: {str(e)}')
     
     return redirect('leaves:detail', pk=leave_request.id)
+
+
+@login_required
+def send_to_signatures_view(request, pk):
+    """DECISION_PREPARATION → PENDING_SIGNATURES όταν υπάρχει ήδη PDF απόφασης"""
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    if not leave_request.has_decision_pdf():
+        messages.error(request, 'Απαιτείται PDF απόφασης πριν την αποστολή προς υπογραφές.')
+        return redirect('leaves:prepare_decision_preview', leave_request_id=leave_request.id)
+    
+    if leave_request.send_to_signatures(request.user):
+        messages.success(request, 'Η αίτηση προωθήθηκε προς υπογραφές.')
+    else:
+        messages.error(request, 'Δεν ήταν δυνατή η προώθηση προς υπογραφές.')
+    
+    return redirect('leaves:leave_request_detail', pk=leave_request.id)

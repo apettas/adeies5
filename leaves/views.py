@@ -14,6 +14,7 @@ import mimetypes
 from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
+from .attachment_helpers import save_leave_request_attachments_from_request
 from .dashboard_utils import DashboardFilterMixin, get_available_actions
 from notifications.utils import create_notification
 from django.contrib.auth import get_user_model
@@ -65,8 +66,13 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
+        pending_documents_qs = all_requests.filter(status='WAITING_FOR_DOCUMENTS')
         context.update({
             'total_requests': all_requests.count(),
+            'pending_documents_requests': pending_documents_qs.count(),
+            'pending_documents_list': pending_documents_qs.select_related(
+                'leave_type', 'documents_requested_by'
+            ).order_by('-documents_requested_at'),
             'pending_requests': all_requests.filter(
                 status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
             ).count(),
@@ -1861,10 +1867,9 @@ def request_documents(request, pk):
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
-    if leave_request.status not in ['PENDING_PROTOCOL']:
+    if not leave_request.can_request_documents:
         messages.error(request, 'Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση.')
-        return redirect('leaves:handler_dashboard')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
     
     if request.method == 'POST':
         required_documents = request.POST.get('required_documents', '').strip()
@@ -1873,10 +1878,12 @@ def request_documents(request, pk):
         
         if not required_documents:
             messages.error(request, 'Παρακαλώ συμπληρώστε τα απαιτούμενα δικαιολογητικά.')
-            return redirect('leaves:handler_dashboard')
+            return render(request, 'leaves/request_documents_form.html', {
+                'leave_request': leave_request,
+                'today': timezone.now().date(),
+            })
         
         try:
-            # Δημιουργία deadline datetime
             deadline = None
             if deadline_date:
                 from datetime import datetime
@@ -1886,41 +1893,46 @@ def request_documents(request, pk):
                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d %H:%M')
                 else:
                     deadline = datetime.strptime(deadline_str, '%Y-%m-%d')
-                    deadline = deadline.replace(hour=23, minute=59)  # Τέλος ημέρας
-                
-                # Μετατροπή σε timezone-aware datetime
+                    deadline = deadline.replace(hour=23, minute=59)
                 deadline = timezone.make_aware(deadline)
             
-            # Αίτημα δικαιολογητικών
             leave_request.request_documents(
                 handler=request.user,
                 required_documents=required_documents,
-                deadline=deadline
+                deadline=deadline,
             )
             
-            # Ειδοποίηση στον υπάλληλο
             create_notification(
                 user=leave_request.user,
                 title="Απαιτούνται Δικαιολογητικά",
-                message=f"Για την αίτησή σας για {leave_request.leave_type.name} απαιτούνται επιπλέον δικαιολογητικά. Παρακαλώ επικοινωνήστε με τον χειριστή αδειών.",
-                related_object=leave_request
+                message=(
+                    f"Για την αίτησή σας για {leave_request.leave_type.name} "
+                    f"απαιτούνται επιπλέον δικαιολογητικά: {required_documents}"
+                ),
+                related_object=leave_request,
             )
             
-            # Ειδοποίηση στον προϊστάμενο
             if leave_request.manager_approved_by:
                 create_notification(
                     user=leave_request.manager_approved_by,
                     title="Απαιτούνται Δικαιολογητικά",
-                    message=f"Η αίτηση του/της {leave_request.user.full_name} για {leave_request.leave_type.name} χρειάζεται επιπλέον δικαιολογητικά",
-                    related_object=leave_request
+                    message=(
+                        f"Η αίτηση του/της {leave_request.user.full_name} "
+                        f"για {leave_request.leave_type.name} χρειάζεται επιπλέον δικαιολογητικά"
+                    ),
+                    related_object=leave_request,
                 )
             
-            messages.success(request, 'Το αίτημα δικαιολογητικών στάλθηκε επιτυχώς!')
+            messages.success(request, 'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών.')
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά το αίτημα δικαιολογητικών: {str(e)}')
     
-    return redirect('leaves:handler_dashboard')
+    return render(request, 'leaves/request_documents_form.html', {
+        'leave_request': leave_request,
+        'today': timezone.now().date(),
+    })
 
 
 @login_required
@@ -1938,23 +1950,31 @@ def provide_documents(request, pk):
     
     if request.method == 'POST':
         notes = request.POST.get('notes', '').strip()
-        
+
+        saved_count, upload_errors = save_leave_request_attachments_from_request(
+            request, leave_request, request.user
+        )
+        if upload_errors:
+            for err in upload_errors:
+                messages.error(request, err)
+            return render(request, 'leaves/provide_documents_confirm.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+
         try:
-            # Παροχή δικαιολογητικών
             leave_request.provide_documents(
                 handler=request.user,
                 notes=notes
             )
-            
-            # Ειδοποίηση στον υπάλληλο
+
             create_notification(
                 user=leave_request.user,
                 title="Δικαιολογητικά Παρασχέθηκαν",
                 message=f"Τα δικαιολογητικά για την αίτησή σας για {leave_request.leave_type.name} παρασχέθηκαν και η αίτηση προχωρά στο επόμενο στάδιο",
                 related_object=leave_request
             )
-            
-            # Ειδοποίηση στον προϊστάμενο
+
             if leave_request.manager_approved_by:
                 create_notification(
                     user=leave_request.manager_approved_by,
@@ -1962,10 +1982,13 @@ def provide_documents(request, pk):
                     message=f"Τα δικαιολογητικά για την αίτηση του/της {leave_request.user.full_name} παρασχέθηκαν",
                     related_object=leave_request
                 )
-            
-            messages.success(request, 'Τα δικαιολογητικά παρασχέθηκαν επιτυχώς!')
-            return redirect('leaves:handler_dashboard')
-            
+
+            success_msg = 'Τα δικαιολογητικά παρασχέθηκαν επιτυχώς! Η αίτηση επέστρεψε σε επεξεργασία.'
+            if saved_count:
+                success_msg += f' Αποθηκεύτηκαν {saved_count} συνημμένα αρχεία.'
+            messages.success(request, success_msg)
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την παροχή δικαιολογητικών: {str(e)}')
     

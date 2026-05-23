@@ -1,0 +1,115 @@
+<script>
+(function() {
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    const maxSizeBytes = 5 * 1024 * 1024;
+
+    function getContainer(el) {
+        return $(el).closest('[id$="attachments-container"], #attachments-container').first();
+    }
+
+    function isValidFileType(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        return allowedExtensions.includes(ext);
+    }
+
+    function validateFileInput(input) {
+        const fileGroup = $(input).closest('.attachment-group');
+        const fileErrorElement = fileGroup.find('.file-error');
+        const errorMessage = fileGroup.find('.error-message');
+        const descriptionField = fileGroup.find('.attachment-description');
+
+        if (input.files.length > 0) {
+            const file = input.files[0];
+            if (!isValidFileType(file.name)) {
+                errorMessage.text('Μη επιτρεπτός τύπος αρχείου. Επιτρεπόμενοι: PDF, DOC, DOCX, JPG, PNG');
+                fileErrorElement.show();
+                $(input).addClass('border-danger');
+                descriptionField.prop('required', true);
+                return false;
+            }
+            if (file.size > maxSizeBytes) {
+                errorMessage.text('Το αρχείο υπερβαίνει το μέγιστο μέγεθος 5MB.');
+                fileErrorElement.show();
+                $(input).addClass('border-danger');
+                descriptionField.prop('required', true);
+                return false;
+            }
+            fileErrorElement.hide();
+            $(input).removeClass('border-danger');
+            descriptionField.prop('required', true);
+        } else {
+            fileErrorElement.hide();
+            $(input).removeClass('border-danger');
+            descriptionField.prop('required', false);
+        }
+        return true;
+    }
+
+    function updateRemoveButtons(container) {
+        const groups = container.find('.attachment-group');
+        groups.find('.remove-attachment-btn').toggle(groups.length > 1);
+    }
+
+    let attachmentCounter = 1;
+
+    $(document).on('click', '.add-attachment-btn', function() {
+        const container = getContainer(this);
+        attachmentCounter += 1;
+        const idx = attachmentCounter;
+        const html = `
+            <div class="attachment-group mb-3" data-index="${idx}">
+                <input type="file" name="attachment_${idx}" id="attachment_${idx}"
+                       class="form-control attachment-input"
+                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                <div class="file-error alert alert-danger mt-2" style="display: none;">
+                    <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+                </div>
+                <div class="mt-2">
+                    <label for="attachment_description_${idx}" class="form-label">
+                        <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου ${idx}
+                    </label>
+                    <textarea name="attachment_description_${idx}" id="attachment_description_${idx}"
+                              class="form-control attachment-description" rows="2"
+                              placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2">
+                    <i class="bi bi-trash"></i> Αφαίρεση
+                </button>
+            </div>`;
+        container.find('.add-attachment-btn').parent().before(html);
+        updateRemoveButtons(container);
+    });
+
+    $(document).on('click', '.remove-attachment-btn', function() {
+        const container = getContainer(this);
+        $(this).closest('.attachment-group').remove();
+        updateRemoveButtons(container);
+    });
+
+    $(document).on('change', '.attachment-input', function() {
+        validateFileInput(this);
+    });
+
+    $(document).on('submit', 'form.provide-documents-form', function(e) {
+        let valid = true;
+        $(this).find('.attachment-input').each(function() {
+            if (!validateFileInput(this)) {
+                valid = false;
+            }
+            if (this.files.length > 0) {
+                const desc = $(this).closest('.attachment-group').find('.attachment-description').val().trim();
+                if (!desc) {
+                    valid = false;
+                    alert('Παρακαλώ συμπληρώστε περιγραφή για κάθε συνημμένο αρχείο.');
+                    return false;
+                }
+            }
+        });
+        if (!valid) {
+            e.preventDefault();
+        }
+    });
+
+    updateRemoveButtons($('#attachments-container'));
+})();
+</script>
