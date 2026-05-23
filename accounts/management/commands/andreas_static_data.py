@@ -130,13 +130,16 @@ class Command(BaseCommand):
             {'name': 'Υποβολής σε ιατρικές μεθόδους υποβοηθούμενης αναπαραγωγής', 'description': 'Υποβολής σε ιατρικές μεθόδους υποβοηθούμενης αναπαραγωγής', 'max_days': 7, 'requires_approval': True, 'is_active': True, 'subject_text': 'Χορήγηση άδειας Υποβολής σε ιατρικές μεθόδους υποβοηθούμενης αναπαραγωγής', 'decision_text': 'άδεια Υποβολής σε ιατρικές μεθόδους υποβοηθούμενης αναπραγωγής', 'folder': 'Φ 12.5/', 'general_category': 'Άλλες Άδειες'}
         ]
         
-        for leave_type_data in leave_types_data:
+        for i, leave_type_data in enumerate(leave_types_data, 1):
+            code = f"LT{i:03d}"
+            defaults = {k: v for k, v in leave_type_data.items() if k != 'name'}
+            defaults['code'] = code
             leave_type, created = LeaveType.objects.get_or_create(
                 name=leave_type_data['name'],
-                defaults=leave_type_data
+                defaults=defaults
             )
             if created:
-                self.stdout.write(f'  Δημιουργήθηκε τύπος άδειας: {leave_type.name}')
+                self.stdout.write(f'  Δημιουργήθηκε τύπος άδειας: {leave_type.name} ({code})')
 
     def load_signees(self):
         """Φόρτωση υπογραφόντων"""

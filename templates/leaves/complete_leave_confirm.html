@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Επιβεβαίωση Ολοκλήρωσης Άδειας{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-check-lg"></i> Επιβεβαίωση Ολοκλήρωσης Άδειας</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Παρακαλώ ελέγξτε τα στοιχεία πριν την οριστικοποίηση.</strong>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Αίτηση</th>
+                            <td>
+                                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}">
+                                    #{{ leave_request.pk }} — {{ leave_request.leave_type.name }}
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Αιτών</th>
+                            <td>{{ leave_request.user.full_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Ημερομηνίες</th>
+                            <td>{{ leave_request.start_date|date:"d/m/Y" }} — {{ leave_request.end_date|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Συνολικές Ημέρες</th>
+                            <td><span class="badge bg-info fs-6">{{ leave_request.total_days }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Πρωτόκολλο</th>
+                            <td>{{ leave_request.protocol_number|default:"—" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted">Προτεινόμενο Νέο Υπόλοιπο</h6>
+                            <h2 class="text-primary fw-bold">{{ suggested_balance }}</h2>
+                            <small class="text-muted">
+                                (Τρέχον: {{ current_balance }} — Αφαίρεση: {{ leave_request.total_days }} ημέρες)
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="comments" class="form-label">Σχόλια / Αιτιολογία <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="comments" name="comments" rows="3" required
+                              placeholder="Γράψτε σχόλια ή αιτιολογία για την ολοκλήρωση..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="protocol_number" class="form-label">Αριθμός Πρωτοκόλλου (προαιρετικό)</label>
+                    <input type="text" class="form-control" id="protocol_number" name="protocol_number"
+                           value="{{ leave_request.protocol_number|default:'' }}"
+                           placeholder="Αρ. Πρωτοκόλλου ΠΔΕΔΕ">
+                </div>
+
+                {% if leave_request.leave_type.affects_regular_leave_balance %}
+                <input type="hidden" name="balance_after" value="{{ suggested_balance }}">
+                {% endif %}
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Επιβεβαίωση & Ολοκλήρωση
+                    </button>
+                    <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> Ακύρωση
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

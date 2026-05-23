@@ -96,8 +96,27 @@
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
-                <h5><i class="bi bi-table"></i> Κατάλογος Χρηστών</h5>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Κατάλογος Χρηστών</h5>
+                <form method="get" class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        {% if user_role == 'handler' and user.is_leave_handler and user.is_department_manager %}
+                        <select name="view" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="department" {% if view_mode == 'department' %}selected{% endif %}>Τμήμα μου</option>
+                            <option value="handler" {% if view_mode == 'handler' %}selected{% endif %}>Όλοι οι χρήστες</option>
+                        </select>
+                        {% endif %}
+                    </div>
+                    <div class="col-auto">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" name="q" placeholder="Αναζήτηση..." value="{{ search_query }}">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
+                            {% if search_query %}
+                            <a href="?{% if view_mode %}view={{ view_mode }}{% endif %}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
             </div>
             <div class="card-body">
                 {% if users %}
@@ -124,8 +143,8 @@
                                     </td>
                                     <td>
                                         {{ user.email }}
-                                        {% if user.phone %}
-                                        <br><small class="text-muted">{{ user.phone }}</small>
+                                        {% if user.phone1 %}
+                                        <br><small class="text-muted">{{ user.phone1 }}</small>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -154,10 +173,18 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'leaves:user_leave_history' user.pk %}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-calendar-event"></i> Ιστορικό Αδειών
-                                        </a>
+                                        <div class="d-flex gap-1">
+                                            <a href="{% url 'leaves:user_leave_history' user.pk %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-calendar-event"></i> Ιστορικό Αδειών
+                                            </a>
+                                            {% if user_role == 'handler' %}
+                                            <a href="{% url 'leaves:balance_ledger' user.pk %}" 
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-book"></i> Υπόλοιπο
+                                            </a>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -167,11 +194,15 @@
                     
                     <!-- Pagination -->
                     {% if is_paginated %}
+                    {% if search_query %}{% with qs="&q="|add:search_query %}{% endwith %}{% endif %}
                     <nav aria-label="Pagination">
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+                                    <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if view_mode %}&view={{ view_mode }}{% endif %}">Πρώτη</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if view_mode %}&view={{ view_mode }}{% endif %}">Προηγούμενη</a>
                                 </li>
                             {% endif %}
                             
@@ -183,7 +214,10 @@
                             
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if view_mode %}&view={{ view_mode }}{% endif %}">Επόμενη</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if view_mode %}&view={{ view_mode }}{% endif %}">Τελευταία</a>
                                 </li>
                             {% endif %}
                         </ul>

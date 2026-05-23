@@ -687,29 +687,38 @@ class UsersListView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # Έλεγχος αν ο χρήστης είναι και department_manager και leave_handler
-        # Αν είναι και τα δύο, η παράμετρος URL καθορίζει τη λειτουργία
         view_mode = self.request.GET.get('view', 'department')
+        q = self.request.GET.get('q', '').strip()
+        
+        def apply_search(qs):
+            if q:
+                qs = qs.filter(
+                    Q(first_name__icontains=q) |
+                    Q(last_name__icontains=q) |
+                    Q(email__icontains=q) |
+                    Q(department__name__icontains=q)
+                )
+            return qs
         
         if self.request.user.is_department_manager and view_mode == 'department':
-            # Προϊστάμενος βλέπει μόνο τους subordinates του (χρήστες που μπορεί να εγκρίνει)
-            return self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+            qs = self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
         elif self.request.user.is_leave_handler and view_mode == 'handler':
-            # Χειριστής αδειών βλέπει όλους τους χρήστες
-            return User.objects.select_related('department').order_by('last_name', 'first_name')
+            qs = User.objects.select_related('department').order_by('last_name', 'first_name')
         elif self.request.user.is_department_manager:
-            # Προϊστάμενος βλέπει μόνο τους subordinates του (default)
-            return self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+            qs = self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
         elif self.request.user.is_leave_handler:
-            # Χειριστής αδειών βλέπει όλους τους χρήστες
-            return User.objects.select_related('department').order_by('last_name', 'first_name')
-        return User.objects.none()
+            qs = User.objects.select_related('department').order_by('last_name', 'first_name')
+        else:
+            return User.objects.none()
+        
+        return apply_search(qs)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Προσδιορισμός του view mode
         view_mode = self.request.GET.get('view', 'department')
+        search_query = self.request.GET.get('q', '')
+        context['search_query'] = search_query
         
         # Στατιστικά ανάλογα με τον ρόλο και το view mode
         if self.request.user.is_department_manager and view_mode == 'department':
@@ -822,71 +831,83 @@ class UserLeaveHistoryView(LoginRequiredMixin, ListView):
 
 @login_required
 def complete_leave_request(request, pk):
-    """Ολοκλήρωση αίτησης από χειριστή αδειών"""
+    """Ολοκλήρωση αίτησης — GET: confirmation page, POST: execute"""
     if not request.user.is_leave_handler:
         raise PermissionDenied("Δεν έχετε δικαίωμα ολοκλήρωσης.")
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    if request.method == 'POST':
-        comments = request.POST.get('comments', '')
-        protocol_number = request.POST.get('protocol_number', '')
-        balance_after = request.POST.get('balance_after', '')
+    if request.method == 'GET':
+        if leave_request.status not in ['IN_REVIEW']:
+            messages.error(request, 'Η αίτηση δεν είναι σε κατάσταση επεξεργασίας.')
+            return redirect('leaves:leave_request_detail', pk=pk)
         
-        try:
-            # Ενημέρωση πρωτοκόλλου αν υπάρχει
-            if protocol_number:
-                leave_request.protocol_number = protocol_number
-                leave_request.save()
+        from leaves.utils.balance_ledger import get_last_balance
+        current_balance = get_last_balance(leave_request.user)
+        if current_balance is None:
+            current_balance = leave_request.user.current_regular_leave_balance
+        
+        suggested_balance = max(0, current_balance - leave_request.total_days) if leave_request.leave_type.affects_regular_leave_balance else current_balance
+        
+        return render(request, 'leaves/complete_leave_confirm.html', {
+            'leave_request': leave_request,
+            'current_balance': current_balance,
+            'suggested_balance': suggested_balance,
+        })
+    
+    comments = request.POST.get('comments', '')
+    protocol_number = request.POST.get('protocol_number', '')
+    balance_after = request.POST.get('balance_after', '')
+    
+    try:
+        if protocol_number:
+            leave_request.protocol_number = protocol_number
+            leave_request.save()
+        
+        if leave_request.leave_type.affects_regular_leave_balance:
+            if not balance_after:
+                messages.error(request, 'Απαιτείται η καταχώρηση του υπολοίπου κανονικών αδειών μετά την πράξη.')
+                return redirect('leaves:leave_request_detail', pk=pk)
             
-            # Αν η άδεια επηρεάζει το υπόλοιπο κανονικών, απαιτούμε balance_after
-            if leave_request.leave_type.affects_regular_leave_balance:
-                if not balance_after:
-                    messages.error(request, 'Απαιτείται η καταχώρηση του υπολοίπου κανονικών αδειών μετά την πράξη.')
-                    return redirect('leaves:leave_request_detail', pk=pk)
-                
-                try:
-                    balance_after = int(balance_after)
-                except (ValueError, TypeError):
-                    messages.error(request, 'Το υπόλοιπο πρέπει να είναι ακέραιος αριθμός.')
-                    return redirect('leaves:leave_request_detail', pk=pk)
+            try:
+                balance_after = int(balance_after)
+            except (ValueError, TypeError):
+                messages.error(request, 'Το υπόλοιπο πρέπει να είναι ακέραιος αριθμός.')
+                return redirect('leaves:leave_request_detail', pk=pk)
+        
+        leave_request.complete_by_handler(request.user, comments)
+        
+        if leave_request.leave_type.affects_regular_leave_balance and balance_after:
+            from leaves.utils.balance_ledger import create_balance_entry
+            from leaves.utils.balance_ledger import get_last_balance
+            last_balance = get_last_balance(leave_request.user)
+            days_delta = None
+            if last_balance is not None:
+                days_delta = balance_after - last_balance
             
-            leave_request.complete_by_handler(request.user, comments)
-            
-            # Δημιουργία εγγραφής στο ledger αν επηρεάζει το υπόλοιπο
-            if leave_request.leave_type.affects_regular_leave_balance and balance_after:
-                from leaves.utils.balance_ledger import create_balance_entry
-                
-                # Βρίσκουμε το προηγούμενο υπόλοιπο για το days_delta
-                from leaves.utils.balance_ledger import get_last_balance
-                last_balance = get_last_balance(leave_request.user)
-                days_delta = None
-                if last_balance is not None:
-                    days_delta = balance_after - last_balance
-                
-                create_balance_entry(
-                    employee=leave_request.user,
-                    entry_type='LEAVE_GRANTED',
-                    description=f'Ολοκλήρωση άδειας #{leave_request.id} — {leave_request.leave_type.name}',
-                    balance_after=balance_after,
-                    leave_request=leave_request,
-                    days_delta=days_delta,
-                    notes=comments or f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
-                    created_by=request.user
-                )
-            
-            # Ειδοποίηση στον υπάλληλο
-            create_notification(
-                user=leave_request.user,
-                title="Αίτηση Ολοκληρώθηκε",
-                message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
-                related_object=leave_request
+            create_balance_entry(
+                employee=leave_request.user,
+                entry_type='LEAVE_GRANTED',
+                description=f'Ολοκλήρωση άδειας #{leave_request.id} — {leave_request.leave_type.name}',
+                balance_after=balance_after,
+                leave_request=leave_request,
+                days_delta=days_delta,
+                notes=comments or f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
+                created_by=request.user
             )
-            
-            messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
-            
-        except Exception as e:
-            messages.error(request, f'Σφάλμα κατά την ολοκλήρωση: {str(e)}')
+        
+        from notifications.utils import create_notification
+        create_notification(
+            user=leave_request.user,
+            title="Αίτηση Ολοκληρώθηκε",
+            message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
+            related_object=leave_request
+        )
+        
+        messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
+        
+    except Exception as e:
+        messages.error(request, f'Σφάλμα κατά την ολοκλήρωση: {str(e)}')
     
     return redirect('leaves:handler_dashboard')
 

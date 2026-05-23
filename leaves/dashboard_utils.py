@@ -114,6 +114,7 @@ def get_available_actions(leave_request, user):
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('edit', 'ΕΠΕΞΕΡΓΑΣΙΑ', None))
             actions.append(('submit', 'ΥΠΟΒΟΛΗ', None))
+            actions.append(('delete', 'ΔΙΑΓΡΑΦΗ', f'leaves:delete_leave_request'))
         elif status in ['SUBMITTED', 'PENDING_PROTOCOL']:
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ', f'leaves:withdraw_leave_request'))
@@ -131,6 +132,7 @@ def get_available_actions(leave_request, user):
             actions.append(('documents', 'ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ', None))
             actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
             actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', None))
+            actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', f'leaves:complete_leave_request'))
         elif status == 'WAITING_FOR_DOCUMENTS':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('upload_docs', 'ΠΑΡΟΧΗ ΔΙΚ/ΚΩΝ', f'leaves:provide_documents'))
@@ -138,12 +140,12 @@ def get_available_actions(leave_request, user):
             actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
         elif status == 'DECISION_PREPARATION':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
-            actions.append(('edit_decision', 'ΕΠΕΞΕΡΓΑΣΙΑ', None))
-            actions.append(('send_signatures', 'ΠΡΟΣ ΥΠΟΓΡΑΦΕΣ', None))
+            actions.append(('edit_decision', 'ΕΠΕΞΕΡΓΑΣΙΑ ΑΠΟΦΑΣΗΣ', f'leaves:prepare_decision_preview'))
+            actions.append(('send_signatures', 'ΠΡΟΣ ΥΠΟΓΡΑΦΕΣ', f'leaves:send_to_signatures'))
         elif status == 'PENDING_SIGNATURES':
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
-            actions.append(('upload_final', 'UPLOAD ΤΕΛΙΚΗΣ', None))
-            actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', None))
+            actions.append(('upload_final', 'UPLOAD ΤΕΛΙΚΗΣ', f'leaves:upload_exact_copy_pdf'))
+            actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', f'leaves:complete_leave_request_final'))
         else:
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
     

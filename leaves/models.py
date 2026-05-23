@@ -549,15 +549,45 @@ class LeaveRequest(models.Model):
     
     def can_upload_exact_copy(self):
         """Ελέγχει αν μπορεί να ανέβει ακριβές αντίγραφο"""
-        return self.has_decision_pdf() and self.status == 'IN_REVIEW'
-    
+        return self.has_decision_pdf() and self.status in ['IN_REVIEW', 'PENDING_SIGNATURES']
+
     def can_complete_request(self):
         """Ελέγχει αν μπορεί να ολοκληρωθεί η αίτηση"""
-        return self.has_exact_copy_pdf() and self.status == 'IN_REVIEW'
+        return self.has_exact_copy_pdf() and self.status in ['IN_REVIEW', 'PENDING_SIGNATURES']
     
     def can_create_decision(self):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
-        return self.status == 'IN_REVIEW'
+        return self.status in ['IN_REVIEW', 'DECISION_PREPARATION']
+
+    def start_decision_preparation(self, user):
+        """Μεταφορά σε κατάσταση ετοιμασίας απόφασης"""
+        if self.status == 'IN_REVIEW':
+            self.status = 'DECISION_PREPARATION'
+            self.save()
+            return True
+        return False
+
+    def send_to_signatures(self, user):
+        """Προώθηση προς υπογραφές ΣΗΔΕ"""
+        if self.status == 'DECISION_PREPARATION':
+            self.status = 'PENDING_SIGNATURES'
+            self.save()
+            return True
+        return False
+
+    def finalize_with_exact_copy(self, user):
+        """Ολοκλήρωση αίτησης μετά το ανέβασμα ακριβούς αντιγράφου ΣΗΔΕ"""
+        if self.has_exact_copy_pdf() and self.status in ['IN_REVIEW', 'PENDING_SIGNATURES']:
+            self.status = 'COMPLETED'
+            self.completed_at = timezone.now()
+            if not self.processed_by:
+                self.processed_by = user
+            if not self.processed_at:
+                self.processed_at = timezone.now()
+            self.save()
+            self._update_leave_balance_on_completion()
+            return True
+        return False
     
     def get_end_date(self):
         """Υπολογίζει την ημερομηνία λήξης της άδειας"""
@@ -968,6 +998,8 @@ class RegularLeaveBalanceEntry(models.Model):
     description = models.CharField('Περιγραφή', max_length=200)
     days_delta = models.IntegerField('Μεταβολή Ημερών', null=True, blank=True,
                                      help_text='Θετικό για επιστροφή, αρνητικό για αφαίρεση')
+    balance_before = models.IntegerField('Υπόλοιπο Πριν', default=0,
+                                         help_text='Υπόλοιπο πριν από την κίνηση')
     balance_after = models.IntegerField('Υπόλοιπο Μετά',
                                         help_text='Υπόλοιπο μετά την κίνηση (source of truth)')
     notes = models.TextField('Σημειώσεις', blank=True)
@@ -977,6 +1009,12 @@ class RegularLeaveBalanceEntry(models.Model):
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     is_locked = models.BooleanField('Κλειδωμένο', default=True,
                                     help_text='Append-only — οι διορθώσεις είναι νέες εγγραφές')
+    is_finalized = models.BooleanField('Οριστικοποιημένο', default=False,
+                                       help_text='Οριστικοποιημένες εγγραφές δεν τροποποιούνται')
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='verified_balance_entries',
+                                    verbose_name='Επαληθεύτηκε από')
+    verified_at = models.DateTimeField('Ημερομηνία Επαλήθευσης', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Εγγραφή Υπολοίπου Κανονικών Αδειών'

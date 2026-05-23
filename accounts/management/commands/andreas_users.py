@@ -171,12 +171,12 @@ class Command(BaseCommand):
                     department=user_data['department'],
                     gender=user_data['gender'],
                     # Τυχαίες τιμές για τα υπόλοιπα πεδία
-                    phone=self.generate_random_phone(),
+                    phone1=self.generate_random_phone(),
                     user_category=random.choice(['ADMINISTRATIVE', 'EDUCATIONAL']),
                     specialty=random.choice(specialties) if specialties else None,
                     hire_date=self.generate_random_hire_date(),
-                    notification=f'Κοινοποίηση στο {user_data["department"].name}',
-                    user_description=f'{user_data["first_name"]} {user_data["last_name"]} - {user_data["department"].name}',
+                    notification_recipients=f'Κοινοποίηση στο {user_data["department"].name}',
+                    role_description=f'{user_data["first_name"]} {user_data["last_name"]} - {user_data["department"].name}',
                     registration_status='APPROVED',
                     is_active=True
                 )

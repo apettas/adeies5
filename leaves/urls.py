@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 from .decision_views import (
     prepare_decision_preview, generate_final_decision_pdf, serve_decision_pdf,
-    upload_exact_copy_pdf, serve_exact_copy_pdf, complete_leave_request_final
+    upload_exact_copy_pdf, serve_exact_copy_pdf, complete_leave_request_final,
+    send_to_signatures_view
 )
 from .calendar_views import leave_calendar_view
 from .balance_views import balance_ledger_view, manual_balance_adjustment
@@ -51,6 +52,7 @@ urlpatterns = [
     path('decision/prepare/<int:leave_request_id>/', prepare_decision_preview, name='prepare_decision_preview'),
     path('decision/generate/', generate_final_decision_pdf, name='generate_final_decision_pdf'),
     path('decision-pdf/<int:pk>/', serve_decision_pdf, name='serve_decision_pdf'),
+    path('decision/send-to-signatures/<int:pk>/', send_to_signatures_view, name='send_to_signatures'),
     
     # Exact Copy URLs
     path('exact-copy/upload/<int:pk>/', upload_exact_copy_pdf, name='upload_exact_copy_pdf'),

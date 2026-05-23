@@ -1,14 +1,19 @@
 """
-Management command για ετήσιο rollover αδειών
-Τρέχει κάθε 1η Ιανουαρίου (ή manual από admin)
+Management command για ετήσιο rollover αδειών μέσω ledger.
+
+Δημιουργεί εγγραφές CARRYOVER_IMPORT στο ιστορικό υπολοίπου,
+αντί να κάνει απευθείας μεταβολή των πεδίων.
+
+Ο χειριστής πρέπει να τρέξει το command MANUALLY (όχι αυτόματα).
 """
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from accounts.models import User
+from leaves.utils.balance_ledger import create_balance_entry, get_last_balance
 
 
 class Command(BaseCommand):
-    help = 'Ετήσιο rollover υπολοίπων αδειών. Τρέχει κάθε 1η Ιανουαρίου.'
+    help = 'Ετήσιο rollover υπολοίπων: δημιουργεί CARRYOVER_IMPORT εγγραφές στο ledger'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -17,58 +22,79 @@ class Command(BaseCommand):
             help='Εμφάνιση αλλαγών χωρίς αποθήκευση',
         )
         parser.add_argument(
-            '--year',
+            '--carryover-days',
             type=int,
             default=None,
-            help='Έτος για rollover (default: current year)',
+            help='Πόσες ημέρες μεταφέρονται (default: όλο το τρέχον υπόλοιπο)',
+        )
+        parser.add_argument(
+            '--user-id',
+            type=int,
+            default=None,
+            help='Συγκεκριμένος χρήστης (προαιρετικό)',
         )
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        year = options['year'] or timezone.now().year
+        carryover_days = options['carryover_days']
+        user_id = options['user_id']
+        year = timezone.now().year
 
         self.stdout.write(self.style.SUCCESS(
-            f'=== Rollover Αδειών για το {year} {"(DRY RUN)" if dry_run else ""} ==='
+            f'=== Rollover Αδειών για {year} — Δημιουργία CARRYOVER_IMPORT {"(DRY RUN)" if dry_run else ""} ==='
         ))
 
-        active_users = User.objects.filter(is_active=True)
+        users = User.objects.filter(is_active=True)
+        if user_id:
+            users = users.filter(id=user_id)
+
+        if not users.exists():
+            self.stdout.write(self.style.WARNING('Δεν βρέθηκαν χρήστες.'))
+            return
+
         updated_count = 0
 
-        for user in active_users:
-            old_carryover = user.carryover_leave_days
-            old_current = user.current_year_leave_balance
+        for user in users:
+            current_balance = get_last_balance(user)
+            if current_balance is None:
+                current_balance = user.current_regular_leave_balance
 
-            # Μεταφορά τρέχοντος υπολοίπου στο carryover
-            new_carryover = max(0, user.current_year_leave_balance)
-
-            # Νέες άδειες για το νέο έτος
-            new_current = user.annual_leave_entitlement
-
-            # Reset sick leave counters
-            new_sick_days_current = 0
-            new_sick_leave_with_declaration = 2
-
-            if not dry_run:
-                user.carryover_leave_days = new_carryover
-                user.current_year_leave_balance = new_current
-                user.sick_days_current_year = new_sick_days_current
-                user.sick_leave_with_declaration = new_sick_leave_with_declaration
-                user.leave_balance = user.calculate_total_leave_balance()
-                user.save()
+            amount = carryover_days if carryover_days is not None else current_balance
+            amount = max(0, amount)
 
             self.stdout.write(
-                f'  {user.email}: '
-                f'carryover {old_carryover}→{new_carryover}, '
-                f'current {old_current}→{new_current}, '
-                f'sick_days reset'
+                f'  {user.email} ({user.full_name}): '
+                f'τρέχον υπόλοιπο={current_balance}, '
+                f'προς μεταφορά={amount}'
             )
-            updated_count += 1
 
-        self.stdout.write(self.style.SUCCESS(
-            f'\nΟλοκληρώθηκε! Ενημερώθηκαν {updated_count} χρήστες.'
-        ))
+            if not dry_run:
+                if amount > 0:
+                    create_balance_entry(
+                        employee=user,
+                        entry_type='CARRYOVER_IMPORT',
+                        description=f'Μεταφορά υπολοίπου από προηγούμενο έτος στο {year}',
+                        balance_after=amount,
+                        days_delta=0,
+                        notes=f'Αυτόματη εγγραφή carryover από command rollover_leave_balances',
+                        created_by=None,
+                    )
+
+                user.annual_leave_entitlement = user.annual_leave_entitlement or 25
+                user.save(update_fields=['annual_leave_entitlement'])
+
+                updated_count += 1
 
         if dry_run:
             self.stdout.write(self.style.WARNING(
-                'Αυτό ήταν DRY RUN - δεν έγιναν αλλαγές.'
+                f'\nDRY RUN — Δεν έγιναν αλλαγές. Θα επηρεάζονταν {users.count()} χρήστες.'
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                f'\nΟλοκληρώθηκε! Δημιουργήθηκαν εγγραφές carryover για {updated_count} χρήστες.'
+            ))
+            self.stdout.write(self.style.WARNING(
+                'ΣΗΜΑΝΤΙΚΟ: Το carryover καταγράφηκε στο ledger. '
+                'Χρησιμοποιήστε τη φόρμα "Μεταφορά Υπολοίπου" (CARRYOVER_IMPORT) '
+                'στο web interface για μεμονωμένες διορθώσεις.'
             ))
