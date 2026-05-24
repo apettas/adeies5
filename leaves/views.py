@@ -2114,24 +2114,31 @@ def unlock_leave_request(request, pk):
 
 @login_required
 def delete_leave_request(request, pk):
-    """Διαγραφή αίτησης από χειριστή (μόνο σε ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ)"""
-    if not request.user.is_leave_handler:
-        raise PermissionDenied("Δεν έχετε δικαίωμα διαγραφής.")
-
+    """Διαγραφή αίτησης — είτε από ιδιοκτήτη (DRAFT) είτε από χειριστή (IN_REVIEW)"""
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    is_owner = leave_request.user == request.user
 
-    if leave_request.status != 'IN_REVIEW':
-        messages.error(request, 'Μπορείτε να διαγράψετε μόνο αιτήσεις σε κατάσταση ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ.')
-        return redirect('leaves:leave_request_detail', pk=pk)
+    if is_owner and leave_request.status == 'DRAFT':
+        if request.method == 'POST':
+            leave_request.delete()
+            messages.success(request, 'Η πρόχειρη αίτηση διαγράφηκε επιτυχώς.')
+            return redirect('leaves:employee_dashboard')
+        return render(request, 'leaves/delete_leave_request_confirm.html', {'leave_request': leave_request})
 
-    if request.method == 'POST':
-        leave_request.status = 'REJECTED_BY_LEAVES_DEPT'
-        leave_request.save()
+    if request.user.is_leave_handler:
+        if leave_request.status != 'IN_REVIEW':
+            messages.error(request, 'Μπορείτε να διαγράψετε μόνο αιτήσεις σε κατάσταση ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ.')
+            return redirect('leaves:leave_request_detail', pk=pk)
 
-        messages.success(request, 'Η αίτηση διαγράφηκε επιτυχώς.')
-        return redirect('leaves:handler_dashboard')
+        if request.method == 'POST':
+            leave_request.status = 'REJECTED_BY_LEAVES_DEPT'
+            leave_request.save()
+            messages.success(request, 'Η αίτηση διαγράφηκε επιτυχώς.')
+            return redirect('leaves:handler_dashboard')
 
-    return render(request, 'leaves/delete_leave_request_confirm.html', {'leave_request': leave_request})
+        return render(request, 'leaves/delete_leave_request_confirm.html', {'leave_request': leave_request})
+
+    raise PermissionDenied("Δεν έχετε δικαίωμα διαγραφής.")
 
 
 @login_required
