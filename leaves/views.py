@@ -306,6 +306,50 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                     )
 
 
+class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
+    """Δημιουργία άτυπης άδειας (is_simple=True) — χωρίς PDF"""
+    model = LeaveRequest
+    template_name = 'leaves/create_leave_request.html'
+    form_class = None  # Set in dispatch
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.department or not request.user.department.has_atypical_leaves:
+            raise PermissionDenied("Δεν έχετε δικαίωμα δημιουργίας άτυπης άδειας.")
+        from .forms import AtypicalLeaveForm
+        self.form_class = AtypicalLeaveForm
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        if self.request.user.is_department_manager:
+            return reverse_lazy('leaves:manager_dashboard')
+        return reverse_lazy('leaves:employee_dashboard')
+
+    def form_valid(self, form):
+        leave_request = LeaveRequest(
+            user=self.request.user,
+            leave_type=form.cleaned_data['leave_type'],
+            description=form.cleaned_data['description'],
+            status='DRAFT'
+        )
+        leave_request.save()
+        periods_data = form.cleaned_data.get('periods_data', [])
+        for period_data in periods_data:
+            LeavePeriod.objects.create(
+                leave_request=leave_request,
+                start_date=period_data['start_date'],
+                end_date=period_data['end_date']
+            )
+        from leaves.attachment_helpers import save_leave_request_attachments_from_request
+        save_leave_request_attachments_from_request(self.request, leave_request, self.request.user)
+        try:
+            leave_request.submit()
+        except ValueError as e:
+            messages.error(self.request, str(e))
+            return self.form_invalid(form)
+        messages.success(self.request, 'Η άτυπη άδεια υποβλήθηκε επιτυχώς.')
+        return redirect(self.get_success_url())
+
+
 @login_required
 def create_leave_for_user(request, user_id):
     """Ο χειριστής δημιουργεί νέα αίτηση άδειας για άλλον χρήστη"""

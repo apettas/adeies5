@@ -258,3 +258,16 @@ class RejectLeaveForm(forms.Form):
         }),
         label='Αιτιολογία Απόρριψης'
     )
+
+
+class AtypicalLeaveForm(LeaveRequestForm):
+    """Φόρμα για άτυπες άδειες — μόνο is_simple=True types"""
+
+    class Meta(LeaveRequestForm.Meta):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['leave_type'].queryset = self.fields['leave_type'].queryset.filter(
+            is_simple=True, is_active=True
+        )

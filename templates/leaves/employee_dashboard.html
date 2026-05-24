@@ -7,9 +7,16 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-person-circle"></i> Οι Αιτήσεις μου</h2>
-            <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Νέα Αίτηση
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{% url 'leaves:create_leave_request' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Νέα Αίτηση
+                </a>
+                {% if user.department.has_atypical_leaves %}
+                <a href="{% url 'leaves:create_atypical_leave' %}" class="btn btn-outline-info">
+                    <i class="bi bi-plus-circle"></i> Άτυπη Άδεια
+                </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

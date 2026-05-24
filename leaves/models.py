@@ -370,8 +370,18 @@ class LeaveRequest(models.Model):
     def approve_by_manager(self, manager, comments=''):
         """Έγκριση από προϊστάμενο"""
         if self.can_be_approved_by_manager:
+            if self.leave_type.is_simple:
+                self.status = 'COMPLETED'
+                self.manager_approved_by = manager
+                self.manager_approved_at = timezone.now()
+                self.manager_comments = comments
+                self.completed_at = timezone.now()
+                self.processed_by = manager
+                self.processed_at = timezone.now()
+                self.save()
+                return True
+
             self.status = 'PENDING_PROTOCOL'
-            
             self.manager_approved_by = manager
             self.manager_approved_at = timezone.now()
             self.manager_comments = comments
