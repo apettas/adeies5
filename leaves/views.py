@@ -697,7 +697,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         
         # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες (Python-level calculation)
         from accounts.models import User
-        from leaves.models import YCCommitteeAcknowledgment, LeaveRequest
+        from leaves.models import YCCommitteeAcknowledgment
         from django.utils import timezone
         acknowledged = YCCommitteeAcknowledgment.objects.filter(
             handler=self.request.user
