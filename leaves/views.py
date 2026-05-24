@@ -320,6 +320,7 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
+        from django.urls import reverse_lazy
         if self.request.user.is_department_manager:
             return reverse_lazy('leaves:manager_dashboard')
         return reverse_lazy('leaves:employee_dashboard')
