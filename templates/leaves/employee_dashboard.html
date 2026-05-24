@@ -14,49 +14,6 @@
     </div>
 </div>
 
-<!-- Στατιστικά -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-light">
-            <div class="card-body">
-                <i class="bi bi-list-ul fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_requests }}</h5>
-                <small class="text-muted">Συνολικές Αιτήσεις</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-clock fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ pending_requests }}</h5>
-                <small class="text-muted">Εκκρεμούν</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ completed_requests }}</h5>
-                <small class="text-muted">Ολοκληρώθηκαν</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-danger bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-x-circle fs-3 text-danger"></i>
-                <h5 class="mt-2">{{ rejected_requests }}</h5>
-                <small class="text-muted">Απορρίφθηκαν</small>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Υπόλοιπο Κανονικών Αδειών -->
 {% if current_regular_balance is not None %}
 <div class="row mb-4">
@@ -70,21 +27,13 @@
             </div>
             <div class="card-body">
                 <div class="row text-center">
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <h2 class="text-primary">{{ current_regular_balance }}</h2>
                         <small class="text-muted">Τρέχον Υπόλοιπο</small>
                     </div>
-                    <div class="col-md-3">
-                        <h2 class="text-success">{{ current_year_days }}</h2>
-                        <small class="text-muted">Τρέχον Έτος</small>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <h2 class="text-info">{{ carryover_days }}</h2>
                         <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
-                    </div>
-                    <div class="col-md-3">
-                        <h2 class="text-secondary">{{ annual_entitlement }}</h2>
-                        <small class="text-muted">Ετήσιο Δικαίωμα</small>
                     </div>
                 </div>
             </div>
