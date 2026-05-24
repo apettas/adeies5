@@ -9,15 +9,15 @@ from .models import (
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'max_days', 'requires_approval', 'is_active', 'general_category')
-    list_filter = ('is_active', 'requires_approval', 'general_category')
+    list_display = ('name', 'max_days', 'requires_approval', 'is_active', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
+    list_filter = ('is_active', 'requires_approval', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
     search_fields = ('name', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
     fieldsets = (
         ('Βασικά Στοιχεία', {
             'fields': ('name', 'description', 'max_days', 'requires_approval', 'is_active')
         }),
         ('Πρόσθετα Στοιχεία', {
-            'fields': ('subject_text', 'decision_text', 'folder', 'general_category')
+            'fields': ('subject_text', 'decision_text', 'folder', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
         }),
     )
 
