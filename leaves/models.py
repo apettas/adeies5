@@ -474,7 +474,7 @@ class LeaveRequest(models.Model):
     
     def request_documents(self, handler, required_documents, deadline=None):
         """Αίτημα για δικαιολογητικά από χειριστή"""
-        if not self.status in ['PENDING_PROTOCOL']:
+        if not self.status in ['IN_REVIEW']:
             raise ValueError("Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση")
         
         self.status = 'WAITING_FOR_DOCUMENTS'
