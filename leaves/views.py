@@ -325,6 +325,11 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
             return reverse_lazy('leaves:manager_dashboard')
         return reverse_lazy('leaves:employee_dashboard')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_atypical'] = True
+        return context
+
     def form_valid(self, form):
         leave_request = LeaveRequest(
             user=self.request.user,
