@@ -74,14 +74,15 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         ).count()
         context['sick_leave_yd_limit'] = user.sick_leave_with_declaration
         
-        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (query-based)
-        from django.db.models import Sum
-        sick_total = LeaveRequest.objects.filter(
+        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (Python-level calculation)
+        year = timezone.now().year
+        sick_lrs = LeaveRequest.objects.filter(
             user=user,
             leave_type__is_sick_leave_total=True,
             status='COMPLETED',
-            submitted_at__year=timezone.now().year
-        ).aggregate(total=Sum('total_days'))['total'] or 0
+            submitted_at__year=year
+        ).prefetch_related('periods')
+        sick_total = sum(lr.total_days for lr in sick_lrs)
         context['sick_total_days'] = sick_total
         context['sick_exceeds_threshold'] = sick_total > 8
         
@@ -694,26 +695,27 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             status='PENDING_PROTOCOL'
         ).select_related('user', 'user__department', 'leave_type').order_by('-submitted_at')
         
-        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες (query-based)
+        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες (Python-level calculation)
         from accounts.models import User
         from leaves.models import YCCommitteeAcknowledgment, LeaveRequest
         from django.utils import timezone
-        from django.db.models import Sum
         acknowledged = YCCommitteeAcknowledgment.objects.filter(
             handler=self.request.user
         ).values_list('employee_id', flat=True)
-        sick_users_with_total = LeaveRequest.objects.filter(
+        year = timezone.now().year
+        sick_lrs = LeaveRequest.objects.filter(
             leave_type__is_sick_leave_total=True,
             status='COMPLETED',
-            submitted_at__year=timezone.now().year
-        ).values('user_id').annotate(
-            total_sick=Sum('total_days')
-        ).filter(total_sick__gt=8).values_list('user_id', flat=True)
+            submitted_at__year=year
+        ).select_related('user').prefetch_related('periods')
+        user_totals = {}
+        for lr in sick_lrs:
+            uid = lr.user_id
+            user_totals[uid] = user_totals.get(uid, 0) + lr.total_days
+        alert_user_ids = [uid for uid, total in user_totals.items() if total > 8 and uid not in acknowledged]
         context['sick_alert_users'] = User.objects.filter(
-            id__in=sick_users_with_total,
+            id__in=alert_user_ids,
             is_active=True
-        ).exclude(
-            id__in=acknowledged
         ).select_related('department').order_by('last_name')
         context['sick_alert_count'] = context['sick_alert_users'].count()
         

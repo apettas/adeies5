@@ -1,7 +1,7 @@
 """
 Dashboard utilities - sorting, filtering, action resolver
 """
-from django.db.models import Q, Sum
+from django.db.models import Q
 from django.utils import timezone
 from leaves.models import LeaveRequest
 
@@ -133,12 +133,14 @@ def get_available_actions(leave_request, user):
             actions.append(('view', 'ΠΡΟΒΟΛΗ', 'leaves:leave_request_detail'))
             actions.append(('documents', 'ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ', None))
             actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
-            sick_total = LeaveRequest.objects.filter(
-                user=leave_request.user,
-                leave_type__is_sick_leave_total=True,
-                status='COMPLETED',
-                submitted_at__year=timezone.now().year
-            ).aggregate(total=Sum('total_days'))['total'] or 0
+            sick_total = sum(
+                lr.total_days for lr in LeaveRequest.objects.filter(
+                    user=leave_request.user,
+                    leave_type__is_sick_leave_total=True,
+                    status='COMPLETED',
+                    submitted_at__year=timezone.now().year
+                ).prefetch_related('periods')
+            )
             if sick_total > 8:
                 actions.append(('yc_referral', 'ΕΤΟΙΜΑΣΙΑ ΔΙΑΒΙΒΑΣΤΙΚΟΥ ΓΙΑ ΥΕ', 'leaves:send_to_yc_committee'))
             else:
