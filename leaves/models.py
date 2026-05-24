@@ -509,10 +509,15 @@ class LeaveRequest(models.Model):
             return timezone.now() > self.documents_deadline
         return False
     
-    @property
+@property
     def can_provide_documents(self):
-        """Ελέγχει αν μπορούν να παρασχεθούν δικαιολογητικά"""
+        """Ελέγχει αν ο χρήστης μπορεί να παρέχει δικαιολογητικά"""
         return self.status == 'WAITING_FOR_DOCUMENTS'
+
+    @property
+    def can_request_documents(self):
+        """Ελέγχει αν ο χειριστής μπορεί να ζητήσει δικαιολογητικά"""
+        return self.status == 'IN_REVIEW'
     
     def has_protocol_pdf(self):
         """Επιστρέφει True αν υπάρχει πρωτοκολλημένο PDF"""
