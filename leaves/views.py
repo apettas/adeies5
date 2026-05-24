@@ -614,17 +614,18 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
     
     def get_queryset(self):
         queryset = LeaveRequest.objects.filter(
-            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
         ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
         
         # Filter by active tab
         tab = self.request.GET.get('tab', 'all')
         tab_filters = {
-            'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT'],
+            'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT'],
             'protocol': ['PENDING_PROTOCOL'],
             'processing': ['IN_REVIEW'],
             'documents': ['WAITING_FOR_DOCUMENTS'],
             'decision': ['DECISION_PREPARATION'],
+            'yc_committee': ['PENDING_YC_COMMITTEE'],
             'signatures': ['PENDING_SIGNATURES'],
             'completed': ['COMPLETED'],
             'rejected': ['REJECTED_BY_LEAVES_DEPT'],
@@ -657,7 +658,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         
         # Tab counts
         all_active = LeaveRequest.objects.filter(
-            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
+            status__in=['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT']
         )
         context['tab_counts'] = {
             'all': all_active.count(),
@@ -668,6 +669,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             'signatures': LeaveRequest.objects.filter(status='PENDING_SIGNATURES').count(),
             'completed': LeaveRequest.objects.filter(status='COMPLETED').count(),
             'rejected': LeaveRequest.objects.filter(status='REJECTED_BY_LEAVES_DEPT').count(),
+            'yc_committee': LeaveRequest.objects.filter(status='PENDING_YC_COMMITTEE').count(),
         }
         
 
@@ -2061,6 +2063,126 @@ def provide_documents(request, pk):
     
     # GET: Εμφάνιση σελίδας επιβεβαίωσης παροχής δικαιολογητικών
     return render(request, 'leaves/provide_documents_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def send_to_yc_committee(request, pk):
+    """Αποστολή αίτησης σε Υγειονομική Επιτροπή — ο χειριστής ανεβάζει διαβιβαστικό"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα αποστολής σε Υγειονομική Επιτροπή.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if not leave_request.can_send_to_yc:
+        messages.error(request, 'Η αίτηση δεν μπορεί να σταλεί σε Υγειονομική Επιτροπή.')
+        return redirect('leaves:leave_request_detail', pk=pk)
+
+    if request.method == 'POST':
+        notes = request.POST.get('notes', '').strip()
+        if not notes:
+            messages.error(request, 'Απαιτούνται υποχρεωτικά σχόλια/αιτιολογία για την παραπομπή.')
+            return render(request, 'leaves/yc_referral_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+
+        from leaves.attachment_helpers import save_leave_request_attachments_from_request
+        saved_count, upload_errors = save_leave_request_attachments_from_request(
+            request, leave_request, request.user
+        )
+        if upload_errors:
+            for err in upload_errors:
+                messages.error(request, err)
+            return render(request, 'leaves/yc_referral_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+        if saved_count == 0:
+            messages.error(request, 'Απαιτείται η επισύναψη του διαβιβαστικού για την Υγειονομική Επιτροπή.')
+            return render(request, 'leaves/yc_referral_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+
+        try:
+            leave_request.send_to_yc_committee(handler=request.user, notes=notes)
+            from notifications.utils import create_notification
+            create_notification(
+                user=leave_request.user,
+                title="Παραπομπή σε Υγειονομική Επιτροπή",
+                message=f"Η αίτησή σας για {leave_request.leave_type.name} παραπέμφθηκε στην Υγειονομική Επιτροπή.",
+                related_object=leave_request
+            )
+            messages.success(request, 'Η αίτηση παραπέμφθηκε στην Υγειονομική Επιτροπή.')
+            return redirect('leaves:handler_dashboard')
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Σφάλμα: {str(e)}')
+
+    return render(request, 'leaves/yc_referral_form.html', {
+        'leave_request': leave_request,
+    })
+
+
+@login_required
+def receive_from_yc_committee(request, pk):
+    """Επιστροφή από Υγειονομική Επιτροπή — ο χειριστής ανεβάζει την απόφαση"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα επιστροφής από Υγειονομική Επιτροπή.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if leave_request.status != 'PENDING_YC_COMMITTEE':
+        messages.error(request, 'Η αίτηση δεν είναι σε αναμονή απόφασης Υγειονομικής Επιτροπής.')
+        return redirect('leaves:leave_request_detail', pk=pk)
+
+    if request.method == 'POST':
+        notes = request.POST.get('notes', '').strip()
+        if not notes:
+            messages.error(request, 'Απαιτούνται υποχρεωτικά σχόλια για την απόφαση της Υγειονομικής Επιτροπής.')
+            return render(request, 'leaves/yc_decision_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+
+        from leaves.attachment_helpers import save_leave_request_attachments_from_request
+        saved_count, upload_errors = save_leave_request_attachments_from_request(
+            request, leave_request, request.user
+        )
+        if upload_errors:
+            for err in upload_errors:
+                messages.error(request, err)
+            return render(request, 'leaves/yc_decision_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+        if saved_count == 0:
+            messages.error(request, 'Απαιτείται η επισύναψη της απόφασης της Υγειονομικής Επιτροπής.')
+            return render(request, 'leaves/yc_decision_form.html', {
+                'leave_request': leave_request,
+                'notes': notes,
+            })
+
+        try:
+            leave_request.receive_from_yc_committee(handler=request.user, notes=notes)
+            from notifications.utils import create_notification
+            create_notification(
+                user=leave_request.user,
+                title="Απόφαση Υγειονομικής Επιτροπής",
+                message=f"Η απόφαση της Υγειονομικής Επιτροπής για την αίτησή σας για {leave_request.leave_type.name} καταχωρήθηκε.",
+                related_object=leave_request
+            )
+            messages.success(request, 'Η απόφαση της Υγειονομικής Επιτροπής καταχωρήθηκε. Η αίτηση είναι σε επεξεργασία.')
+            return redirect('leaves:handler_dashboard')
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Σφάλμα: {str(e)}')
+
+    return render(request, 'leaves/yc_decision_form.html', {
+        'leave_request': leave_request,
+    })
 
 
 @login_required

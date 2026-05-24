@@ -147,6 +147,7 @@ class LeaveRequest(models.Model):
         ('IN_REVIEW', 'Σε επεξεργασία από τμήμα αδειών'),
         ('WAITING_FOR_DOCUMENTS', 'Σε αναμονή δικαιολογητικών'),
         ('DECISION_PREPARATION', 'Ετοιμασία απόφασης'),
+        ('PENDING_YC_COMMITTEE', 'Αναμονή απόφασης Υγειονομικής Επιτροπής'),
         ('PENDING_SIGNATURES', 'ΣΗΔΕ - προς υπογραφές'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
         ('SUPERVISOR_REJECTED', 'Αρνητική έγκριση προϊσταμένου'),
@@ -306,7 +307,7 @@ class LeaveRequest(models.Model):
     @property
     def can_be_processed(self):
         """Ελέγχει αν η αίτηση μπορεί να επεξεργαστεί από χειριστή"""
-        return self.status in ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW']
+        return self.status in ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE']
     
     @property
     def is_pending(self):
@@ -538,6 +539,30 @@ class LeaveRequest(models.Model):
     def can_request_documents(self):
         """Ελέγχει αν ο χειριστής μπορεί να ζητήσει δικαιολογητικά"""
         return self.status == "IN_REVIEW"
+
+    @property
+    def can_send_to_yc(self):
+        """Ελέγχει αν μπορεί να σταλεί σε Υγειονομική Επιτροπή"""
+        return self.status == 'IN_REVIEW' and self.user.sick_days_current_year > 8
+
+    def send_to_yc_committee(self, handler, notes=''):
+        """Αποστολή σε Υγειονομική Επιτροπή"""
+        if not self.can_send_to_yc:
+            raise ValueError("Η αίτηση δεν μπορεί να σταλεί σε Υγειονομική Επιτροπή")
+        self.status = 'PENDING_YC_COMMITTEE'
+        self.processing_comments = notes
+        self.save()
+        return True
+
+    def receive_from_yc_committee(self, handler, notes=''):
+        """Επιστροφή από Υγειονομική Επιτροπή (συνέχεια κανονικής ροής)"""
+        if self.status != 'PENDING_YC_COMMITTEE':
+            raise ValueError("Η αίτηση δεν είναι σε αναμονή απόφασης Υγειονομικής Επιτροπής")
+        self.status = 'IN_REVIEW'
+        if notes:
+            self.processing_comments = notes
+        self.save()
+        return True
     
     def has_protocol_pdf(self):
         """Επιστρέφει True αν υπάρχει πρωτοκολλημένο PDF"""
@@ -635,6 +660,7 @@ class LeaveRequest(models.Model):
             'IN_REVIEW': 'primary',
             'WAITING_FOR_DOCUMENTS': 'warning',
             'DECISION_PREPARATION': 'info',
+            'PENDING_YC_COMMITTEE': 'danger',
             'PENDING_SIGNATURES': 'warning',
             'COMPLETED': 'success',
             'SUPERVISOR_REJECTED': 'danger',

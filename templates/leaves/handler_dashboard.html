@@ -121,9 +121,6 @@
                             <strong>{{ u.get_full_name }}</strong>
                             {% if u.department %}({{ u.department.name }}){% endif %}
                             — <span class="fw-bold">{{ u.sick_days_current_year }} ημέρες</span>
-                            <a href="{% url 'leaves:balance_ledger' u.pk %}" class="btn btn-sm btn-outline-danger ms-2">
-                                <i class="bi bi-book"></i> Καρτέλα
-                            </a>
                         </li>
                         {% endfor %}
                     </ul>

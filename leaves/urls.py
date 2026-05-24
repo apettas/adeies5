@@ -74,6 +74,10 @@ urlpatterns = [
     # Withdraw completed leave
     path('withdraw-completed/<int:pk>/', views.withdraw_completed_leave, name='withdraw_completed_leave'),
 
+    # YC Committee workflow
+    path('yc-referral/<int:pk>/', views.send_to_yc_committee, name='send_to_yc_committee'),
+    path('yc-decision/<int:pk>/', views.receive_from_yc_committee, name='receive_from_yc_committee'),
+    
     # Balance Ledger
     path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),
     path('balance-adjustment/<int:user_id>/', manual_balance_adjustment, name='manual_balance_adjustment'),

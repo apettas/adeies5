@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Παραπομπή σε Υγειονομική Επιτροπή{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-file-medical"></i> Παραπομπή σε Υγειονομική Επιτροπή</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Ο υπάλληλος {{ leave_request.user.full_name }} έχει {{ leave_request.user.sick_days_current_year }} αναρρωτικές ημέρες τρέχοντος έτους.</strong>
+                Η παραπομπή στην Υγειονομική Επιτροπή απαιτείται όταν το σύνολο υπερβαίνει τις 8 ημέρες.
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <table class="table table-bordered">
+                        <tr><th>Αίτηση</th><td>#{{ leave_request.pk }} — {{ leave_request.leave_type.name }}</td></tr>
+                        <tr><th>Αιτών</th><td>{{ leave_request.user.full_name }}</td></tr>
+                        <tr><th>Ημερομηνίες</th><td>{{ leave_request.start_date|date:"d/m/Y" }} — {{ leave_request.end_date|date:"d/m/Y" }}</td></tr>
+                        <tr><th>Συνολικές Ημέρες</th><td>{{ leave_request.total_days }}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Σχόλια / Αιτιολογία <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3" required
+                              placeholder="Περιγράψτε τον λόγο παραπομπής στην Υγειονομική Επιτροπή...">{{ notes|default:'' }}</textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="file" class="form-label">Διαβιβαστικό προς Υγειονομική Επιτροπή <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control" id="file" name="file" required
+                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                    <small class="text-muted">Επιτρεπόμενοι τύποι: PDF, JPG, PNG, DOC, DOCX (max 5MB)</small>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-send"></i> Αποστολή σε Υγειονομική Επιτροπή
+                    </button>
+                    <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Ακύρωση
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

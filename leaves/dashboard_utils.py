@@ -127,10 +127,24 @@ def get_available_actions(leave_request, user):
             actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
             actions.append(('protocol', 'ΚΑΤΑΧΩΡΗΣΗ ΠΡΩΤ.', None))
             actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
-        elif status == 'IN_REVIEW':
-            actions.append(('view', 'ΠΡΟΒΟΛΗ', f'leaves:leave_request_detail'))
+        elif status == "IN_REVIEW":
+            actions.append(('view', 'ΠΡΟΒΟΛΗ', 'leaves:leave_request_detail'))
             actions.append(('documents', 'ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ', None))
             actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
+            if leave_request.user.sick_days_current_year > 8:
+                actions.append(('yc_referral', 'ΕΤΟΙΜΑΣΙΑ ΔΙΑΒΙΒΑΣΤΙΚΟΥ ΓΙΑ ΥΕ', 'leaves:send_to_yc_committee'))
+            else:
+                actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', None))
+            actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', 'leaves:complete_leave_request'))
+        elif status == 'WAITING_FOR_DOCUMENTS':
+            actions.append(('view', 'ΠΡΟΒΟΛΗ', 'leaves:leave_request_detail'))
+            actions.append(('upload_docs', 'ΠΑΡΟΧΗ ΔΙΚ/ΚΩΝ', 'leaves:provide_documents'))
+            actions.append(('return', 'ΕΠΙΣΤΡΟΦΗ', 'leaves:return_leave_to_employee'))
+            actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
+        elif status == 'PENDING_YC_COMMITTEE':
+            actions.append(('view', 'ΠΡΟΒΟΛΗ', 'leaves:leave_request_detail'))
+            actions.append(('upload_docs', 'ΑΝΕΒΑΣΜΑ ΑΠΟΦΑΣΗΣ ΥΕ', 'leaves:receive_from_yc_committee'))
+            actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', None))
             actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', None))
             actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', f'leaves:complete_leave_request'))
         elif status == 'WAITING_FOR_DOCUMENTS':
