@@ -379,6 +379,7 @@
         </div>
         
         <!-- PDF της Αίτησης -->
+        {% if not leave_request.leave_type.is_simple %}
         <div class="card mb-4">
             <div class="card-header">
                 <h5><i class="bi bi-file-earmark-pdf"></i> PDF Αίτησης</h5>
@@ -454,6 +455,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         <!-- Συνημμένα Αρχεία - GDPR Protection: Μόνο χειριστής αδειών και ιδιοκτήτης για αναρρωτικές -->
         {% if user.is_leave_handler or user == leave_request.user or user.is_department_manager and leave_request.leave_type.requires_approval or user.is_secretary and leave_request.leave_type.requires_approval %}
