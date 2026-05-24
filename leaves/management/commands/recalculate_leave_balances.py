@@ -44,7 +44,7 @@ class Command(BaseCommand):
             completed_leaves = LeaveRequest.objects.filter(
                 user=user,
                 status='COMPLETED',
-                leave_type__counts_against_balance=True
+                leave_type__affects_regular_leave_balance=True
             )
 
             total_used = sum(lr.total_days for lr in completed_leaves)

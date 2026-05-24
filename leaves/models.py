@@ -332,8 +332,8 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
-            # Έλεγχος υπολοίπου αν ο τύπος άδειας μετράει στο υπόλοιπο
-            if self.leave_type.counts_against_balance:
+            # Έλεγχος υπολοίπου αν ο τύπος άδειας επηρεάζει υπόλοιπο κανονικών
+            if self.leave_type.affects_regular_leave_balance:
                 if not self.user.can_request_leave_days(self.total_days):
                     raise ValueError(
                         f"Ανεπαρκές υπόλοιπο αδειών. "
@@ -429,7 +429,7 @@ class LeaveRequest(models.Model):
         import logging
         logger = logging.getLogger(__name__)
 
-        if self.status == 'COMPLETED' and self.leave_type.counts_against_balance:
+        if self.status == 'COMPLETED' and self.leave_type.affects_regular_leave_balance:
             days_used = self.total_days
             if days_used > 0:
                 logger.info(f"Deducting {days_used} leave days for user {self.user} on completion of request {self.id}")
