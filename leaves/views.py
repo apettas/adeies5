@@ -359,6 +359,23 @@ def create_leave_for_user(request, user_id):
                             )
             try:
                 leave_request.submit()
+                from django.template.loader import render_to_string
+                from weasyprint import HTML
+                private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                            os.path.join(settings.BASE_DIR, 'private_media'))
+                pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+                os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+                leave_request.refresh_from_db()
+                pdf_context = {
+                    'leave_request': leave_request,
+                    'user': request.user,
+                    'periods': leave_request.periods.all(),
+                    'request_text': leave_request.description or '',
+                    'attachments': leave_request.attachments.all(),
+                    'form_data': {'description': leave_request.description, 'leave_type': leave_request.leave_type},
+                }
+                html_content = render_to_string('leaves/pdf_template.html', pdf_context)
+                HTML(string=html_content).write_pdf(pdf_path)
                 next_status = 'ΥΠΟΒΛΗΘΕΙΣΑ' if leave_request.status == 'SUBMITTED' else 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ'
                 messages.success(request, f'Η αίτηση δημιουργήθηκε και υποβλήθηκε για τον/την {target_user.full_name}. Κατάσταση: {next_status}.')
             except ValueError as e:
