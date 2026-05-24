@@ -687,11 +687,17 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             status='PENDING_PROTOCOL'
         ).select_related('user', 'user__department', 'leave_type').order_by('-submitted_at')
         
-        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες
+        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες (εξαιρούνται όσοι έχουν λάβει γνώση)
         from accounts.models import User
+        from leaves.models import YCCommitteeAcknowledgment
+        acknowledged = YCCommitteeAcknowledgment.objects.filter(
+            handler=self.request.user
+        ).values_list('employee_id', flat=True)
         context['sick_alert_users'] = User.objects.filter(
             sick_days_current_year__gt=8,
             is_active=True
+        ).exclude(
+            id__in=acknowledged
         ).select_related('department').order_by('-sick_days_current_year')
         context['sick_alert_count'] = context['sick_alert_users'].count()
         
@@ -2063,6 +2069,23 @@ def provide_documents(request, pk):
     
     # GET: Εμφάνιση σελίδας επιβεβαίωσης παροχής δικαιολογητικών
     return render(request, 'leaves/provide_documents_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def acknowledge_yc_alert(request, user_id):
+    """Ο χειριστής δηλώνει ότι έλαβε γνώση για την υπέρβαση αναρρωτικών ενός υπαλλήλου"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+    from leaves.models import YCCommitteeAcknowledgment
+    YCCommitteeAcknowledgment.objects.get_or_create(
+        handler=request.user,
+        employee_id=user_id
+    )
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        return JsonResponse({'success': True})
+    messages.success(request, 'Η γνώση καταχωρήθηκε.')
+    return redirect('leaves:handler_dashboard')
 
 
 @login_required

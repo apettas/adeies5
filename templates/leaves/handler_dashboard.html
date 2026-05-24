@@ -121,6 +121,9 @@
                             <strong>{{ u.get_full_name }}</strong>
                             {% if u.department %}({{ u.department.name }}){% endif %}
                             — <span class="fw-bold">{{ u.sick_days_current_year }} ημέρες</span>
+                            <a href="{% url 'leaves:acknowledge_yc_alert' u.pk %}" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
                         </li>
                         {% endfor %}
                     </ul>

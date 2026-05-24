@@ -1196,3 +1196,21 @@ class DecisionTemplate(models.Model):
     def __str__(self):
         lt = self.leave_type.name if self.leave_type else 'Όλοι'
         return f"{self.workflow_variant} / {lt}"
+
+
+class YCCommitteeAcknowledgment(models.Model):
+    """Καταγραφή ότι ένας χειριστής έλαβε γνώση για την υπέρβαση αναρρωτικών ενός υπαλλήλου"""
+    handler = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yc_acknowledgments',
+                                verbose_name='Χειριστής')
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yc_acknowledged_by',
+                                 verbose_name='Υπάλληλος')
+    acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Γνώση Υγειονομικής Επιτροπής'
+        verbose_name_plural = 'Γνώσεις Υγειονομικής Επιτροπής'
+        unique_together = ['handler', 'employee']
+        ordering = ['-acknowledged_at']
+
+    def __str__(self):
+        return f"{self.handler} → {self.employee} ({self.acknowledged_at.strftime('%d/%m/%Y')})"
