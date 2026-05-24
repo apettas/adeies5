@@ -86,6 +86,10 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         sick_total = sum(lr.total_days for lr in sick_lrs)
         context['sick_total_days'] = sick_total
         context['sick_exceeds_threshold'] = sick_total > 8
+        from leaves.models import YCCommitteeAcknowledgment
+        context['sick_alert_acknowledged'] = YCCommitteeAcknowledgment.objects.filter(
+            handler=user, employee=user
+        ).exists() if sick_total > 8 else True
         
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
@@ -2093,8 +2097,8 @@ def provide_documents(request, pk):
 
 @login_required
 def acknowledge_yc_alert(request, user_id):
-    """Ο χειριστής δηλώνει ότι έλαβε γνώση για την υπέρβαση αναρρωτικών ενός υπαλλήλου"""
-    if not request.user.is_leave_handler:
+    """Δήλωση γνώσης για υπέρβαση αναρρωτικών — από χειριστή ή από τον ίδιο τον υπάλληλο"""
+    if not request.user.is_leave_handler and request.user.pk != user_id:
         raise PermissionDenied("Δεν έχετε δικαίωμα.")
     from leaves.models import YCCommitteeAcknowledgment
     YCCommitteeAcknowledgment.objects.get_or_create(
