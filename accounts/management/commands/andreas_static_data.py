@@ -453,7 +453,8 @@ class Command(BaseCommand):
                 'prefecture': achaia,
                 'headquarters': patra,
                 'parent_department': pdede,
-                'is_active': True
+                'is_active': True,
+                'has_atypical_leaves': True
             }
         )
         if created:
@@ -477,7 +478,8 @@ class Command(BaseCommand):
                     'prefecture': achaia,
                     'headquarters': patra,
                     'parent_department': autotelous_dn,
-                    'is_active': True
+                    'is_active': True,
+                    'has_atypical_leaves': True
                 }
             )
             if created:

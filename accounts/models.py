@@ -111,6 +111,8 @@ class Department(models.Model):
     is_virtual = models.BooleanField('Εικονικό Τμήμα', default=False,
                                      help_text='True για ΣΔΕΥ - κληρονομούν προϊστάμενο από το γονικό ΚΕΔΑΣΥ')
     is_active = models.BooleanField('Ενεργό', default=True)
+    has_atypical_leaves = models.BooleanField('Άτυπες Άδειες', default=False,
+        help_text='Τα τμήματα που χειρίζονται άτυπες άδειες (π.χ. εκπαιδευτικοί)')
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     
     class Meta:
