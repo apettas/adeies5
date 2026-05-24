@@ -357,7 +357,12 @@ def create_leave_for_user(request, user_id):
                                 uploaded_by=request.user,
                                 description=description,
                             )
-            messages.success(request, f'Η αίτηση δημιουργήθηκε για τον/την {target_user.full_name}.')
+            try:
+                leave_request.submit()
+                next_status = 'ΥΠΟΒΛΗΘΕΙΣΑ' if leave_request.status == 'SUBMITTED' else 'ΓΙΑ ΠΡΩΤΟΚΟΛΛΟ ΠΔΕΔΕ'
+                messages.success(request, f'Η αίτηση δημιουργήθηκε και υποβλήθηκε για τον/την {target_user.full_name}. Κατάσταση: {next_status}.')
+            except ValueError as e:
+                messages.warning(request, f'Η αίτηση δημιουργήθηκε αλλά δεν υποβλήθηκε: {e}')
             return redirect('leaves:handler_dashboard')
     else:
         form = LeaveRequestForm()
