@@ -543,7 +543,18 @@ class LeaveRequest(models.Model):
     @property
     def can_send_to_yc(self):
         """Ελέγχει αν μπορεί να σταλεί σε Υγειονομική Επιτροπή"""
-        return self.status == 'IN_REVIEW' and self.user.sick_days_current_year > 8
+        if self.status != 'IN_REVIEW':
+            return False
+        total = sum(
+            lr.total_days for lr in LeaveRequest.objects.filter(
+                user=self.user,
+                leave_type__is_sick_leave_total=True,
+                submitted_at__year=timezone.now().year
+            ).exclude(
+                status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
+            ).prefetch_related('periods')
+        )
+        return total > 8
 
     def send_to_yc_committee(self, handler, notes=''):
         """Αποστολή σε Υγειονομική Επιτροπή"""
