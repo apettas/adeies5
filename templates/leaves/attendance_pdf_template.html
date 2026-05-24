@@ -12,7 +12,7 @@
   th { background: #e0e0e0; font-size: 9pt; text-align: center; }
   td { font-size: 8.5pt; }
   .center { text-align: center; }
-  .leave-badge { color: #c00; font-weight: bold; font-size: 7.5pt; }
+  .leave-type { color: #c00; font-weight: bold; font-size: 7.5pt; }
   .footer { margin-top: 10px; font-size: 8pt; color: #888; text-align: center; }
   td.signature { min-width: 80px; }
 </style>
@@ -41,8 +41,8 @@
   <td>{{ r.emp.last_name }} {{ r.emp.first_name }}</td>
   <td>{{ r.emp.department.name|default:"—" }}</td>
   <td class="center">
-    {% if r.is_on_leave %}
-    <span class="leave-badge">✓</span>
+    {% if r.leave_type %}
+    <span class="leave-badge">{{ r.leave_type }}</span>
     {% else %}
     —
     {% endif %}

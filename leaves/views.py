@@ -2388,20 +2388,26 @@ def attendance_sheet(request):
         from weasyprint import HTML
 
         import io
-        html_str = render_to_string('leaves/attendance_pdf_template.html', {
-            'rows': [{
+        from collections import defaultdict
+        rows = []
+        for emp in employees:
+            leave_types_on_date = []
+            for lr in LeaveRequest.objects.filter(
+                user=emp,
+                submitted_at__year=selected_date.year,
+                status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
+                          'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED']
+            ).prefetch_related('periods'):
+                for p in lr.periods.all():
+                    if p.start_date <= selected_date <= p.end_date:
+                        leave_types_on_date.append(lr.leave_type.name)
+                        break
+            rows.append({
                 'emp': emp,
-                'is_on_leave': any(
-                    p.start_date <= selected_date <= p.end_date
-                    for lr in LeaveRequest.objects.filter(
-                        user=emp,
-                        submitted_at__year=selected_date.year,
-                        status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
-                                  'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED']
-                    ).prefetch_related('periods')
-                    for p in lr.periods.all()
-                ),
-            } for emp in employees],
+                'leave_type': ' | '.join(leave_types_on_date) if leave_types_on_date else None,
+            })
+        html_str = render_to_string('leaves/attendance_pdf_template.html', {
+            'rows': rows,
             'selected_date': selected_date,
         })
         buf = io.BytesIO()
