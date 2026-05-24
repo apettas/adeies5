@@ -3,6 +3,7 @@ Dashboard utilities - sorting, filtering, action resolver
 """
 from django.db.models import Q, Sum
 from django.utils import timezone
+from leaves.models import LeaveRequest
 
 
 class DashboardFilterMixin:
