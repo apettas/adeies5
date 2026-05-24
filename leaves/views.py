@@ -306,6 +306,69 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
                     )
 
 
+@login_required
+def create_leave_for_user(request, user_id):
+    """Ο χειριστής δημιουργεί νέα αίτηση άδειας για άλλον χρήστη"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Μόνο χειριστές αδειών μπορούν να δημιουργήσουν άδεια για άλλον χρήστη.")
+    target_user = get_object_or_404(get_user_model(), pk=user_id)
+
+    from .forms import LeaveRequestForm
+    if request.method == 'POST':
+        form = LeaveRequestForm(request.POST, request.FILES)
+        if form.is_valid():
+            leave_request = LeaveRequest(
+                user=target_user,
+                leave_type=form.cleaned_data['leave_type'],
+                description=form.cleaned_data['description'],
+                status='DRAFT'
+            )
+            leave_request.save()
+            periods_data = form.cleaned_data.get('periods_data', [])
+            for period_data in periods_data:
+                LeavePeriod.objects.create(
+                    leave_request=leave_request,
+                    start_date=period_data['start_date'],
+                    end_date=period_data['end_date']
+                )
+            private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                        os.path.join(settings.BASE_DIR, 'private_media'))
+            for key in request.FILES.keys():
+                if key.startswith('attachment_'):
+                    file_obj = request.FILES[key]
+                    index = key.replace('attachment_', '')
+                    description_key = f'attachment_description_{index}'
+                    description = request.POST.get(description_key, '')
+                    if file_obj:
+                        import uuid
+                        ext = file_obj.name.split('.')[-1]
+                        fname = f"{uuid.uuid4().hex}.{ext}"
+                        file_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), fname)
+                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                        success, key_hex, file_size = SecureFileHandler.save_encrypted_file(file_obj, file_path)
+                        if success:
+                            SecureFile.objects.create(
+                                leave_request=leave_request,
+                                original_filename=file_obj.name,
+                                file_path=file_path,
+                                file_size=file_size,
+                                content_type=file_obj.content_type or '',
+                                encryption_key=key_hex,
+                                uploaded_by=request.user,
+                                description=description,
+                            )
+            messages.success(request, f'Η αίτηση δημιουργήθηκε για τον/την {target_user.full_name}.')
+            return redirect('leaves:handler_dashboard')
+    else:
+        form = LeaveRequestForm()
+
+    return render(request, 'leaves/create_leave_request.html', {
+        'form': form,
+        'target_user': target_user,
+        'handler_creating': True,
+    })
+
+
 class ManagerDashboardView(LoginRequiredMixin, ListView):
     """Dashboard για Προϊστάμενο - Αιτήσεις προς έγκριση"""
     model = LeaveRequest
