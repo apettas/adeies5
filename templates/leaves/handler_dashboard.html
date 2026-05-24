@@ -105,6 +105,36 @@
 </div>
 {% endif %}
 
+<!-- Alert για Υγειονομική Επιτροπή -->
+{% if sick_alert_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-danger border-start border-danger border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-heart-pulse"></i> Υγειονομική Επιτροπή</h5>
+                    <p>Οι παρακάτω υπάλληλοι έχουν ξεπεράσει τις 8 αναρρωτικές ημέρες τρέχοντος έτους και χρήζουν παραπομπής στην Υγειονομική Επιτροπή:</p>
+                    <ul class="mb-0">
+                        {% for u in sick_alert_users %}
+                        <li>
+                            <strong>{{ u.get_full_name }}</strong>
+                            {% if u.department %}({{ u.department.name }}){% endif %}
+                            — <span class="fw-bold">{{ u.sick_days_current_year }} ημέρες</span>
+                            <a href="{% url 'leaves:balance_ledger' u.pk %}" class="btn btn-sm btn-outline-danger ms-2">
+                                <i class="bi bi-book"></i> Καρτέλα
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Οι υπάλληλοι αυτοί εμφανίζονται στη λίστα όσο το σύνολο αναρρωτικών τους ξεπερνά τις 8 ημέρες.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Filter bar -->
 {% include 'leaves/includes/filter_bar.html' %}
 

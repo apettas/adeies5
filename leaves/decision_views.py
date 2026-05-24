@@ -392,6 +392,30 @@ def complete_leave_request_final(request, pk):
                     notes=f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
                     created_by=request.user
                 )
+            # Alert για Υγειονομική Επιτροπή
+            if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
+                from accounts.models import User
+                from notifications.utils import create_notification
+                handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
+                for handler in handlers:
+                    create_notification(
+                        user=handler,
+                        title="Υγειονομική Επιτροπή",
+                        message=(
+                            f"Ο/Η {leave_request.user.full_name} έχει ξεπεράσει τις 8 αναρρωτικές ημέρες "
+                            f"({leave_request.user.sick_days_current_year} ημέρες). Απαιτείται παραπομπή."
+                        ),
+                        related_object=leave_request
+                    )
+                create_notification(
+                    user=leave_request.user,
+                    title="Υγειονομική Επιτροπή",
+                    message=(
+                        f"Το σύνολο των αναρρωτικών σας αδειών ({leave_request.user.sick_days_current_year} ημέρες) "
+                        f"ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
+                    ),
+                    related_object=leave_request
+                )
             messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
         else:
             messages.error(request, 'Δεν ήταν δυνατή η ολοκλήρωση της αίτησης.')

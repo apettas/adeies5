@@ -74,6 +74,10 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         ).count()
         context['sick_leave_yd_limit'] = user.sick_leave_with_declaration
         
+        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (από cached field)
+        context['sick_total_days'] = user.sick_days_current_year or 0
+        context['sick_exceeds_threshold'] = context['sick_total_days'] > 8
+        
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
         pending_documents_qs = all_requests.filter(status='WAITING_FOR_DOCUMENTS')
@@ -681,6 +685,14 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             status='PENDING_PROTOCOL'
         ).select_related('user', 'user__department', 'leave_type').order_by('-submitted_at')
         
+        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες
+        from accounts.models import User
+        context['sick_alert_users'] = User.objects.filter(
+            sick_days_current_year__gt=8,
+            is_active=True
+        ).select_related('department').order_by('-sick_days_current_year')
+        context['sick_alert_count'] = context['sick_alert_users'].count()
+        
         return context
 
 
@@ -913,6 +925,30 @@ def complete_leave_request(request, pk):
             message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
             related_object=leave_request
         )
+        
+        # Alert για Υγειονομική Επιτροπή
+        if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
+            from accounts.models import User
+            handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
+            for handler in handlers:
+                create_notification(
+                    user=handler,
+                    title="Υγειονομική Επιτροπή",
+                    message=(
+                        f"Ο/Η {leave_request.user.full_name} έχει ξεπεράσει τις 8 αναρρωτικές ημέρες "
+                        f"({leave_request.user.sick_days_current_year} ημέρες). Απαιτείται παραπομπή."
+                    ),
+                    related_object=leave_request
+                )
+            create_notification(
+                user=leave_request.user,
+                title="Υγειονομική Επιτροπή",
+                message=(
+                    f"Το σύνολο των αναρρωτικών σας αδειών ({leave_request.user.sick_days_current_year} ημέρες) "
+                    f"ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
+                ),
+                related_object=leave_request
+            )
         
         messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
         

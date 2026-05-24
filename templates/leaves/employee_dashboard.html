@@ -141,6 +141,53 @@
     </div>
 </div>
 
+<!-- Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card {% if sick_exceeds_threshold %}border-danger{% else %}border-secondary{% endif %}">
+            <div class="card-header d-flex justify-content-between align-items-center {% if sick_exceeds_threshold %}bg-danger text-white{% else %}bg-secondary bg-opacity-10{% endif %}">
+                <h5 class="mb-0"><i class="bi bi-activity"></i> Σύνολο Αναρρωτικών Αδειών Έτους</h5>
+                <span class="badge {% if sick_exceeds_threshold %}bg-light text-danger{% else %}bg-secondary{% endif %} fs-6">{{ sick_total_days }} ημέρες</span>
+            </div>
+            <div class="card-body">
+                {% if sick_exceeds_threshold %}
+                <div class="alert alert-danger mb-0 border-start border-danger border-5">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                        <div>
+                            <h5 class="alert-heading mb-1">Υπέρβαση Ορίου Αναρρωτικών Αδειών</h5>
+                            <p class="mb-0">Το σύνολο των αναρρωτικών σας αδειών για το έτος είναι <strong>{{ sick_total_days }} ημέρες</strong> και ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην <strong>Υγειονομική Επιτροπή</strong> για περαιτέρω αξιολόγηση.</p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <span class="display-6 fw-bold text-secondary">{{ sick_total_days }}</span>
+                        <span class="text-muted">/ 8</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="progress" style="height: 20px;">
+                            {% widthratio sick_total_days 8 100 as width %}
+                            {% if width|add:'0' > 100 %}{% widthratio 100 1 1 as width %}{% endif %}
+                            <div class="progress-bar {% if width|add:'0' >= 75 %}bg-warning{% else %}bg-info{% endif %}"
+                                 role="progressbar" style="width: {{ width }}%">
+                                {% if width|add:'0' >= 20 %}{{ width }}%{% endif %}
+                            </div>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            {% with remaining=8|add:sick_total_days|stringformat:'s'|cut:"-" %}
+                            Αναρρωτικές ημέρες τρέχοντος έτους. Όριο: 8 ημέρες.
+                            {% endwith %}
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Πρόσφατες Κινήσεις Υπολοίπου -->
 {% if recent_balance_entries %}
 <div class="row mb-4">

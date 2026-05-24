@@ -37,6 +37,8 @@ class LeaveType(models.Model):
         help_text='STANDARD, KEDASY, SDEY - καθορίζει το approval path και τα rules')
     is_sick_leave_yd = models.BooleanField('Αναρρωτική Άδεια με ΥΔ', default=False,
         help_text='Αν είναι ενεργό, μετράει στο ετήσιο όριο αναρρωτικών με ΥΔ (2/έτος)')
+    is_sick_leave_total = models.BooleanField('Σύνολο Αναρρωτικών', default=False,
+        help_text='Αν είναι ενεργό, οι ημέρες μετράνε στο σύνολο αναρρωτικών του έτους (για alert Υγειονομικής Επιτροπής)')
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
@@ -442,11 +444,16 @@ class LeaveRequest(models.Model):
         import logging
         logger = logging.getLogger(__name__)
 
-        if self.status == 'COMPLETED' and self.leave_type.affects_regular_leave_balance:
-            days_used = self.total_days
-            if days_used > 0:
-                logger.info(f"Deducting {days_used} leave days for user {self.user} on completion of request {self.id}")
-                self.user.use_leave_days(days_used)
+        if self.status == 'COMPLETED':
+            if self.leave_type.affects_regular_leave_balance:
+                days_used = self.total_days
+                if days_used > 0:
+                    logger.info(f"Deducting {days_used} leave days for user {self.user} on completion of request {self.id}")
+                    self.user.use_leave_days(days_used)
+
+            if self.leave_type.is_sick_leave_total:
+                self.user.sick_days_current_year = (self.user.sick_days_current_year or 0) + self.total_days
+                self.user.save(update_fields=['sick_days_current_year'])
     
     def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""
