@@ -74,13 +74,14 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         ).count()
         context['sick_leave_yd_limit'] = user.sick_leave_with_declaration
         
-        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (Python-level calculation)
+        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (όχι μόνο completed — όλες εκτός draft/rejected)
         year = timezone.now().year
         sick_lrs = LeaveRequest.objects.filter(
             user=user,
             leave_type__is_sick_leave_total=True,
-            status='COMPLETED',
             submitted_at__year=year
+        ).exclude(
+            status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
         ).prefetch_related('periods')
         sick_total = sum(lr.total_days for lr in sick_lrs)
         context['sick_total_days'] = sick_total
@@ -705,8 +706,9 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         year = timezone.now().year
         sick_lrs = LeaveRequest.objects.filter(
             leave_type__is_sick_leave_total=True,
-            status='COMPLETED',
             submitted_at__year=year
+        ).exclude(
+            status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
         ).select_related('user').prefetch_related('periods')
         user_totals = {}
         for lr in sick_lrs:

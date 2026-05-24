@@ -137,8 +137,9 @@ def get_available_actions(leave_request, user):
                 lr.total_days for lr in LeaveRequest.objects.filter(
                     user=leave_request.user,
                     leave_type__is_sick_leave_total=True,
-                    status='COMPLETED',
                     submitted_at__year=timezone.now().year
+                ).exclude(
+                    status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
                 ).prefetch_related('periods')
             )
             if sick_total > 8:
