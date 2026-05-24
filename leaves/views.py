@@ -2368,6 +2368,58 @@ def receive_from_yc_committee(request, pk):
 
 
 @login_required
+def attendance_sheet(request):
+    """Παρουσιολόγιο — PDF με όλους τους υπαλλήλους Αυτοτελούς Διεύθυνσης"""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Μόνο χειριστές αδειών.")
+    from accounts.models import Department, User
+    autotelous = Department.objects.filter(code='AUTOTELOUS_DN').first()
+    departments = autotelous.get_all_sub_departments() if autotelous else []
+    employees = User.objects.filter(department__in=departments, is_active=True).order_by('last_name', 'first_name')
+
+    if request.method == 'POST':
+        date_str = request.POST.get('date', '')
+        if not date_str:
+            messages.error(request, 'Επιλέξτε ημερομηνία.')
+            return render(request, 'leaves/attendance_sheet.html', {'employees': employees, 'today': timezone.now().date()})
+        from datetime import datetime
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        from django.template.loader import render_to_string
+        from weasyprint import HTML
+
+        import io
+        html_str = render_to_string('leaves/attendance_pdf_template.html', {
+            'rows': [{
+                'emp': emp,
+                'is_on_leave': any(
+                    p.start_date <= selected_date <= p.end_date
+                    for lr in LeaveRequest.objects.filter(
+                        user=emp,
+                        submitted_at__year=selected_date.year,
+                        status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
+                                  'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED']
+                    ).prefetch_related('periods')
+                    for p in lr.periods.all()
+                ),
+            } for emp in employees],
+            'selected_date': selected_date,
+        })
+        buf = io.BytesIO()
+        HTML(string=html_str).write_pdf(buf)
+        pdf = buf.getvalue()
+        buf.close()
+        from django.http import HttpResponse
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="parousiologio_{selected_date.strftime("%Y%m%d")}.pdf"'
+        return response
+
+    return render(request, 'leaves/attendance_sheet.html', {
+        'employees': employees,
+        'today': timezone.now().date(),
+    })
+
+
+@login_required
 def return_leave_to_employee(request, pk):
     """Επιστροφή αίτησης στον αιτούντα για διόρθωση"""
     if not request.user.is_leave_handler:

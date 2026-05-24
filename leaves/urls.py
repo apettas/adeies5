@@ -81,6 +81,9 @@ urlpatterns = [
     path('yc-decision/<int:pk>/', views.receive_from_yc_committee, name='receive_from_yc_committee'),
     path('yc-acknowledge/<int:user_id>/', views.acknowledge_yc_alert, name='acknowledge_yc_alert'),
     
+    # Attendance sheet
+    path('attendance/', views.attendance_sheet, name='attendance_sheet'),
+    
     # Balance Ledger
     path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),
     path('balance-adjustment/<int:user_id>/', manual_balance_adjustment, name='manual_balance_adjustment'),

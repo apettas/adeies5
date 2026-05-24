@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Παρουσιολόγιο{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Παρουσιολόγιο</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Επιλέξτε ημερομηνία για να δημιουργηθεί PDF παρουσιολογίου για όλους τους υπαλλήλους της Αυτοτελούς Διεύθυνσης.</p>
+            <p class="mb-3"><small class="text-muted">Σύνολο υπαλλήλων: <strong>{{ employees|length }}</strong></small></p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-auto">
+                        <label for="date" class="form-label">Ημερομηνία</label>
+                        <input type="date" class="form-control" id="date" name="date" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-file-earmark-pdf"></i> Δημιουργία PDF
+                        </button>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Επιστροφή
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

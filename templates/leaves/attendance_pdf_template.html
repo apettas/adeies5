@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4 landscape; margin: 1.5cm; }
+  body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; }
+  h1 { text-align: center; font-size: 14pt; margin-bottom: 5px; }
+  .subtitle { text-align: center; font-size: 11pt; color: #555; margin-bottom: 15px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #333; padding: 5px 6px; text-align: left; }
+  th { background: #e0e0e0; font-size: 9pt; text-align: center; }
+  td { font-size: 8.5pt; }
+  .center { text-align: center; }
+  .leave-badge { color: #c00; font-weight: bold; font-size: 7.5pt; }
+  .footer { margin-top: 10px; font-size: 8pt; color: #888; text-align: center; }
+  td.signature { min-width: 80px; }
+</style>
+</head>
+<body>
+<h1>ΠΑΡΟΥΣΙΟΛΟΓΙΟ</h1>
+<div class="subtitle">{{ selected_date|date:"l, d F Y" }}</div>
+
+<table>
+<thead>
+<tr>
+  <th style="width:5%">Α/Α</th>
+  <th style="width:25%">Ονοματεπώνυμο</th>
+  <th style="width:15%">Τμήμα</th>
+  <th style="width:8%">Άδεια</th>
+  <th style="width:17%">Ώρα Άφιξης</th>
+  <th style="width:15%">Υπογραφή</th>
+  <th style="width:17%">Ώρα Αναχώρησης</th>
+  <th style="width:15%">Υπογραφή</th>
+</tr>
+</thead>
+<tbody>
+{% for r in rows %}
+<tr>
+  <td class="center">{{ forloop.counter }}</td>
+  <td>{{ r.emp.last_name }} {{ r.emp.first_name }}</td>
+  <td>{{ r.emp.department.name|default:"—" }}</td>
+  <td class="center">
+    {% if r.is_on_leave %}
+    <span class="leave-badge">✓</span>
+    {% else %}
+    —
+    {% endif %}
+  </td>
+  <td class="signature">&nbsp;</td>
+  <td class="signature">&nbsp;</td>
+  <td class="signature">&nbsp;</td>
+  <td class="signature">&nbsp;</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+<div class="footer">Παρουσιολόγιο {{ selected_date|date:"d/m/Y" }} — Αυτοτελής Διεύθυνση Διοικητικής, Οικονομικής και Παιδαγωγικής Υποστήριξης</div>
+</body>
+</html>
