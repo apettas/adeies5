@@ -64,6 +64,16 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         context['sick_days_remaining'] = user.sick_leave_with_declaration
         context['sick_days_current_year'] = user.sick_days_current_year
         
+        # Αναρρωτικές Άδειες με ΥΔ — χρήση τρέχοντος έτους
+        from django.utils import timezone
+        context['sick_leave_yd_used'] = LeaveRequest.objects.filter(
+            user=user,
+            leave_type__is_sick_leave_yd=True,
+            status='COMPLETED',
+            submitted_at__year=timezone.now().year
+        ).count()
+        context['sick_leave_yd_limit'] = user.sick_leave_with_declaration
+        
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
         pending_documents_qs = all_requests.filter(status='WAITING_FOR_DOCUMENTS')

@@ -35,6 +35,8 @@ class LeaveType(models.Model):
     thematic_folder = models.CharField('Θεματικός Φάκελος', max_length=255, blank=True)
     workflow_variant = models.CharField('Workflow Variant', max_length=30, default='STANDARD',
         help_text='STANDARD, KEDASY, SDEY - καθορίζει το approval path και τα rules')
+    is_sick_leave_yd = models.BooleanField('Αναρρωτική Άδεια με ΥΔ', default=False,
+        help_text='Αν είναι ενεργό, μετράει στο ετήσιο όριο αναρρωτικών με ΥΔ (2/έτος)')
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
@@ -332,7 +334,19 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
-            # Έλεγχος υπολοίπου αν ο τύπος άδειας επηρεάζει υπόλοιπο κανονικών
+            if self.leave_type.is_sick_leave_yd:
+                used = LeaveRequest.objects.filter(
+                    user=self.user,
+                    leave_type__is_sick_leave_yd=True,
+                    status='COMPLETED',
+                    submitted_at__year=timezone.now().year
+                ).count()
+                if used >= self.user.sick_leave_with_declaration:
+                    raise ValueError(
+                        f"Εξαντλήσατε το ετήσιο όριο αναρρωτικών αδειών με ΥΔ "
+                        f"({self.user.sick_leave_with_declaration}/έτος)."
+                    )
+
             if self.leave_type.affects_regular_leave_balance:
                 if not self.user.can_request_leave_days(self.total_days):
                     raise ValueError(
@@ -344,7 +358,6 @@ class LeaveRequest(models.Model):
             if self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
             else:
-                # Παράκαμψη προϊσταμένου - κατευθείαν στον χειριστή αδειών
                 self.status = 'PENDING_PROTOCOL'
             self.submitted_at = timezone.now()
             self.save()

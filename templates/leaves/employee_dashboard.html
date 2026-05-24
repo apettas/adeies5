@@ -93,6 +93,54 @@
 </div>
 {% endif %}
 
+<!-- Αναρρωτικές Άδειες με ΥΔ -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-heart-pulse"></i> Αναρρωτικές Άδειες με Υπεύθυνη Δήλωση</h5>
+                <span class="badge bg-warning text-dark">{{ sick_leave_yd_used }} / {{ sick_leave_yd_limit }} χρησιμοποιήθηκαν</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        {% with ratio=sick_leave_yd_used|default:0 %}
+                        <div class="position-relative" style="width: 70px; height: 70px;">
+                            <span class="display-6 fw-bold {% if sick_leave_yd_used >= sick_leave_yd_limit %}text-danger{% else %}text-warning{% endif %}">
+                                {{ sick_leave_yd_used }}
+                            </span>
+                            <span class="text-muted">/{{ sick_leave_yd_limit }}</span>
+                        </div>
+                        {% endwith %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="progress" style="height: 25px;">
+                            {% if sick_leave_yd_limit > 0 %}
+                            {% with pct=sick_leave_yd_used|add:0 %}
+                            {% widthratio sick_leave_yd_used sick_leave_yd_limit 100 as width %}
+                            <div class="progress-bar {% if width|add:'0' >= 100 %}bg-danger{% elif width|add:'0' >= 75 %}bg-warning{% else %}bg-info{% endif %}"
+                                 role="progressbar" style="width: {{ width }}%" aria-valuenow="{{ sick_leave_yd_used }}"
+                                 aria-valuemin="0" aria-valuemax="{{ sick_leave_yd_limit }}">
+                                {% if width|add:'0' > 0 %}{{ width }}%{% endif %}
+                            </div>
+                            {% endwith %}
+                            {% endif %}
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            {% if sick_leave_yd_used >= sick_leave_yd_limit %}
+                                <span class="text-danger fw-bold">Εξαντλήσατε το ετήσιο όριο αναρρωτικών αδειών με ΥΔ.</span>
+                            {% else %}
+                                Δικαίωμα {{ sick_leave_yd_limit }} αναρρωτικών αδειών με ΥΔ ανά έτος.
+                                {% if sick_leave_yd_used >= sick_leave_yd_limit|add:-1 %}<span class="text-warning fw-bold">Απομένει 1.</span>{% endif %}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Πρόσφατες Κινήσεις Υπολοίπου -->
 {% if recent_balance_entries %}
 <div class="row mb-4">
