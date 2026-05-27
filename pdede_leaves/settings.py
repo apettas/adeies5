@@ -130,8 +130,18 @@ SHORT_DATE_FORMAT = 'd/m/Y'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# Email settings (for notifications - can be configured later)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Email settings (for notifications & protocol sending)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = config('EMAIL_HOST', default='mail.sch.gr')
+EMAIL_PORT = config('EMAIL_PORT', default=465, cast=int)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=True, cast=bool)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+
+# Email recipient for protocol requests
+PROTOCOL_EMAIL_RECIPIENT = config('PROTOCOL_EMAIL_RECIPIENT', default='apettas@gmail.com')
 
 # Media files
 MEDIA_URL = '/media/'

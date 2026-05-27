@@ -890,4 +890,52 @@
 </div>
 {% endif %}
 
+<!-- Ενότητα Χειριστή — Αποστολή για Πρωτόκολλο -->
+{% if user.is_leave_handler %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-primary mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-send"></i> Ενέργειες Χειριστή</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <p class="mb-2">
+                            <strong>Αποστολή για Πρωτόκολλο</strong>
+                        </p>
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-info-circle"></i> 
+                            Δημιουργήστε το ενοποιημένο PDF της αίτησης με όλα τα συνημμένα 
+                            (PDF, JPG, PNG) και στείλτε το μέσω email για πρωτόκολλο.
+                        </p>
+                        {% if leave_request.attachments.count > 0 %}
+                        <p class="mt-1 mb-0">
+                            <small class="text-success">
+                                <i class="bi bi-paperclip"></i> 
+                                {{ leave_request.attachments.count }} συνημμένο(α) αρχείο(α) θα περιληφθούν στο ενοποιημένο PDF.
+                            </small>
+                        </p>
+                        {% else %}
+                        <p class="mt-1 mb-0">
+                            <small class="text-muted">
+                                <i class="bi bi-paperclip"></i> 
+                                Δεν υπάρχουν συνημμένα αρχεία. Το ενοποιημένο PDF θα περιέχει μόνο την αίτηση.
+                            </small>
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        <a href="{% url 'leaves:send_to_protocol' leave_request.pk %}" 
+                           class="btn btn-primary btn-lg">
+                            <i class="bi bi-file-earmark-pdf"></i> Αποστολή για Πρωτόκολλο
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}

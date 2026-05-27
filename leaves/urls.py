@@ -76,6 +76,10 @@ urlpatterns = [
     # Withdraw completed leave
     path('withdraw-completed/<int:pk>/', views.withdraw_completed_leave, name='withdraw_completed_leave'),
 
+    # Merged PDF & Send to Protocol (email)
+    path('send-to-protocol-email/<int:pk>/', views.send_to_protocol_view, name='send_to_protocol'),
+    path('merged-pdf/<int:pk>/', views.serve_merged_pdf, name='serve_merged_pdf'),
+
     # YC Committee workflow
     path('yc-referral/<int:pk>/', views.send_to_yc_committee, name='send_to_yc_committee'),
     path('yc-decision/<int:pk>/', views.receive_from_yc_committee, name='receive_from_yc_committee'),

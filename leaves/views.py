@@ -1,4 +1,5 @@
 from django.http import HttpResponse, JsonResponse, Http404
+from django.utils.http import content_disposition_header
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -2598,3 +2599,117 @@ def withdraw_completed_leave(request, pk):
         return redirect('leaves:employee_dashboard')
 
     return render(request, 'leaves/withdraw_completed_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def send_to_protocol_view(request, pk):
+    """
+    Αποστολή για Πρωτόκολλο — Δημιουργία ενοποιημένου PDF και αποστολή μέσω email.
+    GET:  Εμφάνιση preview του merged PDF
+    POST: Αποστολή email
+    """
+    # Έλεγχος δικαιωμάτων — μόνο χειριστές
+    if not request.user.is_leave_handler:
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Δημιουργία merged PDF αν δεν υπάρχει ή αν έχει αλλάξει
+    if not leave_request.has_merged_pdf():
+        try:
+            from leaves.utils.pdf_merger import save_merged_pdf
+            pdf_content, encrypted_path, key_hex = save_merged_pdf(leave_request)
+            messages.success(request, 'Το ενοποιημένο PDF δημιουργήθηκε επιτυχώς.')
+        except Exception as e:
+            messages.error(request, f'Σφάλμα κατά τη δημιουργία του ενοποιημένου PDF: {str(e)}')
+            return redirect('leaves:leave_request_detail', pk=leave_request.id)
+    
+    context = {
+        'leave_request': leave_request,
+        'merged_pdf_exists': leave_request.has_merged_pdf(),
+        'merged_pdf_size': leave_request.merged_pdf_size,
+        'protocol_email': getattr(settings, 'PROTOCOL_EMAIL_RECIPIENT', 'apettas@gmail.com'),
+        'email_subject': None,
+    }
+    
+    # Προβολή του email subject
+    try:
+        from pdede_leaves.email_utils import build_email_subject
+        context['email_subject'] = build_email_subject(leave_request)
+    except ImportError:
+        pass
+    
+    if request.method == 'POST':
+        try:
+            from leaves.utils.pdf_merger import save_merged_pdf
+            from pdede_leaves.email_utils import send_merged_pdf_email
+            from leaves.crypto_utils import SecureFileHandler
+            
+            # Φόρτωση του αποθηκευμένου PDF
+            handler = SecureFileHandler()
+            pdf_content = handler.load_encrypted_file(
+                leave_request.merged_pdf_path,
+                leave_request.merged_pdf_encryption_key
+            )
+            
+            if pdf_content is None:
+                # Δημιουργία ξανά αν αποτυχία φόρτωσης
+                pdf_content, _, _ = save_merged_pdf(leave_request)
+            
+            success = send_merged_pdf_email(leave_request, pdf_content)
+            
+            if success:
+                messages.success(request, 'Το email στάλθηκε επιτυχώς!')
+                context['sent_success'] = True
+            else:
+                messages.error(request, 'Σφάλμα κατά την αποστολή του email. Ελέγξτε τις ρυθμίσεις SMTP.')
+                context['send_error'] = 'Η αποστολή απέτυχε. Επικοινωνήστε με τον διαχειριστή.'
+                
+        except Exception as e:
+            messages.error(request, f'Σφάλμα: {str(e)}')
+            context['send_error'] = str(e)
+    
+    return render(request, 'leaves/send_to_protocol.html', context)
+
+
+@login_required
+def serve_merged_pdf(request, pk):
+    """
+    Σερβίρισμα του ενοποιημένου PDF (κρυπτογραφημένου)
+    """
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    # Έλεγχος δικαιωμάτων
+    if not leave_request.can_user_view(request.user):
+        messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.')
+        return redirect('leaves:dashboard_redirect')
+    
+    if not leave_request.has_merged_pdf():
+        messages.error(request, 'Δεν υπάρχει ενοποιημένο PDF για αυτή την αίτηση.')
+        return redirect('leaves:leave_request_detail', pk=leave_request.id)
+    
+    try:
+        from leaves.crypto_utils import SecureFileHandler
+        handler = SecureFileHandler()
+        pdf_content = handler.load_encrypted_file(
+            leave_request.merged_pdf_path,
+            leave_request.merged_pdf_encryption_key
+        )
+        
+        if pdf_content is None:
+            messages.error(request, 'Δεν ήταν δυνατή η φόρτωση του ενοποιημένου PDF.')
+            return redirect('leaves:leave_request_detail', pk=leave_request.id)
+        
+        is_download = request.GET.get('download') == '1'
+        
+        filename = f"merged_{leave_request.id}_{leave_request.user.full_name.replace(' ', '_')}.pdf"
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        response['Content-Disposition'] = content_disposition_header(
+            as_attachment=is_download, filename=filename
+        )
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Σφάλμα κατά τη φόρτωση του PDF: {str(e)}')
+        return redirect('leaves:leave_request_detail', pk=leave_request.id)

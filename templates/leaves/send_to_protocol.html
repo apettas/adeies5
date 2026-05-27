@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Αποστολή για Πρωτόκολλο - Αλκίνοος{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-send"></i> Αποστολή για Πρωτόκολλο</h2>
+                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Στοιχεία Αίτησης -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-info-circle"></i> Στοιχεία Αίτησης</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Αριθμός:</strong> #{{ leave_request.id }}</p>
+                    <p><strong>Αιτών/Αιτούσα:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Email:</strong> {{ leave_request.user.email }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    <p><strong>Διάρκεια:</strong> {{ leave_request.total_days }} ημέρες</p>
+                    <p><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }} - {{ leave_request.end_date|date:"d/m/Y" }}</p>
+                    {% if leave_request.kedasy_kepea_protocol_number %}
+                    <p><strong>Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong> {{ leave_request.kedasy_kepea_protocol_number }}</p>
+                    {% endif %}
+                    <p><strong>Συνημμένα:</strong> {{ leave_request.attachments.count }}</p>
+                    {% if merged_pdf_size %}
+                    <p><strong>Μέγεθος PDF:</strong> {{ merged_pdf_size|filesizeformat }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Email Recipient -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="bi bi-envelope"></i> Παραλήπτης Email</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Email αποστολής:</strong></p>
+                    <p class="mb-0"><code>{{ protocol_email }}</code></p>
+                    <small class="text-muted">Το ενοποιημένο PDF θα σταλεί σε αυτή τη διεύθυνση.</small>
+                </div>
+            </div>
+
+            <!-- Email Subject Preview -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5><i class="bi bi-chat-dots"></i> Θέμα Email</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0"><small class="text-muted">Το θέμα του email θα είναι:</small></p>
+                    <p class="mt-1"><code>{{ email_subject }}</code></p>
+                </div>
+            </div>
+
+            {% if sent_success %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i> Το email στάλθηκε επιτυχώς!
+            </div>
+            {% endif %}
+            {% if send_error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> Σφάλμα κατά την αποστολή: {{ send_error }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- PDF Preview & Actions -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="bi bi-file-earmark-pdf"></i> Ενοποιημένο PDF</h5>
+                    <div>
+                        <a href="{% url 'leaves:serve_merged_pdf' leave_request.pk %}" class="btn btn-outline-primary btn-sm" target="_blank">
+                            <i class="bi bi-eye"></i> Προβολή
+                        </a>
+                        <a href="{% url 'leaves:serve_merged_pdf' leave_request.pk %}?download=1" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-download"></i> Λήψη
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if merged_pdf_exists %}
+                    <div class="ratio ratio-16x9 mb-3">
+                        <iframe src="{% url 'leaves:serve_merged_pdf' leave_request.pk %}" 
+                                style="border: 1px solid #ddd; border-radius: 5px; width: 100%; height: 600px;"
+                                allowfullscreen></iframe>
+                    </div>
+                    <p class="small text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        {% if leave_request.attachments.exists %}
+                            Το PDF περιέχει: την αίτηση άδειας, λίστα συνημμένων και {{ leave_request.attachments.count }} συνημμένο(α) αρχείο(α).
+                        {% else %}
+                            Το PDF περιέχει μόνο την αίτηση άδειας (δεν υπάρχουν συνημμένα).
+                        {% endif %}
+                    </p>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i>
+                        <p class="mt-3">Το ενοποιημένο PDF δεν έχει δημιουργηθεί ακόμα. Παρακαλώ ανανεώστε τη σελίδα.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Send Button -->
+            {% if merged_pdf_exists %}
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <form method="post" action="{% url 'leaves:send_to_protocol' leave_request.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-lg" 
+                                onclick="return confirm('Είστε σίγουροι ότι θέλετε να στείλετε το ενοποιημένο PDF μέσω email;');">
+                            <i class="bi bi-envelope-paper"></i> Αποστολή στο Email
+                        </button>
+                        <p class="mt-2 small text-muted">
+                            <i class="bi bi-info-circle"></i> 
+                            Πατώντας το κουμπί, το ενοποιημένο PDF θα σταλεί στο {{ protocol_email }}
+                        </p>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

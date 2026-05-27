@@ -248,8 +248,6 @@ class SecureFileHandler:
         content_type = file_obj.content_type or ''
         allowed_content_types = [
             'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'image/jpeg',
             'image/jpg', 
             'image/png'

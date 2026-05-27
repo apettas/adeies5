@@ -105,7 +105,7 @@ def secure_file_path(instance, filename):
 class SecureFile(models.Model):
     """Κρυπτογραφημένο αρχείο"""
     
-    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']
+    ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png']
     MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB per workflow.txt
     
     leave_request = models.ForeignKey('LeaveRequest', on_delete=models.CASCADE, related_name='attachments')
@@ -236,6 +236,13 @@ class LeaveRequest(models.Model):
     exact_copy_uploaded_at = models.DateTimeField('Ημερομηνία Αποστολής Ακριβούς Αντιγράφου', null=True, blank=True)
     exact_copy_uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                              related_name='uploaded_exact_copies', verbose_name='Ανέβασε το Ακριβές Αντίγραφο')
+    
+    # Πεδία για το Ενοποιημένο PDF (αίτηση + συνημμένα)
+    merged_pdf_path = models.CharField('Διαδρομή Ενοποιημένου PDF', max_length=500, blank=True)
+    merged_pdf_encryption_key = models.CharField('Κλειδί Κρυπτογράφησης Ενοποιημένου PDF', max_length=64, blank=True)
+    merged_pdf_size = models.PositiveIntegerField('Μέγεθος Ενοποιημένου PDF', null=True, blank=True)
+    merged_pdf_created_at = models.DateTimeField('Ημερομηνία Δημιουργίας Ενοποιημένου PDF', null=True, blank=True)
+    merged_pdf_sent_at = models.DateTimeField('Ημερομηνία Αποστολής Email', null=True, blank=True)
     
     # Πεδία για διαχείριση δικαιολογητικών
     required_documents = models.TextField('Απαιτούμενα Δικαιολογητικά', blank=True,
@@ -610,6 +617,10 @@ class LeaveRequest(models.Model):
     def has_exact_copy_pdf(self):
         """Επιστρέφει True αν υπάρχει ακριβές αντίγραφο PDF"""
         return bool(self.exact_copy_pdf_path and self.exact_copy_pdf_encryption_key)
+    
+    def has_merged_pdf(self):
+        """Επιστρέφει True αν υπάρχει ενοποιημένο PDF"""
+        return bool(self.merged_pdf_path and self.merged_pdf_encryption_key)
     
     def get_exact_copy_pdf_url(self):
         """URL για το ακριβές αντίγραφο PDF"""
