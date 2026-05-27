@@ -29,18 +29,6 @@ class LeavePeriodForm(forms.ModelForm):
             'end_date': 'Ημερομηνία Λήξης',
         }
     
-    def clean_start_date(self):
-        start_date = self.cleaned_data.get('start_date')
-        if start_date and start_date < timezone.now().date():
-            raise ValidationError('Η ημερομηνία έναρξης δεν μπορεί να είναι στο παρελθόν.')
-        return start_date
-    
-    def clean_end_date(self):
-        end_date = self.cleaned_data.get('end_date')
-        if end_date and end_date < timezone.now().date():
-            raise ValidationError('Η ημερομηνία λήξης δεν μπορεί να είναι στο παρελθόν.')
-        return end_date
-    
     def clean(self):
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
@@ -118,13 +106,6 @@ class LeaveRequestForm(forms.ModelForm):
                 end_date = timezone.datetime.strptime(period['end_date'], '%Y-%m-%d').date()
             except ValueError:
                 raise ValidationError(f'Διάστημα {i}: Μη έγκυρη μορφή ημερομηνίας.')
-            
-            # Επικύρωση ημερομηνιών
-            if start_date < timezone.now().date():
-                raise ValidationError(f'Διάστημα {i}: Η ημερομηνία έναρξης δεν μπορεί να είναι στο παρελθόν.')
-            
-            if end_date < timezone.now().date():
-                raise ValidationError(f'Διάστημα {i}: Η ημερομηνία λήξης δεν μπορεί να είναι στο παρελθόν.')
             
             if start_date > end_date:
                 raise ValidationError(f'Διάστημα {i}: Η ημερομηνία έναρξης δεν μπορεί να είναι μεταγενέστερη της λήξης.')
