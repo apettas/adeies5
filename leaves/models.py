@@ -39,6 +39,8 @@ class LeaveType(models.Model):
         help_text='Αν είναι ενεργό, μετράει στο ετήσιο όριο αναρρωτικών με ΥΔ (2/έτος)')
     is_sick_leave_total = models.BooleanField('Σύνολο Αναρρωτικών', default=False,
         help_text='Αν είναι ενεργό, οι ημέρες μετράνε στο σύνολο αναρρωτικών του έτους (για alert Υγειονομικής Επιτροπής)')
+    is_revocation = models.BooleanField('Ανάκληση', default=False,
+        help_text='Αν είναι ενεργό, ο τύπος άδειας αφορά ανάκληση άδειας')
     
     class Meta:
         verbose_name = 'Τύπος Άδειας'
