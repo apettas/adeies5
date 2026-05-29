@@ -702,6 +702,9 @@
                     <div class="flex-grow-1 ms-3">
                         <h6 class="mb-1">Υποβολή Αίτησης</h6>
                         <p class="mb-1 text-muted small">{{ leave_request.user.full_name }}</p>
+                        {% if leave_request.description %}
+                        <p class="mb-1 small"><em>"{{ leave_request.description }}"</em></p>
+                        {% endif %}
                         <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
                     </div>
                 </div>
