@@ -1270,7 +1270,7 @@ class YCCommitteeAcknowledgment(models.Model):
     acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Γνώση Υγειονομικής Επιτροπής'
+        verbose_name = 'Γνωμάτευση Υγειονομικής Επιτροπής'
         verbose_name_plural = 'Γνώσεις Υγειονομικής Επιτροπής'
         unique_together = ['handler', 'employee']
         ordering = ['-acknowledged_at']
