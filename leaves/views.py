@@ -2923,6 +2923,11 @@ def send_to_protocol_view(request, pk):
             from pdede_leaves.email_utils import send_merged_pdf_email
             from leaves.crypto_utils import SecureFileHandler
             
+            # Λήψη email παραλήπτη από τη φόρμα (με fallback στο default)
+            protocol_email = request.POST.get('protocol_email', '').strip()
+            if protocol_email:
+                context['protocol_email'] = protocol_email
+            
             # Φόρτωση του αποθηκευμένου PDF
             handler = SecureFileHandler()
             pdf_content = handler.load_encrypted_file(
@@ -2934,7 +2939,7 @@ def send_to_protocol_view(request, pk):
                 # Δημιουργία ξανά αν αποτυχία φόρτωσης
                 pdf_content, _, _ = save_merged_pdf(leave_request)
             
-            success = send_merged_pdf_email(leave_request, pdf_content)
+            success = send_merged_pdf_email(leave_request, pdf_content, recipient=context['protocol_email'])
             
             if success:
                 messages.success(request, 'Το email στάλθηκε επιτυχώς!')

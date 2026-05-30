@@ -21,18 +21,20 @@ def build_email_subject(leave_request):
     return ' - '.join(parts)
 
 
-def send_merged_pdf_email(leave_request, pdf_bytes):
+def send_merged_pdf_email(leave_request, pdf_bytes, recipient=None):
     """
     Στέλνει το ενοποιημένο PDF μέσω email.
     
     Args:
         leave_request: LeaveRequest instance
         pdf_bytes: bytes του ενοποιημένου PDF
+        recipient: (optional) email παραλήπτη. Αν δεν δοθεί, χρησιμοποιείται το PROTOCOL_EMAIL_RECIPIENT από settings.
     
     Returns:
         bool: True αν στάλθηκε επιτυχώς
     """
-    recipient = getattr(settings, 'PROTOCOL_EMAIL_RECIPIENT', 'apettas@gmail.com')
+    if recipient is None:
+        recipient = getattr(settings, 'PROTOCOL_EMAIL_RECIPIENT', 'apettas@gmail.com')
     
     subject = build_email_subject(leave_request)
     body = (
