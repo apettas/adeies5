@@ -9,7 +9,7 @@ from .models import (
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'max_days', 'requires_approval', 'is_revocation', 'is_active', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
+    list_display = ('name', 'max_days', 'requires_approval', 'is_revocation', 'is_active', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'has_instructions')
     list_filter = ('is_active', 'requires_approval', 'is_revocation', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
     search_fields = ('name', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
     fieldsets = (
