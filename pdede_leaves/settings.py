@@ -47,8 +47,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
-    'django_cas_ng.middleware.CASMiddleware',
 ]
+
+# CAS middleware (μόνο αν ενεργοποιημένο)
+if config('CAS_SERVER_URL', default=''):
+    INSTALLED_APPS.append('django_cas_ng')
+    MIDDLEWARE.append('django_cas_ng.middleware.CASMiddleware')
 
 ROOT_URLCONF = 'pdede_leaves.urls'
 

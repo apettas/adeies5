@@ -1,4 +1,6 @@
 from django.urls import path, include
+from django.conf import settings
+from decouple import config
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from . import views
@@ -20,5 +22,10 @@ urlpatterns = [
     path('manage-roles/', views.UserRoleManagementView.as_view(), name='manage_roles'),
     path('assign-role/', views.assign_role, name='assign_role'),
     path('update-department/', views.update_user_department, name='update_department'),
-    path('cas/', include('django_cas_ng.urls')),
 ]
+
+# CAS URLs — only if CAS is configured
+if config('CAS_SERVER_URL', default=''):
+    urlpatterns += [
+        path('cas/', include('django_cas_ng.urls')),
+    ]
