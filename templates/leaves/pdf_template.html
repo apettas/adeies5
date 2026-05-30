@@ -124,6 +124,9 @@
             
             {% if leave_request.manager_approved_by %}
             <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
+                <div style="height: 10px;"></div>
+                <p class="bold" style="font-size: 10pt;">ΕΓΚΡΙΝΕΤΑΙ</p>
+                <div style="height: 10px;"></div>
                 <p>{% if leave_request.manager_approved_by.gender|upper == 'F' or leave_request.manager_approved_by.gender|upper == 'FEMALE' %}Η Προϊσταμένη{% else %}Ο Προϊστάμενος{% endif %}</p>
                 <div style="height: 10px;"></div>
                 <p class="signature-small">Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</p>
