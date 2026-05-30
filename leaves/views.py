@@ -2014,14 +2014,29 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
                 ).filter(department_filter).count(),
             })
             
-            # Πρόσφατα πρωτοκολλημένες (τελευταίες 20) από το τμήμα του γραμματέα και ΣΔΕΥ
-            recent_processed = LeaveRequest.objects.filter(
+            # Πρόσφατα πρωτοκολλημένες από το τμήμα του γραμματέα και ΣΔΕΥ
+            recent_qs = LeaveRequest.objects.filter(
                 kedasy_kepea_protocol_number__isnull=False
             ).filter(department_filter).select_related(
                 'user', 'user__department', 'leave_type', 'kedasy_kepea_protocol_by'
-            ).order_by('-kedasy_kepea_protocol_date')[:20]
+            ).order_by('-kedasy_kepea_protocol_date')
             
-            context['recent_processed'] = recent_processed
+            # Φίλτρο αναζήτησης
+            q = self.request.GET.get('q', '').strip()
+            if q:
+                from django.db.models import Q
+                recent_qs = recent_qs.filter(
+                    Q(user__first_name__icontains=q) |
+                    Q(user__last_name__icontains=q) |
+                    Q(user__department__name__icontains=q) |
+                    Q(leave_type__name__icontains=q) |
+                    Q(kedasy_kepea_protocol_number__icontains=q) |
+                    Q(kedasy_kepea_protocol_by__first_name__icontains=q) |
+                    Q(kedasy_kepea_protocol_by__last_name__icontains=q)
+                )
+            
+            context['recent_processed'] = recent_qs[:20]
+            context['search_query'] = q
         else:
             context.update({
                 'pending_protocol_count': 0,
