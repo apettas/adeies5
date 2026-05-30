@@ -135,7 +135,19 @@
                 <p>{{ leave_request.manager_approved_by.first_name }} {{ leave_request.manager_approved_by.last_name }}</p>
                 <p class="signature-small">{{ leave_request.manager_approved_by.department.name }}</p>
             </div>
-            <div style="height: 15px;"></div>
+            <div style="height: 10px;"></div>
+            {% endif %}
+            
+            {% if leave_request.is_kedasy_kepea_department and leave_request.kedasy_kepea_protocol_number %}
+            <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
+                <div style="height: 5px;"></div>
+                <p class="bold">Πρωτοκολλήθηκε</p>
+                <div style="height: 5px;"></div>
+                <p>Υπηρεσία: {{ leave_request.user.department.parent_department.name|default:leave_request.user.department.name }}</p>
+                <p>Αρ. Πρωτοκόλλου: {{ leave_request.kedasy_kepea_protocol_number }}</p>
+                <p>Ημερομηνία: {{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
+            </div>
+            <div style="height: 10px;"></div>
             {% endif %}
             
             <p class="bold">Συνημμένα:</p>
