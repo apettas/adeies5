@@ -2130,28 +2130,16 @@ def add_kedasy_kepea_protocol(request, pk):
                 user=request.user
             )
             
-            if request.user.roles.filter(code='MANAGER').exists():
-                # Ο προϊστάμενος πρόσθεσε πρωτόκολλο + ενέκρινε → ειδοποίηση χειριστών
-                leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
-                for handler in leave_handlers:
-                    create_notification(
-                        user=handler,
-                        title="Αίτηση ΚΕΔΑΣΥ/ΚΕΠΕΑ Πρωτοκολλήθηκε και Εγκρίθηκε",
-                        message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε και εγκρίθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ - έτοιμη για επεξεργασία",
-                        related_object=leave_request
-                    )
-                messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε και η αίτηση εγκρίθηκε! Αρ. Πρωτ: {protocol_number}')
-            else:
-                # Ο γραμματέας πρόσθεσε πρωτόκολλο → ειδοποίηση προϊσταμένου για έγκριση
-                approving_manager = leave_request.user.get_approving_manager()
-                if approving_manager:
-                    create_notification(
-                        user=approving_manager,
-                        title="Αίτηση Πρωτοκολλήθηκε - Εκκρεμεί Έγκριση",
-                        message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ με αρ. {protocol_number} και εκκρεμεί η έγκρισή σας",
-                        related_object=leave_request
-                    )
-                messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}. Η αίτηση προωθήθηκε για έγκριση.')
+            # Μετά το πρωτόκολλο, η αίτηση πάει για έγκριση προϊσταμένου
+            approving_manager = leave_request.user.get_approving_manager()
+            if approving_manager:
+                create_notification(
+                    user=approving_manager,
+                    title="Αίτηση Πρωτοκολλήθηκε - Εκκρεμεί Έγκριση",
+                    message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ με αρ. {protocol_number} και εκκρεμεί η έγκρισή σας",
+                    related_object=leave_request
+                )
+            messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}. Η αίτηση προωθήθηκε για έγκριση.')
             
             # Ειδοποίηση στον υπάλληλο
             create_notification(

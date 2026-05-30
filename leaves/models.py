@@ -850,17 +850,11 @@ class LeaveRequest(models.Model):
         self.kedasy_kepea_protocol_date = protocol_date
         self.kedasy_kepea_protocol_by = user
         
-        # Αν ο χρήστης έχει ρόλο MANAGER, εγκρίνει ταυτόχρονα
-        if user.roles.filter(code='MANAGER').exists():
-            self.manager_approved_by = user
-            self.manager_approved_at = timezone.now()
-            self.manager_comments = f"Αυτόματη έγκριση με πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
-            self.status = 'PENDING_PROTOCOL'
-        else:
-            self.status = 'SUBMITTED'
-            self.manager_approved_by = None
-            self.manager_approved_at = None
-            self.manager_comments = ""
+        # Ανεξαρτήτως ρόλου, η αίτηση πάει για έγκριση προϊσταμένου
+        self.status = 'SUBMITTED'
+        self.manager_approved_by = None
+        self.manager_approved_at = None
+        self.manager_comments = ""
         
         self.save()
         
