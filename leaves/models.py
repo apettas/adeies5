@@ -733,6 +733,17 @@ class LeaveRequest(models.Model):
         if user.is_leave_handler:
             return True
         
+        # Οι γραμματείς μπορούν να δουν αιτήσεις του τμήματός τους
+        if user.is_secretary:
+            if self.user.department == user.department:
+                return True
+            if (user.department and user.department.department_type and
+                user.department.department_type.code == 'KEDASY' and
+                self.user.department and self.user.department.department_type and
+                self.user.department.department_type.code == 'SDEY' and
+                self.user.department.parent_department == user.department):
+                return True
+        
         return False
     
     def get_next_actions(self, user):
