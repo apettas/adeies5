@@ -583,7 +583,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             context.update({
                 'is_kedasy_kepea_manager': True,
                 'kedasy_kepea_pending_protocol_count': LeaveRequest.objects.filter(
-                    status='PENDING_PROTOCOL'
+                    status='PENDING_KEDASY_PROTOCOL'
                 ).filter(department_filter).count(),
                 'kedasy_kepea_completed_this_month': LeaveRequest.objects.filter(
                     kedasy_kepea_protocol_date__month=timezone.now().month,
@@ -601,10 +601,10 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             
             context['kedasy_kepea_recent_processed'] = recent_kedasy_kepea_processed
             
-            # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτοκόλληση
+            # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτόκολλο ΚΕΔΑΣΥ
             kedasy_kepea_pending_requests = LeaveRequest.objects.filter(
-                status='PENDING_PROTOCOL'
-            ).filter(department_filter).select_related('user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by').order_by('-manager_approved_at', '-submitted_at')
+                status='PENDING_KEDASY_PROTOCOL'
+            ).filter(department_filter).select_related('user', 'user__department', 'user__department__department_type', 'leave_type').order_by('-submitted_at')
             
             context['kedasy_kepea_pending_requests'] = kedasy_kepea_pending_requests
             
