@@ -2744,15 +2744,14 @@ def send_to_protocol_view(request, pk):
     
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
     
-    # Δημιουργία merged PDF αν δεν υπάρχει ή αν έχει αλλάξει
-    if not leave_request.has_merged_pdf():
-        try:
-            from leaves.utils.pdf_merger import save_merged_pdf
-            pdf_content, encrypted_path, key_hex = save_merged_pdf(leave_request)
-            messages.success(request, 'Το ενοποιημένο PDF δημιουργήθηκε επιτυχώς.')
-        except Exception as e:
-            messages.error(request, f'Σφάλμα κατά τη δημιουργία του ενοποιημένου PDF: {str(e)}')
-            return redirect('leaves:leave_request_detail', pk=leave_request.id)
+    # Δημιουργία merged PDF (πάντα από την αρχή για να περιλαμβάνει νέα συνημμένα)
+    try:
+        from leaves.utils.pdf_merger import save_merged_pdf
+        pdf_content, encrypted_path, key_hex = save_merged_pdf(leave_request)
+        messages.success(request, 'Το ενοποιημένο PDF δημιουργήθηκε επιτυχώς.')
+    except Exception as e:
+        messages.error(request, f'Σφάλμα κατά τη δημιουργία του ενοποιημένου PDF: {str(e)}')
+        return redirect('leaves:leave_request_detail', pk=leave_request.id)
     
     context = {
         'leave_request': leave_request,
