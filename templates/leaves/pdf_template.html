@@ -10,11 +10,15 @@
             src: url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap');
         }
         
+        @page {
+            margin: 8mm 10mm;
+        }
         body {
             font-family: 'DejaVu Sans', 'Noto Sans', Arial, sans-serif;
-            font-size: 12pt;
-            line-height: 1.4;
-            margin: 20px;
+            font-size: 9pt;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
             color: #000;
         }
         
@@ -53,39 +57,46 @@
         }
         
         p {
-            margin: 8px 0;
+            margin: 3px 0;
+        }
+        
+        .signature-small {
+            font-family: 'DejaVu Serif', 'Noto Serif', serif;
+            font-size: 7.5pt;
+            font-style: italic;
         }
         
         h3 {
-            margin: 15px 0;
+            margin: 8px 0;
+            font-size: 11pt;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="left-column">
-            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            <div style="height: 40px;"></div>
             <h3 class="bold">Αίτηση</h3>
-            <div style="height: 60px;"></div> <!-- 2-3 empty lines -->
+            <div style="height: 20px;"></div>
             <p><span>Επώνυμο:</span> <span class="bold">{{ user.last_name }}</span></p>
             <p><span>Όνομα:</span> <span class="bold">{{ user.first_name }}</span></p>
             <p><span>Πατρώνυμο:</span> <span class="bold">{{ user.father_name|default:"-" }}</span></p>
             <p><span>Κλάδος:</span> <span class="bold">{{ user.specialty|default:"-" }}</span></p>
             <p><span>Τηλέφωνο:</span> <span class="bold">{{ user.phone|default:"-" }}</span></p>
-            <div style="height: 40px;"></div> <!-- 2 empty lines -->
+            <div style="height: 15px;"></div>
             <p><span>Οργανική Θέση:</span> <span class="bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
-            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            <div style="height: 30px;"></div>
             <p class="bold">Θέμα: Χορήγηση άδειας {{ leave_request.leave_type.name }}</p>
         </div>
         
         <div class="right-column">
-            <div style="height: 180px;"></div> <!-- 9 empty lines -->
+            <div style="height: 60px;"></div>
             <div class="center">
                 <p>ΠΡΟΣ</p>
                 <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
                 <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
             </div>
-            <div style="height: 80px;"></div> <!-- 4 empty lines -->
+            <div style="height: 30px;"></div>
             
             <p>{{ request_text|default:"Παρακαλώ να μου χορηγήσετε άδεια "|add:leave_request.leave_type.name|add:" για τα κάτωθι χρονικά διαστήματα:" }}</p>
             
@@ -98,17 +109,18 @@
             </ul>
             <p>Σύνολο ημερών: {{ leave_request.total_days }}</p>
             
-            <div style="height: 100px;"></div> <!-- 5 empty lines -->
+            <div style="height: 30px;"></div>
             
             <div class="center">
                 <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
-                <div style="height: 40px;"></div> <!-- 2 empty lines -->
-                <p>Υπογεγραμμένο μέσω διαδικτύου</p>
-                <div style="height: 40px;"></div> <!-- 2 empty lines -->
+                <div style="height: 15px;"></div>
+                <p class="signature-small">Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</p>
+                <p class="signature-small">{{ leave_request.submitted_at|date:"d/m/Y" }} - {{ leave_request.submitted_at|time:"H:i" }}</p>
+                <div style="height: 15px;"></div>
                 <p>{{ user.first_name }} {{ user.last_name }}</p>
             </div>
             
-            <div style="height: 160px;"></div> <!-- 8 empty lines -->
+            <div style="height: 40px;"></div>
             
             <p class="bold">Συνημμένα:</p>
             <ul style="padding-left: 20px;">
