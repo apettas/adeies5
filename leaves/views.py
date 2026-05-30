@@ -1579,13 +1579,23 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             from django.db.models import Sum
             current_year = timezone.now().year
             five_years_ago = current_year - 5
-            yearly_totals = YearlySickLeaveTotal.objects.filter(
+            # Build complete list of all 6 years (5 past + current), fill gaps with 0
+            yearly_data = YearlySickLeaveTotal.objects.filter(
                 employee=leave_request.user,
                 year__gte=five_years_ago,
                 year__lte=current_year
             ).order_by('year')
+            data_by_year = {yt.year: yt.total_days for yt in yearly_data}
+            
+            class YearEntry:
+                def __init__(self, year, total_days):
+                    self.year = year
+                    self.total_days = total_days
+            
+            year_range = list(range(five_years_ago, current_year + 1))
+            yearly_totals = [YearEntry(y, data_by_year.get(y, 0)) for y in year_range]
             context['yearly_sick_leave_totals'] = yearly_totals
-            context['yearly_sick_leave_sum'] = yearly_totals.aggregate(total=Sum('total_days'))['total'] or 0
+            context['yearly_sick_leave_sum'] = sum(data_by_year.values())
         if context['is_sick_leave'] and user.is_department_manager and user != leave_request.user:
             context['can_view_attachments'] = False
         if user.is_department_manager and leave_request.user.department and \
