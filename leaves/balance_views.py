@@ -79,8 +79,8 @@ def manual_balance_adjustment(request, user_id):
         notes = request.POST.get('notes', '')
         description = request.POST.get('description', '').strip()
         
-        if not description:
-            messages.error(request, 'Απαιτείται περιγραφή/αιτιολογία για την εγγραφή.')
+        if not notes:
+            messages.error(request, 'Απαιτούνται σημειώσεις/αιτιολογία για την εγγραφή.')
             return render(request, 'leaves/manual_balance_adjustment.html', {
                 'target_user': target_user,
                 'suggested_balance': suggested_balance,

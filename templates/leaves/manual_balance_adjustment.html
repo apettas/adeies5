@@ -58,12 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         </select>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Περιγραφή</label>
-                        <input type="text" class="form-control" id="description" name="description" 
-                               placeholder="π.χ. Διόρθωση μετά από έλεγχο φακέλου" required>
-                    </div>
-                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="suggested_balance" class="form-label">Τελευταίο Γνωστό Υπόλοιπο</label>
@@ -86,9 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="mb-3">
-                        <label for="notes" class="form-label">Σημειώσεις</label>
+                        <label for="notes" class="form-label">Σημειώσεις <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                  placeholder="Επεξήγηση της διόρθωσης..."></textarea>
+                                  placeholder="Επεξήγηση της διόρθωσης..." required></textarea>
                     </div>
                     
                     <div class="d-flex gap-2">
