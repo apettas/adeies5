@@ -2294,6 +2294,28 @@ def provide_documents(request, pk):
                     related_object=leave_request
                 )
 
+            # Αναγέννηση PDF της αίτησης για να συμπεριληφθούν τα νέα δικαιολογητικά
+            try:
+                from django.template.loader import render_to_string
+                from weasyprint import HTML
+                from django.conf import settings
+                leave_request.refresh_from_db()
+                private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'private_media'))
+                pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+                os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+                pdf_context = {
+                    'leave_request': leave_request, 'user': leave_request.user,
+                    'periods': leave_request.periods.all(),
+                    'request_text': leave_request.description or '',
+                    'attachments': leave_request.attachments.all(),
+                    'form_data': {'description': leave_request.description, 'leave_type': leave_request.leave_type},
+                }
+                HTML(string=render_to_string('leaves/pdf_template.html', pdf_context)).write_pdf(pdf_path)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error regenerating PDF after providing documents: {str(e)}")
+            
             success_msg = 'Τα δικαιολογητικά παρασχέθηκαν επιτυχώς! Η αίτηση επέστρεψε σε επεξεργασία.'
             if saved_count:
                 success_msg += f' Αποθηκεύτηκαν {saved_count} συνημμένα αρχεία.'
@@ -2728,6 +2750,29 @@ def handler_upload_attachment(request, pk):
                 messages.error(request, 'Σφάλμα κατά την αποθήκευση του αρχείου.')
         except Exception as e:
             messages.error(request, f'Σφάλμα: {str(e)}')
+    
+    # Αναγέννηση PDF της αίτησης για να συμπεριληφθούν τα νέα συνημμένα
+    try:
+        from django.template.loader import render_to_string
+        from weasyprint import HTML
+        leave_request.refresh_from_db()
+        pdf_path = os.path.join(
+            getattr(settings, 'PRIVATE_MEDIA_ROOT', os.path.join(settings.BASE_DIR, 'private_media')),
+            'leave_requests', str(leave_request.id), 'request.pdf'
+        )
+        os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+        pdf_context = {
+            'leave_request': leave_request, 'user': leave_request.user,
+            'periods': leave_request.periods.all(),
+            'request_text': leave_request.description or '',
+            'attachments': leave_request.attachments.all(),
+            'form_data': {'description': leave_request.description, 'leave_type': leave_request.leave_type},
+        }
+        HTML(string=render_to_string('leaves/pdf_template.html', pdf_context)).write_pdf(pdf_path)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error regenerating PDF after attachment upload: {str(e)}")
     
     return redirect('leaves:leave_request_detail', pk=pk)
 
