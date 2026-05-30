@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'accounts',
     'leaves',
     'notifications',
+    'django_cas_ng',
 ]
 
 MIDDLEWARE = [
@@ -46,6 +47,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    'django_cas_ng.middleware.CASMiddleware',
 ]
 
 ROOT_URLCONF = 'pdede_leaves.urls'
@@ -149,3 +151,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Private media για κρυπτογραφημένα αρχεία
 PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
+
+# CAS SSO (Σχολικό Δίκτυο) — ενεργοποιείται μόνο με CAS_SERVER_URL στο .env
+from .cas_settings import *  # noqa: F401, F403

@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth import authenticate, login, logout
@@ -96,9 +97,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 
 def login_view(request):
-    """Login view με έλεγχο registration status"""
+    """Login view με έλεγχο registration status και CAS option"""
     if request.user.is_authenticated:
         return redirect('accounts:dashboard')
+    
+    from django.conf import settings
+    cas_enabled = getattr(settings, 'CAS_ENABLED', False)
     
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -106,12 +110,10 @@ def login_view(request):
         
         user = authenticate(request, username=email, password=password)
         if user is not None:
-            # Έλεγχος αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα
             if user.can_access_system():
                 login(request, user)
                 return redirect('accounts:dashboard')
             else:
-                # Ο χρήστης είναι PENDING ή REJECTED
                 if user.registration_status == 'PENDING':
                     messages.warning(request, 
                         'Η εγγραφή σας είναι σε εκκρεμότητα. Παρακαλώ περιμένετε την έγκριση από τον χειριστή αδειών.')
@@ -124,7 +126,35 @@ def login_view(request):
         else:
             messages.error(request, 'Λάθος email ή κωδικός πρόσβασης.')
     
-    return render(request, 'accounts/login.html')
+    return render(request, 'accounts/login.html', {'cas_enabled': cas_enabled})
+
+
+
+from django_cas_ng.views import LoginView as CASLoginView
+
+class CustomCASLoginView(CASLoginView):
+    """CAS login — auto-create user if not exists"""
+    def successful_login(self, request, user):
+        from accounts.models import User
+        cas_username = request.session.get('cas_username', '')
+        cas_attributes = request.session.get('cas_attributes', {})
+        
+        # Try to find existing user by email
+        email = cas_attributes.get('email', f'{cas_username}@sch.gr')
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Auto-create user
+            user = User.objects.create(
+                email=email,
+                username=email,
+                first_name=cas_attributes.get('first_name', cas_username),
+                last_name=cas_attributes.get('last_name', ''),
+                registration_status='APPROVED',
+                is_active=True,
+            )
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        return redirect(self.get_redirect_url())
 
 
 def logout_view(request):
