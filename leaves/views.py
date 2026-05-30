@@ -135,9 +135,10 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['revocation_type_ids'] = list(
-            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
-        )
+        instructions = {}
+        for lt in LeaveType.objects.filter(is_active=True).exclude(instructions=''):
+            instructions[lt.id] = lt.instructions
+        context['leave_type_instructions'] = instructions
         return context
 
     def get_success_url(self):
