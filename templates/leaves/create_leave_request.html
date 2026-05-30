@@ -384,21 +384,22 @@ $(document).ready(function() {
     // Function to validate that total period days match the declared days
     function validateDaysMismatch() {
         const declaredDays = parseInt($('#{{ form.days.id_for_label }}').val());
-        if (isNaN(declaredDays) || declaredDays < 1) {
-            daysMismatchWarning.show();
-            daysMismatchMessage.text('Παρακαλώ συμπληρώστε τις ημέρες άδειας (τουλάχιστον 1).');
-            hasDaysMismatch = true;
-            updateSubmitButtonState();
-            return false;
-        }
-
         let totalPeriodDays = 0;
+        let hasAnyPeriod = false;
         $('.period-card').each(function() {
             const daysValue = $(this).find('.period-days').val();
             if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
                 totalPeriodDays += parseInt(daysValue);
+                hasAnyPeriod = true;
             }
         });
+
+        if (!hasAnyPeriod || isNaN(declaredDays) || declaredDays < 1) {
+            daysMismatchWarning.hide();
+            hasDaysMismatch = false;
+            updateSubmitButtonState();
+            return true;
+        }
 
         if (totalPeriodDays !== declaredDays) {
             daysMismatchWarning.show();
