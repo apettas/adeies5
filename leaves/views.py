@@ -2024,7 +2024,6 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
             # Φίλτρο αναζήτησης
             q = self.request.GET.get('q', '').strip()
             if q:
-                from django.db.models import Q
                 recent_qs = recent_qs.filter(
                     Q(user__first_name__icontains=q) |
                     Q(user__last_name__icontains=q) |
