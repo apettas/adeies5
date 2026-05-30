@@ -371,11 +371,10 @@ class LeaveRequest(models.Model):
                         f"Αιτούμενες: {self.total_days}"
                     )
 
-            if self.leave_type.requires_approval:
-                if self.is_kedasy_kepea_department():
-                    self.status = 'PENDING_KEDASY_PROTOCOL'
-                else:
-                    self.status = 'SUBMITTED'
+            if self.is_kedasy_kepea_department():
+                self.status = 'PENDING_KEDASY_PROTOCOL'
+            elif self.leave_type.requires_approval:
+                self.status = 'SUBMITTED'
             else:
                 self.status = 'PENDING_PROTOCOL'
             self.submitted_at = timezone.now()
