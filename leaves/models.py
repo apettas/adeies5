@@ -860,11 +860,17 @@ class LeaveRequest(models.Model):
         self.kedasy_kepea_protocol_date = protocol_date
         self.kedasy_kepea_protocol_by = user
         
-        # Ανεξαρτήτως ρόλου, η αίτηση πάει για έγκριση προϊσταμένου
-        self.status = 'SUBMITTED'
-        self.manager_approved_by = None
-        self.manager_approved_at = None
-        self.manager_comments = ""
+        # Αν δεν απαιτεί έγκριση, πάει κατευθείαν PENDING_PROTOCOL
+        if not self.leave_type.requires_approval:
+            self.status = 'PENDING_PROTOCOL'
+            self.manager_approved_by = None
+            self.manager_approved_at = None
+            self.manager_comments = ""
+        else:
+            self.status = 'SUBMITTED'
+            self.manager_approved_by = None
+            self.manager_approved_at = None
+            self.manager_comments = ""
         
         self.save()
         
