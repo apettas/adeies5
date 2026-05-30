@@ -3,7 +3,8 @@ from .models import (
     LeaveType, LeaveRequest, LeavePeriod, SecureFile,
     Logo, Info, Ypopsin, Signee,
     PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead, RegularLeaveBalanceEntry,
-    WorkflowVariant, ApprovalRule, RequiredAttachmentRule, DecisionTemplate
+    WorkflowVariant, ApprovalRule, RequiredAttachmentRule, DecisionTemplate,
+    YCCommitteeAcknowledgment
 )
 
 
@@ -12,43 +13,88 @@ class LeaveTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'max_days', 'requires_approval', 'is_revocation', 'is_active', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'has_instructions')
     list_filter = ('is_active', 'requires_approval', 'is_revocation', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
     search_fields = ('name', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
+    list_display = ('name', 'code', 'max_days', 'requires_approval', 'workflow_variant', 'is_revocation', 'is_active', 'general_category', 'has_instructions')
+    list_filter = ('is_active', 'requires_approval', 'is_revocation', 'general_category', 'workflow_variant', 'is_sick_leave_yd', 'is_sick_leave_total')
+    search_fields = ('name', 'code', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
     fieldsets = (
         ('Βασικά Στοιχεία', {
-            'fields': ('name', 'description', 'max_days', 'requires_approval', 'is_active')
+            'fields': ('code', 'name', 'description', 'max_days', 'requires_approval', 'is_active')
         }),
-        ('Πρόσθετα Στοιχεία', {
-            'fields': ('subject_text', 'decision_text', 'folder', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation', 'instructions')
+        ('Ταξινόμηση', {
+            'fields': ('general_category', 'workflow_variant', 'thematic_folder', 'folder')
+        }),
+        ('Ονομασίες', {
+            'fields': ('name_simple', 'id_adeias', 'is_simple')
+        }),
+        ('Κείμενα', {
+            'fields': ('subject_text', 'decision_text', 'instructions')
+        }),
+        ('Υπόλοιπο', {
+            'fields': ('counts_against_balance', 'affects_regular_leave_balance')
+        }),
+        ('Ειδικές Κατηγορίες', {
+            'fields': ('is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation')
         }),
     )
 
 
 @admin.register(LeaveRequest)
 class LeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ('user', 'leave_type', 'start_date', 'end_date', 'total_days', 'days', 'status', 'created_at')
-    list_filter = ('status', 'leave_type', 'created_at')
-    search_fields = ('user__first_name', 'user__last_name', 'user__username', 'protocol_number')
+    list_display = ('user', 'leave_type', 'days', 'status', 'submitted_at', 'kedasy_kepea_protocol_number', 'pdede_protocol_number', 'protocol_number')
+    list_filter = ('status', 'leave_type', 'created_at', 'locking_user')
+    search_fields = ('user__first_name', 'user__last_name', 'user__email', 'protocol_number', 'kedasy_kepea_protocol_number', 'pdede_protocol_number')
     fieldsets = (
         ('Βασικά Στοιχεία', {
-            'fields': ('user', 'leave_type', 'description', 'days')
+            'fields': ('user', 'leave_type', 'description', 'requested_days', 'days', 'status')
         }),
-        ('Διαστήματα', {
-            'fields': ('periods',)
+        ('Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ', {
+            'fields': ('kedasy_kepea_protocol_number', 'kedasy_kepea_protocol_date', 'kedasy_kepea_protocol_by')
         }),
-        ('Κατάσταση', {
-            'fields': ('status', 'submitted_at', 'manager_approved_by', 'manager_approved_at', 'manager_comments')
+        ('Πρωτόκολλο ΠΔΕΔΕ', {
+            'fields': ('pdede_protocol_number', 'pdede_protocol_date', 'pdede_protocol_details', 'pdede_protocol_by')
+        }),
+        ('Πρωτόκολλο ΣΗΔΕ', {
+            'fields': ('protocol_number', 'protocol_pdf_path', 'protocol_pdf_size', 'protocol_created_at')
+        }),
+        ('Κατάσταση & Έγκριση', {
+            'fields': ('submitted_at', 'manager_approved_by', 'manager_approved_at', 'manager_comments')
         }),
         ('Επεξεργασία', {
-            'fields': ('protocol_number', 'processed_by', 'processed_at', 'processing_comments')
+            'fields': ('processed_by', 'processed_at', 'processing_comments')
+        }),
+        ('Απόφαση', {
+            'fields': ('final_decision_text', 'decision_logo', 'decision_info', 'decision_ypopsin', 'decision_signee')
+        }),
+        ('PDF Απόφασης', {
+            'fields': ('decision_pdf_path', 'decision_pdf_size', 'decision_created_at')
+        }),
+        ('Ακριβές Αντίγραφο ΣΗΔΕ', {
+            'fields': ('exact_copy_pdf_path', 'exact_copy_pdf_size', 'exact_copy_uploaded_by', 'exact_copy_uploaded_at')
+        }),
+        ('Συγχωνευμένο PDF', {
+            'fields': ('merged_pdf_path', 'merged_pdf_size', 'merged_pdf_created_at', 'merged_pdf_sent_at')
+        }),
+        ('Δικαιολογητικά', {
+            'fields': ('required_documents', 'documents_deadline', 'documents_requested_by', 'documents_requested_at', 'documents_provided_by', 'documents_provided_at', 'documents_notes')
         }),
         ('Απόρριψη', {
             'fields': ('rejected_by', 'rejected_at', 'rejection_reason')
+        }),
+        ('Επιστροφή', {
+            'fields': ('return_notes', 'returned_by', 'returned_at')
+        }),
+        ('Ανάκληση / Διαγραφή', {
+            'fields': ('parent_leave', 'revoked_days')
+        }),
+        ('Κλείδωμα', {
+            'fields': ('locking_user', 'locked_at')
         }),
         ('Ολοκλήρωση', {
             'fields': ('completed_at',)
         }),
     )
-    # Removed filter_horizontal as periods is not a many-to-many field
-    readonly_fields = ('created_at', 'updated_at', 'submitted_at', 'manager_approved_at', 'processed_at', 'rejected_at', 'completed_at')
+    readonly_fields = ('created_at', 'updated_at', 'submitted_at', 'manager_approved_at', 'manager_approved_by', 'processed_at', 'rejected_at', 'completed_at', 'protocol_created_at', 'decision_created_at', 'merged_pdf_created_at', 'merged_pdf_sent_at', 'exact_copy_uploaded_at', 'documents_requested_at', 'documents_provided_at', 'locked_at', 'returned_at')
+    # Remove flawed 'periods' field display since it's not a direct FK field
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
@@ -228,6 +274,15 @@ class RequiredAttachmentRuleAdmin(admin.ModelAdmin):
     list_filter = ('workflow_variant', 'is_required', 'is_active')
     search_fields = ('attachment_name', 'description')
     ordering = ('workflow_variant', 'leave_type')
+    ordering = ('workflow_variant', 'leave_type')
+
+
+@admin.register(YCCommitteeAcknowledgment)
+class YCCommitteeAcknowledgmentAdmin(admin.ModelAdmin):
+    list_display = ('handler', 'employee', 'acknowledged_at')
+    list_filter = ('acknowledged_at',)
+    search_fields = ('handler__email', 'handler__last_name', 'employee__email', 'employee__last_name')
+    readonly_fields = ('acknowledged_at',)
 
 
 @admin.register(DecisionTemplate)

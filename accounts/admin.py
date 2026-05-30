@@ -122,8 +122,8 @@ class CustomUserAdmin(UserAdmin):
     # Προσαρμογή fieldsets για email-based authentication (χωρίς username)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'father_name', 'gender', 'phone1', 'email2', 'orario', 'hire_date')}),
-        ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'roles', 'user_category')}),
+        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'father_name', 'gender', 'phone1', 'phone2', 'personal_email', 'email2', 'orario', 'hire_date')}),
+        ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'employee_type', 'roles', 'user_category')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('role_description', 'notification_recipients')}),
         ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
         ('Δικαιώματα Άδειας', {'fields': ('can_request_leave', 'can_approve_own_leave')}),
@@ -141,11 +141,11 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Προσωπικά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('first_name', 'last_name', 'father_name', 'phone1', 'email2', 'orario', 'hire_date')
+            'fields': ('first_name', 'last_name', 'father_name', 'phone1', 'phone2', 'personal_email', 'email2', 'orario', 'hire_date')
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('department', 'specialty', 'roles', 'user_category')
+            'fields': ('department', 'specialty', 'employee_type', 'roles', 'user_category')
         }),
         ('Κατάσταση Αδειών', {
             'classes': ('wide',),
