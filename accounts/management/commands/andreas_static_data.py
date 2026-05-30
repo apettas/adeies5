@@ -131,7 +131,6 @@ class Command(BaseCommand):
             {'name': 'Προφορική Άδεια', 'description': 'Προφορική Άδεια', 'max_days': 3, 'requires_approval': True, 'is_active': True, 'is_simple': True, 'affects_regular_leave_balance': False, 'counts_against_balance': False, 'is_sick_leave_yd': False, 'is_sick_leave_total': False},
             {'name': 'Εορταστική Άδεια', 'description': 'Εορταστική Άδεια', 'max_days': 2, 'requires_approval': True, 'is_active': True, 'is_simple': True, 'affects_regular_leave_balance': False, 'counts_against_balance': False, 'is_sick_leave_yd': False, 'is_sick_leave_total': False},
             {'name': 'Υπηρεσιακή Άδεια', 'description': 'Υπηρεσιακή Άδεια', 'max_days': 5, 'requires_approval': True, 'is_active': True, 'is_simple': True, 'affects_regular_leave_balance': False, 'counts_against_balance': False, 'is_sick_leave_yd': False, 'is_sick_leave_total': False},
-            {'name': 'Άδεια Επιμόρφωσης', 'description': 'Άδεια Επιμόρφωσης', 'max_days': 10, 'requires_approval': True, 'is_active': True, 'is_simple': True, 'affects_regular_leave_balance': False, 'counts_against_balance': False, 'is_sick_leave_yd': False, 'is_sick_leave_total': False},
         ]
         
         for i, leave_type_data in enumerate(leave_types_data, 1):

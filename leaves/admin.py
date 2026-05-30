@@ -24,12 +24,12 @@ class LeaveTypeAdmin(admin.ModelAdmin):
 
 @admin.register(LeaveRequest)
 class LeaveRequestAdmin(admin.ModelAdmin):
-    list_display = ('user', 'leave_type', 'start_date', 'end_date', 'total_days', 'status', 'created_at')
+    list_display = ('user', 'leave_type', 'start_date', 'end_date', 'total_days', 'days', 'status', 'created_at')
     list_filter = ('status', 'leave_type', 'created_at')
     search_fields = ('user__first_name', 'user__last_name', 'user__username', 'protocol_number')
     fieldsets = (
         ('Βασικά Στοιχεία', {
-            'fields': ('user', 'leave_type', 'description')
+            'fields': ('user', 'leave_type', 'description', 'days')
         }),
         ('Διαστήματα', {
             'fields': ('periods',)

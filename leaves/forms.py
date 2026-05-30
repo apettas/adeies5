@@ -60,10 +60,22 @@ class LeaveRequestForm(forms.ModelForm):
         widget=forms.HiddenInput(),
         required=False
     )
-    
+
+    # Πεδίο ημερών άδειας
+    days = forms.IntegerField(
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': 1,
+            'required': True,
+        }),
+        label='Ημέρες Άδειας',
+        help_text='Συμπληρώστε τον συνολικό αριθμό ημερών άδειας'
+    )
+
     class Meta:
         model = LeaveRequest
-        fields = ['leave_type', 'description']
+        fields = ['leave_type', 'description', 'days']
         widgets = {
             'leave_type': forms.Select(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={
@@ -126,10 +138,18 @@ class LeaveRequestForm(forms.ModelForm):
                     period1['end_date'] >= period2['start_date']):
                     raise ValidationError(f'Τα διαστήματα {i+1} και {j+1} επικαλύπτονται.')
         
-        # Έλεγχος συνολικών ημερών
+# Έλεγχος συνολικών ημερών
         if total_days > 365:
             raise ValidationError(f'Οι συνολικές ημέρες άδειας ({total_days}) δεν μπορούν να υπερβαίνουν τις 365.')
-        
+
+        # Έλεγχος ότι τα διαστήματα συμφωνούν με τις δηλωμένες ημέρες
+        declared_days = self.cleaned_data.get('days')
+        if declared_days is not None and total_days != declared_days:
+            raise ValidationError(
+                f'Οι συνολικές ημέρες των διαστημάτων ({total_days}) δεν συμφωνούν με τις '
+                f'δηλωμένες ημέρες άδειας ({declared_days}). Παρακαλώ διορθώστε.'
+            )
+
         return validated_periods
     
     def clean_attachment(self):
@@ -147,10 +167,13 @@ class LeaveRequestForm(forms.ModelForm):
         
         return file_obj
     
-    def save(self, commit=True):
+def save(self, commit=True):
         """Αποθήκευση αίτησης με διαστήματα"""
         instance = super().save(commit=False)
-        
+        days = self.cleaned_data.get('days', 1)
+        instance.days = days
+        instance.requested_days = days
+
         if commit:
             instance.save()
             

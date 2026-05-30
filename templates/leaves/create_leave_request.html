@@ -42,6 +42,31 @@
                                         {% endfor %}
                                     </div>
                                 {% endif %}
+                                <div id="revocation-message" class="alert alert-warning mt-2" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Είναι υποχρεωτικό να γράψετε στο πεδίο Περιγραφή/Αιτιολογία, ποια άδεια θέλετε να ανακαλέσετε.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Days Field - Before Periods -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="{{ form.days.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-day"></i> {{ form.days.label }} *
+                                </label>
+                                <input type="number" name="{{ form.days.name }}" id="{{ form.days.id_for_label }}"
+                                       class="form-control" min="1" value="{{ form.days.value|default:'1' }}" required>
+                                {% if form.days.help_text %}
+                                    <div class="form-text">{{ form.days.help_text }}</div>
+                                {% endif %}
+                                {% if form.days.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.days.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -56,6 +81,12 @@
                             <!-- Total Days Display -->
                             <div id="days-calculation" class="alert alert-info mt-3" style="display: none;">
                                 <span id="total-days"></span>
+                            </div>
+
+                            <!-- Days Mismatch Warning -->
+                            <div id="days-mismatch-warning" class="alert alert-danger mt-3" style="display: none;">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span id="days-mismatch-message"></span>
                             </div>
                             
                             <!-- Add Period Button - Bottom Right -->
@@ -274,9 +305,24 @@ $(document).ready(function() {
     const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
     const totalDaysSpan = $('#total-days');
     const daysCalculation = $('#days-calculation');
+    const daysMismatchWarning = $('#days-mismatch-warning');
+    const daysMismatchMessage = $('#days-mismatch-message');
     const submitBtn = $('button[type="submit"]');
     let hasDateErrors = false;
     let hasFileErrors = false;
+    let hasDaysMismatch = false;
+    
+    // Revocation type IDs from server
+    const revocationTypeIds = {{ revocation_type_ids|safe }};
+    
+    function toggleRevocationMessage() {
+        const selectedId = parseInt($('#{{ form.leave_type.id_for_label }}').val());
+        if (revocationTypeIds.includes(selectedId)) {
+            $('#revocation-message').slideDown(200);
+        } else {
+            $('#revocation-message').slideUp(200);
+        }
+    }
     
     // Allowed file types
     const allowedFileExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
@@ -367,15 +413,51 @@ $(document).ready(function() {
     
     // Function to update submit button state
     function updateSubmitButtonState() {
-        if (hasDateErrors || hasFileErrors) {
+        if (hasDateErrors || hasFileErrors || hasDaysMismatch) {
             submitBtn.prop('disabled', true);
             let title = '';
             if (hasDateErrors) title += 'Διορθώστε τις εσφαλμένες ημερομηνίες. ';
             if (hasFileErrors) title += 'Διορθώστε τα μη αποδεκτά αρχεία.';
+            if (hasDaysMismatch) title += 'Οι ημέρες δεν συμφωνούν με τα διαστήματα.';
             submitBtn.attr('title', title.trim());
         } else {
             submitBtn.prop('disabled', false);
             submitBtn.removeAttr('title');
+        }
+    }
+
+    // Function to validate that total period days match the declared days
+    function validateDaysMismatch() {
+        const declaredDays = parseInt($('#{{ form.days.id_for_label }}').val());
+        if (isNaN(declaredDays) || declaredDays < 1) {
+            daysMismatchWarning.show();
+            daysMismatchMessage.text('Παρακαλώ συμπληρώστε τις ημέρες άδειας (τουλάχιστον 1).');
+            hasDaysMismatch = true;
+            updateSubmitButtonState();
+            return false;
+        }
+
+        let totalPeriodDays = 0;
+        $('.period-card').each(function() {
+            const daysValue = $(this).find('.period-days').val();
+            if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
+                totalPeriodDays += parseInt(daysValue);
+            }
+        });
+
+        if (totalPeriodDays !== declaredDays) {
+            daysMismatchWarning.show();
+            daysMismatchMessage.text(
+                `Οι συνολικές ημέρες των διαστημάτων (${totalPeriodDays}) δεν συμφωνούν με τις δηλωμένες ημέρες άδειας (${declaredDays}). Παρακαλώ διορθώστε.`
+            );
+            hasDaysMismatch = true;
+            updateSubmitButtonState();
+            return false;
+        } else {
+            daysMismatchWarning.hide();
+            hasDaysMismatch = false;
+            updateSubmitButtonState();
+            return true;
         }
     }
     
@@ -436,7 +518,13 @@ $(document).ready(function() {
         updatePeriodDays(periodCard);
         updatePeriodsData();
         calculateTotalDays();
+        validateDaysMismatch();
         checkOverloaps();
+    });
+
+    // Days input change handler
+    $('#{{ form.days.id_for_label }}').on('input change', function() {
+        validateDaysMismatch();
     });
     
     // Function to add a new period
@@ -455,20 +543,21 @@ $(document).ready(function() {
             removePeriod(periodElement);
         });
         
-        // Add event listeners for date changes
+// Add event listeners for date changes
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
             validateDateField(this);
             validateDateRange(periodElement);
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
+            validateDaysMismatch();
             checkOverloaps();
         });
-        
+
 
         // Append to container
         periodsContainer.append(periodElement);
-        
+
         // Add event listeners for date changes (second call removed as it's now above)
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
             validateDateField(this);
@@ -476,6 +565,7 @@ $(document).ready(function() {
             updatePeriodDays(periodElement);
             updatePeriodsData();
             calculateTotalDays();
+            validateDaysMismatch();
             checkOverloaps();
         });
     }
@@ -492,6 +582,7 @@ $(document).ready(function() {
         updatePeriodNumbers();
         updatePeriodsData();
         calculateTotalDays();
+        validateDaysMismatch();
         checkOverloaps();
     }
     
@@ -804,6 +895,7 @@ $(document).ready(function() {
                 });
                 
                 calculateTotalDays();
+                validateDaysMismatch();
                 checkOverloaps();
             }
         } catch (e) {
@@ -813,10 +905,15 @@ $(document).ready(function() {
         // Add the first period automatically
         addPeriod();
     }
+
+    // Initial days mismatch validation
+    validateDaysMismatch();
+    
+    // Revocation message toggle on leave type change
+    const $leaveType = $('#{{ form.leave_type.id_for_label }}');
     
     // Initialize Select2 for leave type select (searchable dropdown)
     try {
-        const $leaveType = $('#{{ form.leave_type.id_for_label }}');
         if ($leaveType.length && $.fn.select2) {
             $leaveType.select2({
                 placeholder: 'Επιλέξτε τύπο άδειας...',
@@ -827,6 +924,9 @@ $(document).ready(function() {
     } catch (e) {
         console.log('Select2 init error:', e);
     }
+    
+    $leaveType.on('change', toggleRevocationMessage);
+    toggleRevocationMessage();
     
     // Check for any existing date errors on page load
     checkOverallDateErrors();

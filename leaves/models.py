@@ -161,7 +161,11 @@ class LeaveRequest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='leave_requests', verbose_name='Χρήστης')
     leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, verbose_name='Τύπος Άδειας')
     description = models.TextField('Περιγραφή/Αιτιολογία', blank=True)
-    
+    requested_days = models.PositiveIntegerField('Αιτούμενες Ημέρες Άδειας', default=1,
+        help_text='Συνολικός αριθμός ημερών άδειας που αιτείται ο χρήστης')
+    days = models.PositiveIntegerField('Ημέρες Άδειας', default=1,
+        help_text='Συνολικός αριθμός ημερών άδειας')
+
     # Στάτους και ημερομηνίες
     status = models.CharField('Κατάσταση', max_length=40, choices=STATUS_CHOICES, default='DRAFT')
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)

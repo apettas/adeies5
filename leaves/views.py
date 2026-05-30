@@ -127,6 +127,13 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
             raise PermissionDenied("Δεν έχετε δικαίωμα υποβολής αιτήσεων άδειας.")
         return super().dispatch(request, *args, **kwargs)
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['revocation_type_ids'] = list(
+            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+        )
+        return context
+
     def get_success_url(self):
         """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""
         user = self.request.user
@@ -145,6 +152,7 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
             user=self.request.user,
             leave_type=form.cleaned_data['leave_type'],
             description=form.cleaned_data['description'],
+            days=form.cleaned_data.get('days', 1),
             status='DRAFT'  # Προσωρινή κατάσταση
         )
         leave_request.save()
@@ -329,6 +337,9 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['is_atypical'] = True
+        context['revocation_type_ids'] = list(
+            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+        )
         return context
 
     def form_valid(self, form):
@@ -336,7 +347,9 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
             user=self.request.user,
             leave_type=form.cleaned_data['leave_type'],
             description=form.cleaned_data['description'],
-            status='DRAFT'
+            days=form.cleaned_data.get('days', 1),
+            requested_days=form.cleaned_data.get('days', 1),
+            status='DRAFT'  # Προσωρινή κατάσταση
         )
         leave_request.save()
         periods_data = form.cleaned_data.get('periods_data', [])
@@ -372,6 +385,8 @@ def create_leave_for_user(request, user_id):
                 user=target_user,
                 leave_type=form.cleaned_data['leave_type'],
                 description=form.cleaned_data['description'],
+                days=form.cleaned_data.get('days', 1),
+                requested_days=form.cleaned_data.get('days', 1),
                 status='DRAFT'
             )
             leave_request.save()
@@ -439,6 +454,9 @@ def create_leave_for_user(request, user_id):
         'form': form,
         'target_user': target_user,
         'handler_creating': True,
+        'revocation_type_ids': list(
+            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+        ),
     })
 
 
