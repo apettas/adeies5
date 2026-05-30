@@ -486,7 +486,16 @@ class LeaveRequest(models.Model):
                     self.user.use_leave_days(days_used)
 
             if self.leave_type.is_sick_leave_total:
-                self.user.sick_days_current_year = (self.user.sick_days_current_year or 0) + self.total_days
+                current_year = timezone.now().year
+                yearly_total, _ = YearlySickLeaveTotal.objects.get_or_create(
+                    employee=self.user,
+                    year=current_year,
+                    defaults={'total_days': 0}
+                )
+                if not yearly_total.is_locked:
+                    yearly_total.total_days += self.total_days
+                    yearly_total.save()
+                self.user.sick_days_current_year = yearly_total.total_days
                 self.user.save(update_fields=['sick_days_current_year'])
     
     def reject_by_operator(self, operator, reason):
@@ -1259,6 +1268,27 @@ class DecisionTemplate(models.Model):
     def __str__(self):
         lt = self.leave_type.name if self.leave_type else 'Όλοι'
         return f"{self.workflow_variant} / {lt}"
+
+
+class YearlySickLeaveTotal(models.Model):
+    """U+039FU+03B7U+03C3U+03B9U+03B1 U+03BAU+03B1U+03C4U+03B1U+03B3U+03C1U+03B1U+03C6U+03AE U+03C3U+03C5U+03BDU+03CCU+03BBU+03BFU+03C5 U+03B1U+03BDU+03B1U+03C1U+03C1U+03C9U+03C4U+03B9U+03BAU+03CEU+03BD U+03B1U+03B4U+03B5U+03B9U+03CEU+03BD U+03B1U+03BDU+03AC U+03C5U+03C0U+03ACU+03BBU+03B7U+03BBU+03BF"""
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yearly_sick_leave_totals',
+                                  verbose_name='Υπάλληλος')
+    year = models.PositiveIntegerField('Έτος')
+    total_days = models.PositiveIntegerField('Σύνολο Ημερών', default=0)
+    is_locked = models.BooleanField('Κλειδωμένο', default=False,
+        help_text='Αν είναι ενεργό, η εγγραφή δεν μπορεί να τροποποιηθεί')
+    notes = models.TextField('Σημειώσεις', blank=True)
+    created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Ετήσιο Σύνολο Αναρρωτικών'
+        verbose_name_plural = 'Ετήσια Σύνολα Αναρρωτικών'
+        unique_together = ['employee', 'year']
+        ordering = ['-year', 'employee__last_name', 'employee__first_name']
+
+    def __str__(self):
+        return f"{self.employee} - {self.year}: {self.total_days} ημέρες"
 
 
 class YCCommitteeAcknowledgment(models.Model):

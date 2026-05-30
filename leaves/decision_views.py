@@ -392,6 +392,29 @@ def complete_leave_request_final(request, pk):
                     notes=f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
                     created_by=request.user
                 )
+            # Καταγραφή στο ετήσιο σύνολο αναρρωτικών
+            if leave_request.leave_type.is_sick_leave_total:
+                from leaves.models import YearlySickLeaveTotal
+                from django.db.models import Sum
+                current_year = timezone.now().year
+                yearly_total, created = YearlySickLeaveTotal.objects.get_or_create(
+                    employee=leave_request.user,
+                    year=current_year,
+                    defaults={'total_days': 0}
+                )
+                if not yearly_total.is_locked:
+                    yearly_total.total_days += leave_request.total_days
+                    yearly_total.save()
+                
+                user = leave_request.user
+                user.sick_days_current_year = yearly_total.total_days
+                five_years_ago = current_year - 5
+                last_5 = YearlySickLeaveTotal.objects.filter(
+                    employee=user, year__gte=five_years_ago, year__lte=current_year
+                ).aggregate(total=Sum('total_days'))['total'] or 0
+                user.total_sick_leave_last_5_years = last_5
+                user.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
+            
             # Alert για Υγειονομική Επιτροπή
             if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
                 from accounts.models import User

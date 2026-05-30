@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.views.generic import ListView, CreateView, DetailView
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.conf import settings
 from datetime import timedelta
 import os
@@ -1168,6 +1168,29 @@ def complete_leave_request(request, pk):
             message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
             related_object=leave_request
         )
+        
+        # Καταγραφή στο ετήσιο σύνολο αναρρωτικών
+        if leave_request.leave_type.is_sick_leave_total:
+            from leaves.models import YearlySickLeaveTotal
+            current_year = timezone.now().year
+            yearly_total, created = YearlySickLeaveTotal.objects.get_or_create(
+                employee=leave_request.user,
+                year=current_year,
+                defaults={'total_days': 0}
+            )
+            if not yearly_total.is_locked:
+                yearly_total.total_days += leave_request.total_days
+                yearly_total.save()
+            
+            # Update user field
+            user = leave_request.user
+            user.sick_days_current_year = yearly_total.total_days
+            five_years_ago = current_year - 5
+            last_5 = YearlySickLeaveTotal.objects.filter(
+                employee=user, year__gte=five_years_ago, year__lte=current_year
+            ).aggregate(total=Sum('total_days'))['total'] or 0
+            user.total_sick_leave_last_5_years = last_5
+            user.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
         
         # Alert για Υγειονομική Επιτροπή
         if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:

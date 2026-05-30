@@ -4,7 +4,8 @@ from .models import (
     Logo, Info, Ypopsin, Signee,
     PublicHoliday, LeaveActionLog, LeaveAccessLog, Letterhead, RegularLeaveBalanceEntry,
     WorkflowVariant, ApprovalRule, RequiredAttachmentRule, DecisionTemplate,
-    YCCommitteeAcknowledgment
+    YCCommitteeAcknowledgment,
+    YearlySickLeaveTotal
 )
 
 
@@ -275,6 +276,15 @@ class RequiredAttachmentRuleAdmin(admin.ModelAdmin):
     search_fields = ('attachment_name', 'description')
     ordering = ('workflow_variant', 'leave_type')
     ordering = ('workflow_variant', 'leave_type')
+
+
+@admin.register(YearlySickLeaveTotal)
+class YearlySickLeaveTotalAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'year', 'total_days', 'is_locked', 'created_at')
+    list_filter = ('year', 'is_locked')
+    search_fields = ('employee__email', 'employee__last_name', 'employee__first_name', 'notes')
+    list_editable = ('total_days',)
+    ordering = ('-year', 'employee__last_name', 'employee__first_name')
 
 
 @admin.register(YCCommitteeAcknowledgment)
