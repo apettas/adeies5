@@ -1918,7 +1918,8 @@ def download_leave_pdf(request, request_id):
     # Check permissions
     if not (request.user == leave_request.user or
             request.user.is_department_manager or
-            request.user.is_leave_handler):
+            request.user.is_leave_handler or
+            request.user.is_secretary):
         raise Http404("Δεν έχετε δικαίωμα πρόσβασης")
     
     # Check if PDF exists
