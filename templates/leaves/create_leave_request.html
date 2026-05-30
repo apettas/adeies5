@@ -188,17 +188,15 @@
                         <i class="bi bi-calendar"></i> Ημερομηνία Έναρξης
                     </label>
                     <input type="date" class="form-control period-start-date" required>
-                    <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
-                    <div class="date-error-start alert alert-warning mt-2" style="display: none;">
-                        <small><i class="bi bi-exclamation-circle"></i> Η ημερομηνία πρέπει να είναι μελλοντική</small>
-                    </div>
+
+
                 </div>
                 <div class="col-md-5">
                     <label class="form-label">
                         <i class="bi bi-calendar-check"></i> Ημερομηνία Λήξης
                     </label>
                     <input type="date" class="form-control period-end-date" required>
-                    <div class="date-help-text">Επιλέξτε ημερομηνία από το ημερολόγιο</div>
+
                     <div class="date-error-end alert alert-warning mt-2" style="display: none;">
                         <small><i class="bi bi-exclamation-circle"></i> Η ημερομηνία πρέπει να είναι μελλοντική</small>
                     </div>
@@ -301,38 +299,6 @@ $(document).ready(function() {
     const allowedMimeTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
     
     
-    // Function to check if date is in the past
-    function isDateInPast(dateString) {
-        if (!dateString) return false;
-        const selectedDate = new Date(dateString);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return selectedDate < today;
-    }
-    
-    // Function to validate and display date errors
-    function validateDateField(input) {
-        const periodCard = $(input).closest('.period-card');
-        const dateValue = $(input).val();
-        const isStart = $(input).hasClass('period-start-date');
-        const errorElement = isStart ? 
-            periodCard.find('.date-error-start') : 
-            periodCard.find('.date-error-end');
-        
-        if (isDateInPast(dateValue)) {
-            errorElement.show();
-            $(input).addClass('border-danger');
-            hasDateErrors = true;
-            updateSubmitButtonState();
-            return false;
-        } else {
-            errorElement.hide();
-            $(input).removeClass('border-danger');
-            checkOverallDateErrors();
-            return true;
-        }
-    }
-    
     // Function to validate date range (start before end)
     function validateDateRange(periodCard) {
         const startDate = periodCard.find('.period-start-date').val();
@@ -366,11 +332,6 @@ $(document).ready(function() {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             
-            // Check for past dates
-            if ((startDate && isDateInPast(startDate)) || (endDate && isDateInPast(endDate))) {
-                hasDateErrors = true;
-            }
-            
             // Check for range errors (end before start)
             if (startDate && endDate) {
                 const start = new Date(startDate);
@@ -388,7 +349,7 @@ $(document).ready(function() {
         if (hasDateErrors || hasFileErrors || hasDaysMismatch) {
             submitBtn.prop('disabled', true);
             let title = '';
-            if (hasDateErrors) title += 'Διορθώστε τις εσφαλμένες ημερομηνίες. ';
+            if (hasDateErrors) title += 'Διορθώστε τις εσφαλμένες ημερομηνίες (η έναρξη μετά τη λήξη). ';
             if (hasFileErrors) title += 'Διορθώστε τα μη αποδεκτά αρχεία.';
             if (hasDaysMismatch) title += 'Οι ημέρες δεν συμφωνούν με τα διαστήματα.';
             submitBtn.attr('title', title.trim());
