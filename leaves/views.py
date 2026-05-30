@@ -2678,6 +2678,59 @@ def withdraw_completed_leave(request, pk):
 
 
 @login_required
+
+@login_required
+def handler_upload_attachment(request, pk):
+    """Μεταφόρτωση συνημμένου από χειριστή"""
+    from django.conf import settings
+    from django.utils import timezone
+    import os
+    from .crypto_utils import SecureFileHandler
+    
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης.")
+    
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    
+    if request.method == 'POST' and request.FILES.get('attachment'):
+        file_obj = request.FILES['attachment']
+        description = request.POST.get('description', '')
+        
+        is_valid, error_message = SecureFileHandler.validate_file(file_obj)
+        if not is_valid:
+            messages.error(request, f'Αρχείο "{file_obj.name}": {error_message}')
+            return redirect('leaves:leave_request_detail', pk=pk)
+        
+        try:
+            private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                       os.path.join(settings.BASE_DIR, 'private_media'))
+            file_path = os.path.join(
+                private_media_root, 'leave_requests', str(leave_request.id),
+                f"handler_{timezone.now().strftime('%Y%m%d_%H%M%S')}_{file_obj.name}"
+            )
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            success, key_hex, file_size = SecureFileHandler.save_encrypted_file(file_obj, file_path)
+            
+            if success:
+                from .models import SecureFile
+                SecureFile.objects.create(
+                    leave_request=leave_request,
+                    original_filename=file_obj.name,
+                    file_path=file_path,
+                    file_size=file_size,
+                    content_type=file_obj.content_type,
+                    encryption_key=key_hex,
+                    uploaded_by=request.user,
+                    description=description
+                )
+                messages.success(request, f'Το αρχείο "{file_obj.name}" προστέθηκε επιτυχώς.')
+            else:
+                messages.error(request, 'Σφάλμα κατά την αποθήκευση του αρχείου.')
+        except Exception as e:
+            messages.error(request, f'Σφάλμα: {str(e)}')
+    
+    return redirect('leaves:leave_request_detail', pk=pk)
+
 def send_to_protocol_view(request, pk):
     """
     Αποστολή για Πρωτόκολλο — Δημιουργία ενοποιημένου PDF και αποστολή μέσω email.
