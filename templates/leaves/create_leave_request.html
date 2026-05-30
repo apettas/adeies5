@@ -100,7 +100,28 @@
                         <!-- Hidden field for periods data -->
                         <input type="hidden" name="{{ form.periods_data.name }}" id="{{ form.periods_data.id_for_label }}" value="{{ form.periods_data.value|default:'' }}">
 
-                        <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
+
+
+                        <div class="mb-3" id="attachments-container">
+                            <label class="form-label">
+                                <i class="bi bi-paperclip"></i> Επισύναψη Αρχείων (Προαιρετικό)
+                            </label>
+                            <div class="attachment-group mb-3" data-index="1">
+                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <div class="form-text">
+                                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                                </div>
+                                <div class="file-error alert alert-danger mt-2" style="display: none;">
+                                    <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+                                </div>
+                                <div class="mt-2">
+                                    <label for="attachment_description_1" class="form-label">
+                                        <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1 (Υποχρεωτικό εάν υπάρχει αρχείο)
+                                    </label>
+                                    <textarea name="attachment_description_1" id="attachment_description_1" class="form-control attachment-description" rows="2" placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+                                    <div class="form-text">Παρακαλώ περιγράψτε το περιεχόμενο του συνημμένου αρχείου.</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
                                     <i class="bi bi-trash"></i> Αφαίρεση Συνημμένου
                                 </button>
                             </div>
@@ -165,6 +186,7 @@
                     <ul class="mb-0">
                         <li>Συμπληρώστε όλα τα υποχρεωτικά πεδία που σημειώνονται με αστερίσκο (*)</li>
                         <li>Μπορείτε να προσθέσετε περισσότερα από ένα διαστήματα ημερομηνιών για την ίδια άδεια</li>
+
                     </ul>
                 </div>
             </div>
@@ -446,7 +468,6 @@ $(document).ready(function() {
     console.log('Initializing date inputs, found:', $('.period-start-date, .period-end-date').length);
     $('.period-start-date, .period-end-date').on('change', function() {
         const periodCard = $(this).closest('.period-card');
-        validateDateField(this);
         validateDateRange(periodCard);
         updatePeriodDays(periodCard);
         updatePeriodsData();
@@ -478,7 +499,6 @@ $(document).ready(function() {
         
 // Add event listeners for date changes
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
-            validateDateField(this);
             validateDateRange(periodElement);
             updatePeriodDays(periodElement);
             updatePeriodsData();
@@ -493,7 +513,6 @@ $(document).ready(function() {
 
         // Add event listeners for date changes (second call removed as it's now above)
         periodElement.find('.period-start-date, .period-end-date').on('change', function() {
-            validateDateField(this);
             validateDateRange(periodElement);
             updatePeriodDays(periodElement);
             updatePeriodsData();
