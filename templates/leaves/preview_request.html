@@ -123,7 +123,25 @@
                                     <!-- spacing before attachments -->
                                     <div style="height: 30px;"></div>
                                     
-                                    {% if leave_request.manager_approved_by %}
+                                    {% if leave_request.rejected_by %}
+                                    <div class="text-center" style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
+                                        <div style="height: 10px;"></div>
+                                        <p class="fw-bold fs-5">ΔΕΝ ΕΓΚΡΙΝΕΤΑΙ</p>
+                                        <div style="height: 10px;"></div>
+                                        <p>{% if leave_request.rejected_by.gender|upper == 'F' or leave_request.rejected_by.gender|upper == 'FEMALE' %}Η Προϊσταμένη{% else %}Ο Προϊστάμενος{% endif %}</p>
+                                        <div style="height: 10px;"></div>
+                                        <p><em>Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</em></p>
+                                        <p><em>{{ leave_request.rejected_at|date:"d/m/Y" }} - {{ leave_request.rejected_at|time:"H:i" }}</em></p>
+                                        <div style="height: 10px;"></div>
+                                        <p>{{ leave_request.rejected_by.first_name }} {{ leave_request.rejected_by.last_name }}</p>
+                                        <p><em>{{ leave_request.rejected_by.department.name }}</em></p>
+                                        {% if leave_request.rejection_reason %}
+                                        <div style="height: 5px;"></div>
+                                        <p><em>Αιτιολογία: "{{ leave_request.rejection_reason }}"</em></p>
+                                        {% endif %}
+                                    </div>
+                                    <div style="height: 10px;"></div>
+                                    {% elif leave_request.manager_approved_by %}
                                     <div class="text-center" style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
                                         <div style="height: 10px;"></div>
                                         <p class="fw-bold fs-5">ΕΓΚΡΙΝΕΤΑΙ</p>

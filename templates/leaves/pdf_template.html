@@ -122,7 +122,25 @@
             
             <div style="height: 15px;"></div>
             
-            {% if leave_request.manager_approved_by %}
+            {% if leave_request.rejected_by %}
+            <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
+                <div style="height: 10px;"></div>
+                <p class="bold" style="font-size: 10pt;">ΔΕΝ ΕΓΚΡΙΝΕΤΑΙ</p>
+                <div style="height: 10px;"></div>
+                <p>{% if leave_request.rejected_by.gender|upper == 'F' or leave_request.rejected_by.gender|upper == 'FEMALE' %}Η Προϊσταμένη{% else %}Ο Προϊστάμενος{% endif %}</p>
+                <div style="height: 10px;"></div>
+                <p class="signature-small">Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</p>
+                <p class="signature-small">{{ leave_request.rejected_at|date:"d/m/Y" }} - {{ leave_request.rejected_at|time:"H:i" }}</p>
+                <div style="height: 10px;"></div>
+                <p>{{ leave_request.rejected_by.first_name }} {{ leave_request.rejected_by.last_name }}</p>
+                <p class="signature-small">{{ leave_request.rejected_by.department.name }}</p>
+                {% if leave_request.rejection_reason %}
+                <div style="height: 5px;"></div>
+                <p class="signature-small">Αιτιολογία: "{{ leave_request.rejection_reason }}"</p>
+                {% endif %}
+            </div>
+            <div style="height: 10px;"></div>
+            {% elif leave_request.manager_approved_by %}
             <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
                 <div style="height: 10px;"></div>
                 <p class="bold" style="font-size: 10pt;">ΕΓΚΡΙΝΕΤΑΙ</p>
@@ -138,7 +156,7 @@
             <div style="height: 10px;"></div>
             {% endif %}
             
-            {% if leave_request.is_kedasy_kepea_department and leave_request.kedasy_kepea_protocol_number %}
+            {% if leave_request.kedasy_kepea_protocol_number %}
             <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
                 <div style="height: 5px;"></div>
                 <p class="bold">Πρωτοκολλήθηκε</p>
