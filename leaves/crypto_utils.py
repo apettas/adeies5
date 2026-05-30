@@ -318,8 +318,11 @@ class FileAccessController:
             if user.department.department_type.code == 'SDEY':
                 return False
         
-        # Secretary δεν έχει πρόσβαση σε attachments
+        # Secretary έχει πρόσβαση σε attachments για αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ
         if user.is_secretary:
+            if (leave_request.is_kedasy_kepea_department() and
+                leave_request.can_add_kedasy_kepea_protocol(user)):
+                return True
             return False
         
         # Χειριστής αδειών έχει πρόσβαση σε όλα
