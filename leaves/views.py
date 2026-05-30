@@ -686,6 +686,32 @@ def approve_leave_request(request, pk):
             else:
                 messages.success(request, 'Η αίτηση εγκρίθηκε επιτυχώς!')
             
+            # Αναγέννηση PDF με την υπογραφή του προϊσταμένου
+            try:
+                from django.template.loader import render_to_string
+                from weasyprint import HTML
+                import os
+                from django.conf import settings
+                private_media_root = getattr(settings, 'PRIVATE_MEDIA_ROOT',
+                                            os.path.join(settings.BASE_DIR, 'private_media'))
+                leave_request.refresh_from_db()
+                pdf_path = os.path.join(private_media_root, 'leave_requests', str(leave_request.id), 'request.pdf')
+                os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+                pdf_context = {
+                    'leave_request': leave_request,
+                    'user': leave_request.user,
+                    'periods': leave_request.periods.all(),
+                    'request_text': leave_request.description or '',
+                    'attachments': leave_request.attachments.all(),
+                    'form_data': {'description': leave_request.description, 'leave_type': leave_request.leave_type},
+                }
+                html_content = render_to_string('leaves/pdf_template.html', pdf_context)
+                HTML(string=html_content).write_pdf(pdf_path)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error regenerating PDF after manager approval: {str(e)}")
+            
             # Ειδοποίηση στους χειριστές αδειών
             from accounts.models import User
             leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
