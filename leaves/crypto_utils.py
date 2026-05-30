@@ -336,6 +336,8 @@ class FileAccessController:
             if is_sick_leave:
                 # Προϊστάμενοι ΔΕΝ βλέπουν αναρρωτικές attachments
                 return False
+            # Προϊστάμενοι βλέπουν attachments σε μη-αναρρωτικές αιτήσεις
+            return True
         
         # Admin έχει πρόσβαση
         if user.is_administrator:
