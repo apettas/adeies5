@@ -120,7 +120,20 @@
                 <p>{{ user.first_name }} {{ user.last_name }}</p>
             </div>
             
-            <div style="height: 40px;"></div>
+            <div style="height: 15px;"></div>
+            
+            {% if leave_request.manager_approved_by %}
+            <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
+                <p>{% if leave_request.manager_approved_by.gender|upper == 'F' or leave_request.manager_approved_by.gender|upper == 'FEMALE' %}Η Προϊσταμένη{% else %}Ο Προϊστάμενος{% endif %}</p>
+                <div style="height: 10px;"></div>
+                <p class="signature-small">Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</p>
+                <p class="signature-small">{{ leave_request.manager_approved_at|date:"d/m/Y" }} - {{ leave_request.manager_approved_at|time:"H:i" }}</p>
+                <div style="height: 10px;"></div>
+                <p>{{ leave_request.manager_approved_by.first_name }} {{ leave_request.manager_approved_by.last_name }}</p>
+                <p class="signature-small">{{ leave_request.manager_approved_by.department.name }}</p>
+            </div>
+            <div style="height: 15px;"></div>
+            {% endif %}
             
             <p class="bold">Συνημμένα:</p>
             <ul style="padding-left: 20px;">
