@@ -42,9 +42,9 @@
                                         {% endfor %}
                                     </div>
                                 {% endif %}
-                                <div id="revocation-message" class="alert alert-warning mt-2" style="display: none;">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    Είναι υποχρεωτικό να γράψετε στο πεδίο Περιγραφή/Αιτιολογία, ποια άδεια θέλετε να ανακαλέσετε.
+                                <div id="leave-instructions" class="alert alert-info mt-2" style="display: none;">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span id="leave-instructions-text"></span>
                                 </div>
                             </div>
                         </div>
@@ -304,15 +304,17 @@ $(document).ready(function() {
     let hasFileErrors = false;
     let hasDaysMismatch = false;
     
-    // Revocation type IDs from server
-    const revocationTypeIds = {{ revocation_type_ids|safe }};
+    // Leave type instructions from server
+    const leaveTypeInstructions = {{ leave_type_instructions|safe }};
     
-    function toggleRevocationMessage() {
+    function toggleLeaveInstructions() {
         const selectedId = parseInt($('#{{ form.leave_type.id_for_label }}').val());
-        if (revocationTypeIds.includes(selectedId)) {
-            $('#revocation-message').slideDown(200);
+        const text = leaveTypeInstructions[selectedId];
+        if (text) {
+            $('#leave-instructions-text').text(text);
+            $('#leave-instructions').slideDown(200);
         } else {
-            $('#revocation-message').slideUp(200);
+            $('#leave-instructions').slideUp(200);
         }
     }
     
@@ -878,8 +880,8 @@ $(document).ready(function() {
         console.log('Select2 init error:', e);
     }
     
-    $leaveType.on('change', toggleRevocationMessage);
-    toggleRevocationMessage();
+    $leaveType.on('change', toggleLeaveInstructions);
+    toggleLeaveInstructions();
     
     // Check for any existing date errors on page load
     checkOverallDateErrors();

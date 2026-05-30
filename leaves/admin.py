@@ -17,7 +17,7 @@ class LeaveTypeAdmin(admin.ModelAdmin):
             'fields': ('name', 'description', 'max_days', 'requires_approval', 'is_active')
         }),
         ('Πρόσθετα Στοιχεία', {
-            'fields': ('subject_text', 'decision_text', 'folder', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation')
+            'fields': ('subject_text', 'decision_text', 'folder', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation', 'instructions')
         }),
     )
 

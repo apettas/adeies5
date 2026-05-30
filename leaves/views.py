@@ -44,6 +44,12 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        # Περνάμε τις οδηγίες κάθε τύπου άδειας στο template
+        from .models import LeaveType
+        instructions = {}
+        for lt in LeaveType.objects.filter(is_active=True).exclude(instructions=''):
+            instructions[lt.id] = lt.instructions
+        context['leave_type_instructions'] = instructions
         user = self.request.user
         
         # Add actions to each leave request
