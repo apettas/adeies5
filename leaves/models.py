@@ -51,6 +51,12 @@ class LeaveType(models.Model):
     
     def __str__(self):
         return self.name
+    
+    def has_instructions(self):
+        """Εμφάνιση στο admin αν υπάρχουν οδηγίες"""
+        return bool(self.instructions)
+    has_instructions.short_description = 'Οδηγίες'
+    has_instructions.boolean = True
 
 
 class LeavePeriod(models.Model):
