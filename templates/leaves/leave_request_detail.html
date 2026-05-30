@@ -881,6 +881,33 @@
                 <h5 class="mb-0"><i class="bi bi-send"></i> Ενέργειες Χειριστή</h5>
             </div>
             <div class="card-body">
+                {% if yearly_sick_leave_totals %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-heart-pulse"></i> Σύνολο Αναρρωτικών Αδειών (τελευταία 5 έτη + τρέχον)</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <thead>
+                                    <tr>
+                                        {% for yt in yearly_sick_leave_totals %}
+                                        <th class="text-center">{{ yt.year }}</th>
+                                        {% endfor %}
+                                        <th class="text-center"><strong>Σύνολο</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        {% for yt in yearly_sick_leave_totals %}
+                                        <td class="text-center">{{ yt.total_days }} ημ.</td>
+                                        {% endfor %}
+                                        <td class="text-center"><strong>{{ yearly_sick_leave_sum }} ημ.</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 <!-- Μεταφόρτωση Συνημμένων -->
                 <div class="row mb-4">
                     <div class="col-12">

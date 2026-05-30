@@ -1572,6 +1572,20 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         # Sick leave attachment restriction
         context['is_sick_leave'] = leave_request.leave_type.name.lower().find('αναρρωτικ') >= 0
         context['can_view_attachments'] = True
+        
+        # Yearly sick leave totals (for handler view)
+        if user.is_leave_handler:
+            from leaves.models import YearlySickLeaveTotal
+            from django.db.models import Sum
+            current_year = timezone.now().year
+            five_years_ago = current_year - 5
+            yearly_totals = YearlySickLeaveTotal.objects.filter(
+                employee=leave_request.user,
+                year__gte=five_years_ago,
+                year__lte=current_year
+            ).order_by('year')
+            context['yearly_sick_leave_totals'] = yearly_totals
+            context['yearly_sick_leave_sum'] = yearly_totals.aggregate(total=Sum('total_days'))['total'] or 0
         if context['is_sick_leave'] and user.is_department_manager and user != leave_request.user:
             context['can_view_attachments'] = False
         if user.is_department_manager and leave_request.user.department and \
