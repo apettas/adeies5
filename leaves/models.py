@@ -372,7 +372,10 @@ class LeaveRequest(models.Model):
                     )
 
             if self.leave_type.requires_approval:
-                self.status = 'SUBMITTED'
+                if self.is_kedasy_kepea_department():
+                    self.status = 'PENDING_KEDASY_PROTOCOL'
+                else:
+                    self.status = 'SUBMITTED'
             else:
                 self.status = 'PENDING_PROTOCOL'
             self.submitted_at = timezone.now()
@@ -801,7 +804,7 @@ class LeaveRequest(models.Model):
             return False
         
         # Έλεγχος αν το status είναι PENDING_KEDASY_KEPEA_PROTOCOL
-        if self.status != 'PENDING_PROTOCOL':
+        if self.status != 'PENDING_KEDASY_PROTOCOL':
             return False
         
         # Έλεγχος αν ο χρήστης έχει ρόλο Secretary ή Manager
@@ -847,14 +850,18 @@ class LeaveRequest(models.Model):
         self.kedasy_kepea_protocol_date = protocol_date
         self.kedasy_kepea_protocol_by = user
         
-        # Αν δεν έχουν τεθεί τα πεδία έγκρισης προϊσταμένου (π.χ. για αναρρωτικές άδειες),
-        # θέτουμε τα στοιχεία της έγκρισης τώρα
-        if not self.manager_approved_by:
+        # Αν ο χρήστης έχει ρόλο MANAGER, εγκρίνει ταυτόχρονα
+        if user.roles.filter(code='MANAGER').exists():
             self.manager_approved_by = user
             self.manager_approved_at = timezone.now()
             self.manager_comments = f"Αυτόματη έγκριση με πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
+            self.status = 'PENDING_PROTOCOL'
+        else:
+            self.status = 'SUBMITTED'
+            self.manager_approved_by = None
+            self.manager_approved_at = None
+            self.manager_comments = ""
         
-        self.status = 'PENDING_PROTOCOL'
         self.save()
         
         # Δημιουργία ιστορικού (αν υπάρχει το model)
@@ -864,8 +871,8 @@ class LeaveRequest(models.Model):
                 leave_request=self,
                 action='KEDASY_KEPEA_PROTOCOL_ADDED',
                 user=user,
-                old_status='PENDING_PROTOCOL',
-                new_status='PENDING_PROTOCOL',
+                old_status='PENDING_KEDASY_PROTOCOL',
+                new_status=self.status,
                 comments=f"Προστέθηκε πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
             )
         except ImportError:

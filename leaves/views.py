@@ -1719,15 +1719,47 @@ def submit_final_request(request):
             
             # Ειδοποιήσεις ανάλογα με τον τύπο άδειας και τμήμα
             if leave_request.leave_type.requires_approval:
-                # Νέα ιεραρχική λογική - ειδοποίηση σωστού προϊσταμένου
-                approving_manager = leave_request.user.get_approving_manager()
-                if approving_manager:
-                    create_notification(
-                        user=approving_manager,
-                        title="Νέα Αίτηση Άδειας",
-                        message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name}",
-                        related_object=leave_request
-                    )
+                if leave_request.is_kedasy_kepea_department():
+                    # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ: ειδοποίηση γραμματέα/προϊσταμένου για πρωτόκολλο
+                    target_department = leave_request.user.department
+                    if (leave_request.user.department.department_type and
+                        leave_request.user.department.department_type.code == 'SDEY' and
+                        leave_request.user.department.parent_department):
+                        target_department = leave_request.user.department.parent_department
+                    
+                    # Ειδοποίηση γραμματέα
+                    secretaries = User.objects.filter(
+                        roles__code='SECRETARY',
+                        is_active=True,
+                        department=target_department
+                    ).distinct()
+                    for secretary in secretaries:
+                        create_notification(
+                            user=secretary,
+                            title="Νέα Αίτηση προς Πρωτοκόλληση ΚΕΔΑΣΥ/ΚΕΠΕΑ",
+                            message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name} - χρειάζεται πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ πριν την έγκριση",
+                            related_object=leave_request
+                        )
+                    
+                    # Ειδοποίηση προϊσταμένου
+                    manager_to_notify = leave_request.user.get_approving_manager()
+                    if manager_to_notify:
+                        create_notification(
+                            user=manager_to_notify,
+                            title="Νέα Αίτηση προς Πρωτοκόλληση ΚΕΔΑΣΥ/ΚΕΠΕΑ",
+                            message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name} - αναμένει πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ",
+                            related_object=leave_request
+                        )
+                else:
+                    # Κανονική ροή - ειδοποίηση προϊσταμένου
+                    approving_manager = leave_request.user.get_approving_manager()
+                    if approving_manager:
+                        create_notification(
+                            user=approving_manager,
+                            title="Νέα Αίτηση Άδειας",
+                            message=f"Νέα αίτηση άδειας από {leave_request.user.full_name} για {leave_request.leave_type.name}",
+                            related_object=leave_request
+                        )
             else:
                 # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ με parent ΚΕΔΑΣΥ
                 if leave_request.is_kedasy_kepea_department():
@@ -1931,31 +1963,25 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτοκόλληση από το τμήμα του γραμματέα
+        # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτόκολλο
         if self.request.user.department:
-            # Βασικό κριτήριο: αιτήσεις από το ίδιο τμήμα
             department_filter = Q(
-                status='PENDING_PROTOCOL',
+                status='PENDING_KEDASY_PROTOCOL',
                 user__department=self.request.user.department
             )
             
-            # Αν ο γραμματέας είναι σε ΚΕΔΑΣΥ, προσθέτουμε και αιτήσεις από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
             if (self.request.user.department.department_type and
                 self.request.user.department.department_type.code == 'KEDASY'):
-                
-                # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
                 sdei_condition = Q(
-                    status='PENDING_PROTOCOL',
+                    status='PENDING_KEDASY_PROTOCOL',
                     user__department__department_type__code='SDEY',
                     user__department__parent_department=self.request.user.department
                 )
-                
-                # Ενώνουμε τα κριτήρια με OR
                 department_filter = department_filter | sdei_condition
             
             return LeaveRequest.objects.filter(department_filter).select_related(
-                'user', 'user__department', 'user__department__department_type', 'leave_type', 'manager_approved_by'
-            ).order_by('-manager_approved_at', '-submitted_at')
+                'user', 'user__department', 'user__department__department_type', 'leave_type'
+            ).order_by('-submitted_at')
         return LeaveRequest.objects.none()
     
     def get_context_data(self, **kwargs):
@@ -2067,9 +2093,8 @@ def add_kedasy_kepea_protocol(request, pk):
         raise PermissionDenied("Δεν έχετε δικαίωμα προσθήκης πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ.")
     
     # Έλεγχος αν η αίτηση είναι στο σωστό στάδιο
-    if leave_request.status != 'PENDING_PROTOCOL':
+    if leave_request.status != 'PENDING_KEDASY_PROTOCOL':
         messages.error(request, 'Η αίτηση δεν μπορεί να πρωτοκολληθεί σε αυτή τη φάση.')
-        # Ανακατεύθυνση ανάλογα με τον ρόλο
         if request.user.is_secretary:
             return redirect('leaves:secretary_dashboard')
         else:
@@ -2078,12 +2103,10 @@ def add_kedasy_kepea_protocol(request, pk):
     # Έλεγχος αν η αίτηση ανήκει σε ΚΕΔΑΣΥ/ΚΕΠΕΑ τμήμα
     if not leave_request.is_kedasy_kepea_department():
         messages.error(request, 'Η αίτηση δεν ανήκει σε τμήμα ΚΕΔΑΣΥ ή ΚΕΠΕΑ.')
-        # Ανακατεύθυνση ανάλογα με τον ρόλο
         if request.user.is_secretary:
             return redirect('leaves:secretary_dashboard')
         else:
             return redirect('leaves:manager_dashboard')
-    
     
     if request.method == 'POST':
         protocol_number = request.POST.get('protocol_number', '').strip()
@@ -2095,28 +2118,39 @@ def add_kedasy_kepea_protocol(request, pk):
             return redirect('leaves:secretary_dashboard')
         
         try:
-            # Μετατροπή ημερομηνίας αν δόθηκε
             protocol_date_obj = timezone.now().date()
             if protocol_date:
                 from datetime import datetime
                 protocol_date_obj = datetime.strptime(protocol_date, '%Y-%m-%d').date()
             
-            # Προσθήκη πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ
             leave_request.add_kedasy_kepea_protocol(
                 protocol_number=protocol_number,
                 protocol_date=protocol_date_obj,
                 user=request.user
             )
             
-            # Ειδοποίηση στους χειριστές αδειών
-            leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
-            for handler in leave_handlers:
-                create_notification(
-                    user=handler,
-                    title="Αίτηση ΚΕΔΑΣΥ/ΚΕΠΕΑ Πρωτοκολλήθηκε",
-                    message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ με αρ. {protocol_number} και είναι έτοιμη για επεξεργασία",
-                    related_object=leave_request
-                )
+            if request.user.roles.filter(code='MANAGER').exists():
+                # Ο προϊστάμενος πρόσθεσε πρωτόκολλο + ενέκρινε → ειδοποίηση χειριστών
+                leave_handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True).distinct()
+                for handler in leave_handlers:
+                    create_notification(
+                        user=handler,
+                        title="Αίτηση ΚΕΔΑΣΥ/ΚΕΠΕΑ Πρωτοκολλήθηκε και Εγκρίθηκε",
+                        message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε και εγκρίθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ - έτοιμη για επεξεργασία",
+                        related_object=leave_request
+                    )
+                messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε και η αίτηση εγκρίθηκε! Αρ. Πρωτ: {protocol_number}')
+            else:
+                # Ο γραμματέας πρόσθεσε πρωτόκολλο → ειδοποίηση προϊσταμένου για έγκριση
+                approving_manager = leave_request.user.get_approving_manager()
+                if approving_manager:
+                    create_notification(
+                        user=approving_manager,
+                        title="Αίτηση Πρωτοκολλήθηκε - Εκκρεμεί Έγκριση",
+                        message=f"Η αίτηση του/της {leave_request.user.full_name} πρωτοκολλήθηκε από ΚΕΔΑΣΥ/ΚΕΠΕΑ με αρ. {protocol_number} και εκκρεμεί η έγκρισή σας",
+                        related_object=leave_request
+                    )
+                messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}. Η αίτηση προωθήθηκε για έγκριση.')
             
             # Ειδοποίηση στον υπάλληλο
             create_notification(
@@ -2126,12 +2160,9 @@ def add_kedasy_kepea_protocol(request, pk):
                 related_object=leave_request
             )
             
-            messages.success(request, f'Το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ προστέθηκε επιτυχώς! Αρ. Πρωτ: {protocol_number}')
-            
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά την προσθήκη του πρωτοκόλλου: {str(e)}')
     
-    # Ανακατεύθυνση ανάλογα με τον ρόλο
     if request.user.is_secretary:
         return redirect('leaves:secretary_dashboard')
     else:
