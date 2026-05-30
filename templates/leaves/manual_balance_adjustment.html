@@ -2,6 +2,31 @@
 
 {% block title %}Διόρθωση Υπολοίπου - {{ target_user.get_full_name }}{% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const suggestedEl = document.getElementById('suggested_balance');
+    const balanceEl = document.getElementById('balance_after');
+    const daysDeltaEl = document.getElementById('days_delta');
+
+    function updateBalanceFromDays() {
+        const suggested = parseInt(suggestedEl.value) || 0;
+        const days = parseInt(daysDeltaEl.value) || 0;
+        balanceEl.value = suggested + days;
+    }
+
+    function updateDaysFromBalance() {
+        const suggested = parseInt(suggestedEl.value) || 0;
+        const balance = parseInt(balanceEl.value) || 0;
+        daysDeltaEl.value = balance - suggested;
+    }
+
+    daysDeltaEl.addEventListener('input', updateBalanceFromDays);
+    balanceEl.addEventListener('input', updateDaysFromBalance);
+});
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="row mt-4">
     <div class="col-12">
