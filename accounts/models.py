@@ -393,9 +393,12 @@ class User(AbstractUser):
     
     def has_leave_request_permission(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
-        # SDEY managers δεν έχουν δικαίωμα αίτησης
+        # SDEY χωρίς γονικό ΚΕΔΑΣΥ δεν μπορούν να αιτηθούν
         if self.department and self.department.department_type:
-            if self.department.department_type.code == 'SDEY':
+            if (self.department.department_type.code == 'SDEY' and
+                not (self.department.parent_department and
+                     self.department.parent_department.department_type and
+                     self.department.parent_department.department_type.code == 'KEDASY')):
                 return False
 
         # Αν το πεδίο can_request_leave είναι False, δεν μπορεί
