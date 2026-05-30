@@ -353,7 +353,7 @@ class LeaveRequest(models.Model):
     @property
     def can_be_withdrawn(self):
         """Ελέγχει αν η αίτηση μπορεί να ανακληθεί από τον αιτούντα"""
-        return self.status in ['SUBMITTED', 'PENDING_PROTOCOL']
+        return self.status in ['SUBMITTED', 'PENDING_KEDASY_PROTOCOL', 'PENDING_PROTOCOL']
     
     def submit(self):
         """Υποβολή αίτησης"""
