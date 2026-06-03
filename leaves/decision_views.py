@@ -10,7 +10,7 @@ from django.urls import reverse
 import os
 from datetime import datetime
 
-from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee
+from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee, Letterhead
 from leaves.crypto_utils import SecureFileHandler
 from leaves.decision_helpers import build_decision_pdf_filename
 
@@ -165,6 +165,7 @@ def generate_final_decision_pdf(request):
             'ypopsin_text': edited_ypopsin_text or (ypopsin.ypopsin if ypopsin else ''),
             'signee_text': edited_signee_text or (signee.signee if signee else ''),
             'current_date': timezone.now().strftime('%d/%m/%Y'),
+            'subject_text': leave_request.leave_type.subject_text or '',
         }
         
         # Δημιουργία HTML από template
