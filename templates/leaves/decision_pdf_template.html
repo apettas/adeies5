@@ -1,173 +1,259 @@
 {% load decision_tags %}
-{% load greek_inflect %}
 <!DOCTYPE html>
 <html lang="el">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Απόφαση - {{ leave_request.user.full_name }}</title>
     <style>
         @page {
             size: A4;
-            margin: 8mm 10mm;
+            margin: 1.5cm 1.5cm 1.5cm 1.5cm;
         }
+        
         body {
             font-family: "DejaVu Sans", "Arial", sans-serif;
-            font-size: 9pt;
+            font-size: 10pt;
             line-height: 1.3;
             color: #000;
             margin: 0;
             padding: 0;
         }
-        .row {
+        
+        /* Δύο στήλες - κεφαλίδα */
+        .header-row {
             display: flex;
+            flex-direction: row;
             width: 100%;
+            margin-bottom: 15px;
         }
-        .col-left {
-            width: 35%;
-            padding-right: 10px;
+        
+        .header-left {
+            flex: 0 0 auto;
+            text-align: center;
+            padding-right: 5px;
+            max-width: 45%;
         }
-        .col-right {
-            width: 65%;
-            padding-left: 10px;
+        
+        .header-right {
+            flex: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-left: 20px;
         }
-        .center { text-align: center; }
-        .left { text-align: left; }
-        .bold { font-weight: bold; }
-        .emblem {
-            font-size: 40pt;
-            display: block;
-            margin-bottom: 6px;
+        
+        .ethnosimo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 8px;
         }
+        
         .logo-text {
+            font-size: 10pt;
             font-weight: bold;
-            font-size: 9pt;
             white-space: pre-line;
+            line-height: 1.2;
             margin-bottom: 10px;
         }
+        
         .info-text {
-            font-size: 7.5pt;
+            font-size: 9pt;
             white-space: pre-line;
-            margin-top: 6px;
+            line-height: 1.2;
+            text-align: left;
         }
-        .subject {
-            font-size: 13pt;
+        
+        .apofasi-title {
+            font-size: 22pt;
             font-weight: bold;
-            margin: 14px 0 6px 0;
+            text-transform: uppercase;
+            letter-spacing: 4px;
         }
+        
+        .header-spacer {
+            height: 60px;  /* 5 κενές γραμμές πριν από την ΑΠΟΦΑΣΗ */
+        }
+        
+        /* Ενιαίο τμήμα - Θέμα & Υπόψη */
+        .subject-section {
+            margin-bottom: 5px;
+        }
+        
         .subject-label {
-            font-size: 13pt;
+            font-weight: bold;
+            font-size: 12pt;
         }
+        
+        .subject-content {
+            font-weight: bold;
+            font-size: 12pt;
+            margin-left: 5px;
+        }
+        
         .ypopsin-label {
             font-weight: bold;
-            font-size: 9pt;
-            margin-top: 4px;
+            font-size: 10pt;
+            margin-top: 2px;
         }
+        
         .ypopsin-content {
-            font-size: 7.5pt;
+            font-size: 8.5pt;
             white-space: pre-line;
-            text-align: justify;
+            line-height: 1.25;
+            margin-top: 2px;
         }
+        
+        /* Απόφαση */
+        .decision-divider {
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        
         .apofasizoume {
             font-weight: bold;
             text-align: center;
-            font-size: 11pt;
-            margin: 14px 0 8px 0;
+            font-size: 13pt;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
         }
+        
         .decision-body {
+            font-size: 11pt;
+            line-height: 1.4;
             text-align: justify;
+        }
+        
+        /* Κοινοποίηση + Υπογραφή */
+        .footer-row {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .footer-left {
+            flex: 1;
+            text-align: left;
+            padding-right: 20px;
+        }
+        
+        .footer-right {
+            flex: 1;
+            text-align: center;
+            padding-left: 20px;
+        }
+        
+        .koinopoiisi-title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 5px;
+        }
+        
+        .koinopoiisi-content {
+            font-size: 9pt;
             white-space: pre-line;
         }
-        .signatures {
-            margin-top: 12px;
+        
+        .signature-title {
+            font-size: 10pt;
+            white-space: pre-line;
+            line-height: 1.2;
         }
-        .col-sign-left {
-            width: 50%;
-            padding-right: 8px;
-            text-align: left;
+        
+        .signature-spacer {
+            height: 35px;
         }
-        .col-sign-right {
-            width: 50%;
-            padding-left: 8px;
-            text-align: center;
+        
+        .signature-name {
+            font-size: 11pt;
+            font-weight: bold;
         }
-        p { margin: 2px 0; }
-        hr { border: none; border-top: 1px solid #ccc; margin: 8px 0; }
+        
+        /* Γραμμή διαχωρισμού */
+        .section-divider {
+            border: none;
+            border-top: 1px solid #999;
+            margin: 12px 0;
+        }
+        
+        .small-divider {
+            border: none;
+            border-top: 1px dotted #ccc;
+            margin: 8px 0;
+        }
+        
+        /* Για μικρά κενά */
+        .spacer-1 { height: 10px; }
+        .spacer-2 { height: 20px; }
     </style>
 </head>
 <body>
-
-<!-- ROW 1: LEFT COLUMN (emblem + logo + info) | RIGHT COLUMN (ΑΠΟΦΑΣΗ) -->
-<div class="row">
-    <div class="col-left">
-        <div class="center">
-            <div class="emblem">☦</div>
+    <!-- ΚΕΦΑΛΙΔΑ: 2 στήλες -->
+    <div class="header-row">
+        <!-- Αριστερή στήλη: Εθνόσημο + Λογότυπο + Πληροφορίες -->
+        <div class="header-left">
+            {{ ethnosimo_inline|safe }}
             <div class="logo-text">{{ logo.logo|default:"ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ" }}</div>
             <div class="info-text">{{ info_text }}</div>
         </div>
+        
+        <!-- Δεξιά στήλη: ΑΠΟΦΑΣΗ -->
+        <div class="header-right">
+            <div class="header-spacer"></div>
+            <div class="apofasi-title">Απόφαση</div>
+        </div>
     </div>
-    <div class="col-right">
-        <div class="center" style="font-size: 18pt; font-weight: bold; letter-spacing: 3px; margin-top: 10px;">ΑΠΟΦΑΣΗ</div>
+    
+    <hr class="section-divider"/>
+    
+    <!-- ΕΝΙΑΙΟ ΤΜΗΜΑ: Θέμα -->
+    <div class="subject-section">
+        <div>
+            <span class="subject-label">Θέμα :</span>
+            <span class="subject-content">{{ subject_text }}</span>
+        </div>
     </div>
-</div>
-
-<hr>
-
-<!-- ΘΕΜΑ -->
-<div class="subject">
-    <span class="subject-label">Θέμα :</span>
-    {{ leave_request.leave_type.subject_text|default:"Χορήγηση άδειας" }}
-</div>
-
-<!-- Έχοντας Υπόψη -->
-<div class="ypopsin-label">Έχοντας Υπόψη :</div>
-<div class="ypopsin-content">{{ ypopsin_text }}</div>
-
-<div style="height: 8px;"></div>
-
-<!-- Αποφασίζουμε -->
-<div class="apofasizoume">Αποφασίζουμε</div>
-
-<!-- Decision Text -->
-<div class="decision-body">
-    {% if leave_request.user.gender|upper == 'FEMALE' or leave_request.user.gender|upper == 'F' %}
-    Χορηγούμε στην
-    {% else %}
-    Χορηγούμε στον
-    {% endif %}
-    {{ leave_request.user.name_accusative|default:leave_request.user.full_name|accusative }},
-    {{ leave_request.user.role_description|default:leave_request.user.specialty|default:"" }},
-    {{ leave_request.final_decision_text|default:"εγκρίνεται η χορήγηση άδειας" }}
-</div>
-
-<div style="height: 14px;"></div>
-
-<hr>
-
-<!-- ROW 2: ΚΟΙΝΟΠΟΙΗΣΗ | ΥΠΟΓΡΑΦΗ -->
-<div class="row signatures">
-    <div class="col-sign-left">
-        <p class="bold">ΚΟΙΝΟΠΟΙΗΣΗ</p>
-        <div style="white-space: pre-line; font-size: 8pt;">{{ leave_request.user.notification_recipients|default:"" }}</div>
+    
+    <hr class="small-divider"/>
+    
+    <!-- Έχοντας Υπόψη -->
+    <div class="subject-section">
+        <div>
+            <span class="subject-label">Έχοντας Υπόψη :</span>
+        </div>
+        <div class="ypopsin-content">{{ ypopsin_text }}</div>
     </div>
-    <div class="col-sign-right">
-        <div class="bold">{{ signee_text|default:"" }}</div>
-        {% if leave_request.decision_signee %}
-        <div>{{ leave_request.decision_signee.signee_name }}</div>
-        {% endif %}
-        <div style="height: 30px;"></div>
-        {% if leave_request.decision_signee %}
-        <div class="bold">{{ leave_request.decision_signee.signee_name }}</div>
-        {% endif %}
+    
+    <hr class="section-divider"/>
+    
+    <!-- ΑΠΟΦΑΣΗ -->
+    <div class="apofasizoume">Αποφασίζουμε</div>
+    
+    <div class="decision-body">
+        {{ decision_body }}
     </div>
-</div>
-
-<div style="height: 6px;"></div>
-
-<div class="center" style="font-size: 7pt; color: #666; border-top: 1px solid #ccc; padding-top: 4px;">
-    Αυτή η απόφαση δημιουργήθηκε αυτόματα από το σύστημα διαχείρισης αδειών.
-    <br>
-    Ημερομηνία δημιουργίας: {{ current_date }}
-</div>
-
+    
+    <div class="spacer-2"></div>
+    
+    <hr class="section-divider"/>
+    
+    <!-- FOOTER: 2 στήλες -->
+    <div class="footer-row">
+        <!-- Αριστερή στήλη: ΚΟΙΝΟΠΟΙΗΣΗ -->
+        <div class="footer-left">
+            <div class="koinopoiisi-title">ΚΟΙΝΟΠΟΙΗΣΗ</div>
+            <div class="koinopoiisi-content">{{ notification_recipients }}</div>
+        </div>
+        
+        <!-- Δεξιά στήλη: Υπογραφή -->
+        <div class="footer-right">
+            <div class="signature-title">{{ signee_text|default:signee_title }}</div>
+            <div class="signature-spacer"></div>
+            <div class="signature-name">{{ signee_name }}</div>
+        </div>
+    </div>
 </body>
 </html>

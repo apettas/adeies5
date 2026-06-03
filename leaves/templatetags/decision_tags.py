@@ -201,3 +201,25 @@ def greek_date_format(date):
     }
     
     return f"{date.day} {months[date.month]} {date.year}"
+
+@register.filter
+def gender_article(gender):
+    """
+    Επιστρέφει 'στον' για MALE, 'στην' για FEMALE
+    """
+    if gender == 'MALE':
+        return 'στον'
+    elif gender == 'FEMALE':
+        return 'στην'
+    return 'στον/στην'
+
+@register.filter
+def gender_subject(gender):
+    """
+    Επιστρέφει 'Αυτός' για MALE, 'Αυτή' για FEMALE
+    """
+    if gender == 'MALE':
+        return 'του'
+    elif gender == 'FEMALE':
+        return 'της'
+    return 'του/της'

@@ -137,19 +137,16 @@
                                         <textarea name="info_text" id="info_text" class="form-control" rows="4" placeholder="Επεξεργαστείτε τις πληροφορίες...">{{ default_info.info|default:"" }}</textarea>
                                     </div>
 
-                                    <!-- Κύριο Κείμενο -->
-                                    <div class="mb-4">
-                                        <h5>Απόφαση:</h5>
-                                        <p>Αποφασίζουμε την έγκριση της αίτησης άδειας του/της 
-                                           <strong>{{ leave_request.user.full_name|to_accusative }}</strong> 
-                                           για <strong>{{ leave_request.total_days|convert_days_to_greek_genitive }}</strong> ημέρες,
-                                           {{ leave_request|format_leave_dates }}.</p>
-                                    </div>
-
                                     <!-- Έχοντας Υπόψη -->
                                     <div class="mb-4">
                                         <h5>Έχοντας Υπόψη:</h5>
                                         <textarea name="ypopsin_text" id="ypopsin_text" class="form-control" rows="3" placeholder="Επεξεργαστείτε το κείμενο υπόψη...">{{ default_ypopsin.ypopsin|default:"" }}</textarea>
+                                    </div>
+
+                                    <!-- Κύριο Κείμενο (Απόφαση - editable) -->
+                                    <div class="mb-4">
+                                        <h5>Απόφαση:</h5>
+                                        <textarea name="decision_body" id="decision_body" class="form-control" rows="4" placeholder="Επεξεργαστείτε το κείμενο της απόφασης...">Αποφασίζουμε την έγκριση της αίτησης άδειας του/της {{ leave_request.user.full_name|to_accusative }} για {{ leave_request.total_days|convert_days_to_greek_genitive }} ημέρες, {{ leave_request|format_leave_dates }}.</textarea>
                                     </div>
 
                                     <!-- Υπογραφή -->

@@ -8,7 +8,10 @@ from django.utils.http import content_disposition_header
 from django.contrib import messages
 from django.urls import reverse
 import os
+from pathlib import Path
 from datetime import datetime
+
+from django.conf import settings
 
 from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee, Letterhead
 from leaves.crypto_utils import SecureFileHandler
@@ -138,6 +141,7 @@ def generate_final_decision_pdf(request):
         edited_info_text = request.POST.get('info_text', '')
         edited_ypopsin_text = request.POST.get('ypopsin_text', '')
         edited_signee_text = request.POST.get('signee_text', '')
+        edited_decision_body = request.POST.get('decision_body', '')
         
         # Λήψη αντικειμένων
         logo = get_object_or_404(Logo, id=logo_id) if logo_id else None
@@ -158,14 +162,42 @@ def generate_final_decision_pdf(request):
         leave_request.save()
         
         # Προετοιμασία context για PDF
+        # Λήψη εθνόσημου από Letterhead
+        from leaves.models import Letterhead
+        active_letterhead = Letterhead.get_active()
+        
+        # Λήψη ονόματος σε αιτιατική (από το πεδίο name_accusative ή από το filter to_accusative)
+        user = leave_request.user
+        name_accusative = user.name_accusative or ''
+        
+        # Διάβασε το SVG και ενσωμάτωσέ το inline (πιο αξιόπιστο από <img> για WeasyPrint)
+        ethnosimo_svg_path = Path(settings.BASE_DIR) / 'static' / 'ethnosimo.svg'
+        ethnosimo_inline = ''
+        if ethnosimo_svg_path.exists():
+            with open(ethnosimo_svg_path, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+            # Περιορισμός σε width 80px για στοίχιση στο PDF
+            svg_content = svg_content.replace('<svg', '<svg width="80px" style="margin-bottom:8px;"')
+            ethnosimo_inline = svg_content
+        
         context = {
             'leave_request': leave_request,
             'logo': logo,
             'info_text': edited_info_text or (info.info if info else ''),
             'ypopsin_text': edited_ypopsin_text or (ypopsin.ypopsin if ypopsin else ''),
             'signee_text': edited_signee_text or (signee.signee if signee else ''),
+            'signee_name': signee.signee_name if signee else '',
+            'signee_title': signee.signee if signee else '',
             'current_date': timezone.now().strftime('%d/%m/%Y'),
             'subject_text': leave_request.leave_type.subject_text or '',
+            'decision_text': leave_request.leave_type.decision_text or '',
+            'employee_gender': user.gender or 'MALE',
+            'employee_name_accusative': name_accusative,
+            'employee_role': user.role_description or '',
+            'notification_recipients': user.notification_recipients or '',
+            'ethnosimo_inline': ethnosimo_inline,
+            'letterhead': active_letterhead,
+            'decision_body': edited_decision_body,
         }
         
         # Δημιουργία HTML από template
