@@ -62,11 +62,11 @@ COPY --chown=app:app . /app/
 RUN mkdir -p /app/staticfiles /app/media /app/private_media /app/logs \
     && chown -R app:app /app
 
-# Switch to app user
-USER app
-
 # Collect static files
 RUN python manage.py collectstatic --noinput
+
+# Switch to app user
+USER app
 
 # Expose port
 EXPOSE 8000
