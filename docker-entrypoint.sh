@@ -13,21 +13,37 @@ echo "Checking and fixing migration conflicts..."
 python fix_migrations.py || echo "Migration fix completed with warnings"
 
 # Create superuser if it doesn't exist
-echo "Creating superuser if needed..."
-python manage.py shell << EOF
+if [ "${CREATE_DEFAULT_SUPERUSER:-False}" = "True" ]; then
+  if [ -z "$DJANGO_SUPERUSER_EMAIL" ] || [ -z "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "CREATE_DEFAULT_SUPERUSER=True requires DJANGO_SUPERUSER_EMAIL and DJANGO_SUPERUSER_PASSWORD"
+    exit 1
+  fi
+
+  echo "Creating configured superuser if needed..."
+  python manage.py shell << EOF
+import os
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
-if not User.objects.filter(email='admin@pdede.gr').exists():
+email = os.environ["DJANGO_SUPERUSER_EMAIL"]
+password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
+first_name = os.environ.get("DJANGO_SUPERUSER_FIRST_NAME", "Admin")
+last_name = os.environ.get("DJANGO_SUPERUSER_LAST_NAME", "User")
+
+if not User.objects.filter(email=email).exists():
     User.objects.create_superuser(
-        email='admin@pdede.gr',
-        first_name='Admin',
-        last_name='ΠΔΕΔΕ',
-        password='admin123'
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        password=password
     )
-    print('Superuser created successfully')
+    print("Superuser created successfully")
 else:
-    print('Superuser already exists')
+    print("Superuser already exists")
 EOF
+else
+  echo "Skipping default superuser creation"
+fi
 
 # Load initial data if needed
 echo "Loading initial data..."

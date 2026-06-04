@@ -53,6 +53,19 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+      - SECURE_SSL_REDIRECT=${SECURE_SSL_REDIRECT:-False}
+      - SECURE_HSTS_SECONDS=${SECURE_HSTS_SECONDS:-0}
+      - SECURE_HSTS_INCLUDE_SUBDOMAINS=${SECURE_HSTS_INCLUDE_SUBDOMAINS:-False}
+      - SECURE_HSTS_PRELOAD=${SECURE_HSTS_PRELOAD:-False}
+      - SECURE_CONTENT_TYPE_NOSNIFF=${SECURE_CONTENT_TYPE_NOSNIFF:-True}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-False}
+      - SESSION_COOKIE_HTTPONLY=${SESSION_COOKIE_HTTPONLY:-True}
+      - SESSION_COOKIE_SAMESITE=${SESSION_COOKIE_SAMESITE:-Lax}
+      - CSRF_COOKIE_SECURE=${CSRF_COOKIE_SECURE:-False}
+      - CSRF_COOKIE_HTTPONLY=${CSRF_COOKIE_HTTPONLY:-False}
+      - CSRF_COOKIE_SAMESITE=${CSRF_COOKIE_SAMESITE:-Lax}
+      - USE_X_FORWARDED_PROTO=${USE_X_FORWARDED_PROTO:-True}
     networks:
       - pdede_network
     healthcheck:
@@ -65,13 +78,11 @@ services:
     image: nginx:alpine
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT:-80}:80"
     volumes:
       - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - static_volume:/var/www/static:ro
       - media_volume:/var/www/media:ro
-      - ./ssl:/etc/nginx/ssl:ro
       - ./logs/nginx:/var/log/nginx
     depends_on:
       - web
