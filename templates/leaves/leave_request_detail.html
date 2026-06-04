@@ -58,13 +58,15 @@
                                 <i class="bi bi-file-earmark-excel"></i> Αναμονή Δικαιολογητικών
                             </a>
                         {% endif %}
-                        {% if leave_request.status == 'IN_REVIEW' %}
-                            <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-primary">
-                                <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
+                        {% if leave_request.status == 'IN_REVIEW' or leave_request.status == 'DECISION_PREPARATION' or leave_request.status == 'PENDING_SIGNATURES' %}
+                            <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-{% if leave_request.status == 'PENDING_SIGNATURES' %}warning{% else %}primary{% endif %}">
+                                <i class="bi bi-file-earmark-text"></i> {% if leave_request.has_decision_pdf %}Αναγέννηση{% else %}Ετοιμασία{% endif %} Απόφασης
                             </a>
+                            {% if leave_request.status != 'PENDING_SIGNATURES' %}
                             <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
                                 <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
                             </button>
+                            {% endif %}
                         {% endif %}
                         {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
                             <a href="{% url 'leaves:provide_documents' leave_request.pk %}" class="btn btn-info">

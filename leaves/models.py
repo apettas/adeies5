@@ -492,9 +492,8 @@ class LeaveRequest(models.Model):
                     year=current_year,
                     defaults={'total_days': 0}
                 )
-                if not yearly_total.is_locked:
-                    yearly_total.total_days += self.total_days
-                    yearly_total.save()
+                yearly_total.total_days += self.total_days
+                yearly_total.save()
                 self.user.sick_days_current_year = yearly_total.total_days
                 self.user.save(update_fields=['sick_days_current_year'])
     
@@ -664,7 +663,53 @@ class LeaveRequest(models.Model):
     
     def can_create_decision(self):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
-        return self.status in ['IN_REVIEW', 'DECISION_PREPARATION']
+        return self.status in ['IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES']
+
+    def _notify_sick_leave_threshold_exceeded(self):
+        """
+        Υπολογίζει το ΣΥΝΟΛΟ αναρρωτικών ημερών (συμπεριλαμβανομένων 
+        και των ενεργών/μη ολοκληρωμένων αιτήσεων) και αν ξεπερνά τις 8,
+        δημιουργεί notifications σε ΟΛΟΥΣ τους χειριστές και τον υπάλληλο.
+        """
+        if not self.leave_type.is_sick_leave_total:
+            return
+        
+        from notifications.utils import create_notification as _create_notification
+        
+        current_year = timezone.now().year
+        # Σύνολο όλων των αναρρωτικών (συμπεριλαμβανομένων IN_REVIEW, PENDING_SIGNATURES κλπ)
+        sick_total = sum(
+            lr.total_days for lr in LeaveRequest.objects.filter(
+                user=self.user,
+                leave_type__is_sick_leave_total=True,
+                submitted_at__year=current_year
+            ).exclude(
+                status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
+            ).prefetch_related('periods')
+        )
+        
+        if sick_total > 8:
+            from accounts.models import User
+            handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
+            for handler in handlers:
+                _create_notification(
+                    user=handler,
+                    title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
+                    message=(
+                        f"Ο/Η {self.user.full_name} έχει συνολικά {sick_total} αναρρωτικές ημέρες "
+                        f"στο τρέχον έτος (όριο: 8). Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
+                    ),
+                    related_object=self
+                )
+            _create_notification(
+                user=self.user,
+                title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
+                message=(
+                    f"Το σύνολο των αναρρωτικών σας αδειών ανέρχεται σε {sick_total} ημέρες "
+                    f"(όριο: 8). Θα παραπεμφθείτε στην Υγειονομική Επιτροπή."
+                ),
+                related_object=self
+            )
 
     def start_decision_preparation(self, user):
         """Μεταφορά σε κατάσταση ετοιμασίας απόφασης"""

@@ -1319,6 +1319,9 @@ def send_to_protocol_pdede(request, pk):
             leave_request.status = 'IN_REVIEW'
             leave_request.save()
             
+            # Έλεγχος υπέρβασης ορίου αναρρωτικών — notification σε χειριστές
+            leave_request._notify_sick_leave_threshold_exceeded()
+            
             # Δημιουργία ιστορικού
             try:
                 from .models import LeaveRequestHistory
@@ -2382,6 +2385,9 @@ def provide_documents(request, pk):
                 handler=request.user,
                 notes=notes
             )
+            
+            # Έλεγχος υπέρβασης ορίου αναρρωτικών — notification σε χειριστές
+            leave_request._notify_sick_leave_threshold_exceeded()
 
             create_notification(
                 user=leave_request.user,

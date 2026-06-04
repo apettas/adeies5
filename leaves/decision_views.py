@@ -222,9 +222,14 @@ def generate_final_decision_pdf(request):
         leave_request.decision_pdf_path = encrypted_path
         leave_request.decision_pdf_encryption_key = encryption_key
         leave_request.decision_pdf_size = len(pdf_content)
-        leave_request.send_to_signatures(request.user)
-        
-        messages.success(request, 'Η απόφαση PDF δημιουργήθηκε και η αίτηση προωθήθηκε προς υπογραφές.')
+        # Μόνο αν είμαστε σε DECISION_PREPARATION, προχωράμε σε PENDING_SIGNATURES
+        # Αν είμαστε ήδη σε PENDING_SIGNATURES (αναγέννηση PDF), δεν αλλάζουμε status
+        if leave_request.status == 'DECISION_PREPARATION':
+            leave_request.send_to_signatures(request.user)
+            messages.success(request, 'Η απόφαση PDF δημιουργήθηκε και η αίτηση προωθήθηκε προς υπογραφές.')
+        else:
+            leave_request.save()
+            messages.success(request, 'Η απόφαση PDF αναγεννήθηκε επιτυχώς.')
         
         # Επιστροφή PDF στον χρήστη
         response = HttpResponse(pdf_content, content_type='application/pdf')
@@ -425,53 +430,21 @@ def complete_leave_request_final(request, pk):
                     notes=f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
                     created_by=request.user
                 )
-            # Καταγραφή στο ετήσιο σύνολο αναρρωτικών
+            # Ενημέρωση total_sick_leave_last_5_years (5ετία) – το sick_days_current_year
+            # ήδη ενημερώνεται μέσα στο finalize_with_exact_copy() → _update_leave_balance_on_completion()
             if leave_request.leave_type.is_sick_leave_total:
                 from leaves.models import YearlySickLeaveTotal
                 from django.db.models import Sum
                 current_year = timezone.now().year
-                yearly_total, created = YearlySickLeaveTotal.objects.get_or_create(
-                    employee=leave_request.user,
-                    year=current_year,
-                    defaults={'total_days': 0}
-                )
-                if not yearly_total.is_locked:
-                    yearly_total.total_days += leave_request.total_days
-                    yearly_total.save()
-                
                 user = leave_request.user
-                user.sick_days_current_year = yearly_total.total_days
+                user.refresh_from_db(fields=['sick_days_current_year'])
                 five_years_ago = current_year - 5
                 last_5 = YearlySickLeaveTotal.objects.filter(
                     employee=user, year__gte=five_years_ago, year__lte=current_year
                 ).aggregate(total=Sum('total_days'))['total'] or 0
                 user.total_sick_leave_last_5_years = last_5
-                user.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
+                user.save(update_fields=['total_sick_leave_last_5_years'])
             
-            # Alert για Υγειονομική Επιτροπή
-            if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
-                from accounts.models import User
-                from notifications.utils import create_notification
-                handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
-                for handler in handlers:
-                    create_notification(
-                        user=handler,
-                        title="Υγειονομική Επιτροπή",
-                        message=(
-                            f"Ο/Η {leave_request.user.full_name} έχει ξεπεράσει τις 8 αναρρωτικές ημέρες "
-                            f"({leave_request.user.sick_days_current_year} ημέρες). Απαιτείται παραπομπή."
-                        ),
-                        related_object=leave_request
-                    )
-                create_notification(
-                    user=leave_request.user,
-                    title="Υγειονομική Επιτροπή",
-                    message=(
-                        f"Το σύνολο των αναρρωτικών σας αδειών ({leave_request.user.sick_days_current_year} ημέρες) "
-                        f"ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
-                    ),
-                    related_object=leave_request
-                )
             messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
         else:
             messages.error(request, 'Δεν ήταν δυνατή η ολοκλήρωση της αίτησης.')
