@@ -9,18 +9,24 @@ CAS_ENABLED = bool(CAS_SERVER_URL)
 
 if CAS_ENABLED:
     CAS_VERSION = '3'
-    CAS_CREATE_USER = False  # Θα κάνουμε auto-create/login στο callback
+    CAS_CREATE_USER = True
     CAS_LOGOUT_COMPLETELY = True
-    CAS_REDIRECT_URL = '/'  # Μετά από logout
+    CAS_REDIRECT_URL = '/'
     CAS_RETRY_LOGIN = False
-    CAS_APPLY_ATTRIBUTES_TO_USER = False
-    
-    # Αποθήκευση proxy-granting ticket (για μελλοντική χρήση)
+    CAS_APPLY_ATTRIBUTES_TO_USER = True
+
+    # Proxy-granting ticket (δεν χρειάζεται για την περίπτωσή μας)
     CAS_PROXY_CALLBACK = None
-    
-    # Θα γίνει χαρτογράφηση attributes από CAS στο callback
+
+    # Χαρτογράφηση CAS attributes → Django User fields
+    # Το ΠΣΔ στέλνει: uid, givenName, sn, email, umdobject, businessCategory
     CAS_USER_ATTRIBUTES_MAPPING = {
         'email': 'email',
-        'first_name': 'first_name',
-        'last_name': 'last_name',
+        'first_name': 'givenName',
+        'last_name': 'sn',
     }
+
+    # Session timeout: 8 ώρες (480 λεπτά) όπως δηλώνεται στο helpdesk
+    SESSION_COOKIE_AGE = 28800  # 8 ώρες σε δευτερόλεπτα
+    SESSION_SAVE_EVERY_REQUEST = True
+    SESSION_EXPIRE_AT_BROWSER_CLOSE = True

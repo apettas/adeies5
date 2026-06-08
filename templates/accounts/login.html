@@ -109,6 +109,15 @@
                                 <i class="bi bi-box-arrow-in-right me-2"></i>Σύνδεση
                             </button>
                         </form>
+
+                        {% if cas_enabled %}
+                        <hr class="my-4">
+                        <div class="text-center">
+                            <a href="{% url 'accounts:cas_ng_login' %}" class="btn btn-success btn-login mb-3">
+                                <i class="bi bi-shield-check me-2"></i>Σύνδεση μέσω ΠΣΔ (sch.gr)
+                            </a>
+                        </div>
+                        {% endif %}
                         
                         <div class="text-center mt-4">
                             <div class="row">

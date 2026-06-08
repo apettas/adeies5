@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
+from django.conf import settings
 from .models import User, Role, Department
 from .forms import UserRegistrationForm
 
@@ -128,37 +129,31 @@ def login_view(request):
     return render(request, 'accounts/login.html', {'cas_enabled': cas_enabled})
 
 
-
 from django_cas_ng.views import LoginView as CASLoginView
 
-class CustomCASLoginView(CASLoginView):
-    """CAS login — auto-create user if not exists"""
+
+class PdedeCASLoginView(CASLoginView):
+    """CAS login — auto-approve new CAS users"""
+
     def successful_login(self, request, user):
-        from accounts.models import User
-        cas_username = request.session.get('cas_username', '')
-        cas_attributes = request.session.get('cas_attributes', {})
-        
-        # Try to find existing user by email
-        email = cas_attributes.get('email', f'{cas_username}@sch.gr')
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            # Auto-create user
-            user = User.objects.create(
-                email=email,
-                username=email,
-                first_name=cas_attributes.get('first_name', cas_username),
-                last_name=cas_attributes.get('last_name', ''),
-                registration_status='APPROVED',
-                is_active=True,
-            )
-        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-        return redirect(self.get_redirect_url())
+        if not user.registration_status:
+            user.registration_status = 'APPROVED'
+            user.is_active = True
+            user.save()
+        return super().successful_login(request, user)
 
 
 def logout_view(request):
-    """Logout view"""
+    """Logout view — redirect to SSO if CAS is enabled"""
+    cas_enabled = getattr(settings, 'CAS_ENABLED', False)
+    cas_server = getattr(settings, 'CAS_SERVER_URL', '')
+
     logout(request)
+
+    if cas_enabled and cas_server:
+        service_url = 'https://sadeies.pdede.gov.gr'
+        return redirect(f'{cas_server}logout?service={service_url}')
+
     messages.info(request, 'Αποσυνδεθήκατε επιτυχώς.')
     return redirect('accounts:login')
 

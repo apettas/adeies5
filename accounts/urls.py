@@ -27,5 +27,6 @@ urlpatterns = [
 # CAS URLs — only if CAS is configured
 if config('CAS_SERVER_URL', default=''):
     urlpatterns += [
+        path('cas/login/', views.PdedeCASLoginView.as_view(), name='cas_ng_login'),
         path('cas/', include('django_cas_ng.urls')),
     ]
