@@ -179,21 +179,6 @@ class Specialty(models.Model):
         return self.specialties_full
     
     def save(self, *args, **kwargs):
-        if self.first_name and self.last_name and not self.name_accusative:
-            full = f"{self.first_name} {self.last_name}"
-            # Simple nominative to accusative conversion
-            words = full.split()
-            converted = []
-            for w in words:
-                if len(w) > 2 and w.endswith('ος'):
-                    converted.append(w[:-2] + 'ο')
-                elif len(w) > 2 and w.endswith('ας'):
-                    converted.append(w[:-2] + 'α')
-                elif len(w) > 2 and w.endswith('ης'):
-                    converted.append(w[:-2] + 'η')
-                else:
-                    converted.append(w)
-            self.name_accusative = ' '.join(converted)
         """Αυτόματη εξαγωγή του σύντομου κωδικού από το πλήρες όνομα"""
         if self.specialties_full and not self.specialties_short:
             # Εξαγωγή μέχρι την πρώτη παύλα (-)
