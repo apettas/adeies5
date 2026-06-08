@@ -6,11 +6,18 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
+from django.http import HttpResponse
+
+
+def health_check(request):
+    return HttpResponse("healthy", content_type="text/plain")
+
 
 def home_redirect(request):
     if request.user.is_authenticated:
         return redirect('leaves:dashboard_redirect')
     return redirect('accounts:login')
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +25,7 @@ urlpatterns = [
     path('login/', include('accounts.urls')),
     path('leaves/', include('leaves.urls')),
     path('notifications/', include('notifications.urls')),
+    path('health/', health_check, name='health_check'),
 ]
 
 if settings.DEBUG:
