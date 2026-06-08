@@ -3,6 +3,7 @@ from django.conf import settings
 from decouple import config
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
+from django_cas_ng import views as cas_views
 from . import views
 
 app_name = 'accounts'
@@ -28,5 +29,6 @@ urlpatterns = [
 if config('CAS_SERVER_URL', default=''):
     urlpatterns += [
         path('cas/login/', views.PdedeCASLoginView.as_view(), name='cas_ng_login'),
-        path('cas/', include('django_cas_ng.urls')),
+        path('cas/callback/', cas_views.CallbackView.as_view(), name='cas_ng_callback'),
+        path('cas/logout/', cas_views.LogoutView.as_view(), name='cas_ng_logout'),
     ]
