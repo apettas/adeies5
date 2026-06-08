@@ -56,9 +56,8 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-# CAS middleware (μόνο αν ενεργοποιημένο)
+# CAS middleware (μόνο αν ενεργοποιημένο, το app είναι πάντα στο INSTALLED_APPS)
 if config('CAS_SERVER_URL', default=''):
-    INSTALLED_APPS.append('django_cas_ng')
     MIDDLEWARE.append('django_cas_ng.middleware.CASMiddleware')
 
 ROOT_URLCONF = 'pdede_leaves.urls'
