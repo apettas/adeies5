@@ -70,7 +70,7 @@ services:
     networks:
       - pdede_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/login/"]
+      test: ["CMD", "curl", "-f", "-H", "Host: sadeies.pdede.gov.gr", "http://localhost:8000/admin/login/"]
       interval: 30s
       timeout: 10s
       retries: 3
