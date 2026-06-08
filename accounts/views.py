@@ -152,7 +152,8 @@ def logout_view(request):
 
     if cas_enabled and cas_server:
         service_url = 'https://sadeies.pdede.gov.gr'
-        return redirect(f'{cas_server}logout?service={service_url}')
+        cas_server_clean = cas_server.rstrip('/')
+        return redirect(f'{cas_server_clean}/logout?service={service_url}')
 
     messages.info(request, 'Αποσυνδεθήκατε επιτυχώς.')
     return redirect('accounts:login')
