@@ -56,9 +56,8 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-# CAS middleware (μόνο αν ενεργοποιημένο, το app είναι πάντα στο INSTALLED_APPS)
-if config('CAS_SERVER_URL', default=''):
-    MIDDLEWARE.append('django_cas_ng.middleware.CASMiddleware')
+# CAS — no global middleware. SSO is triggered only via the login button (cas_ng_login).
+# The app (django_cas_ng) stays in INSTALLED_APPS for URL routing & views.
 
 ROOT_URLCONF = 'pdede_leaves.urls'
 
