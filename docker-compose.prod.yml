@@ -44,7 +44,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DEBUG=False
+      - DEBUG=${DEBUG:-False}
       - SECRET_KEY=${SECRET_KEY}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
