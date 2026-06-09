@@ -7,6 +7,7 @@ from .decision_views import (
 )
 from .calendar_views import leave_calendar_view
 from .balance_views import balance_ledger_view, manual_balance_adjustment
+from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordDataView
 
 app_name = 'leaves'
 
@@ -92,4 +93,9 @@ urlpatterns = [
     # Balance Ledger
     path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),
     path('balance-adjustment/<int:user_id>/', manual_balance_adjustment, name='manual_balance_adjustment'),
+    
+    # Base Data Management
+    path('base-data/', BaseDataIndexView.as_view(), name='base_data_index'),
+    path('base-data/<str:table_key>/', BaseDataTableView.as_view(), name='base_data_table'),
+    path('base-data/<str:table_key>/record/<int:record_id>/', GetRecordDataView.as_view(), name='get_record_data'),
 ]

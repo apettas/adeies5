@@ -10,6 +10,11 @@ except ImportError:
 register = template.Library()
 
 @register.filter
+def get_attr(obj, attr_name):
+    """Πρόσβαση σε attribute αντικειμένου από template με όνομα attribute."""
+    return getattr(obj, attr_name, '')
+
+@register.filter
 def to_accusative(name):
     """
     Μετατροπή πλήρους ονόματος από ονομαστική σε αιτιατική πτώση

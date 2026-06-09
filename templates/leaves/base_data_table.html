@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load decision_tags %}
+
+{% block title %}{{ display_name }} - Βασικά Στοιχεία Βάσης{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'accounts:dashboard' %}">Αρχική</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'leaves:base_data_index' %}">Βασικά Στοιχεία Βάσης</a></li>
+            <li class="breadcrumb-item active">{{ display_name }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-table"></i> 
+            {{ display_name }}
+        </h2>
+        {% if can_add %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRecordModal">
+            <i class="bi bi-plus-circle"></i> Προσθήκη
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Πίνακας Εγγραφών -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            {% for field_name, field_label, field_type in fields %}
+                            <th>{{ field_label }}</th>
+                            {% endfor %}
+                            <th class="text-center">Ενέργειες</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            {% for field_name, field_label, field_type in fields %}
+                            <td>
+                                {% with value=record|get_attr:field_name %}
+                                    {% if value is None or value == '' %}
+                                        <span class="text-muted">—</span>
+                                    {% elif value is True %}
+                                        <span class="badge bg-success">Ναι</span>
+                                    {% elif value is False %}
+                                        <span class="badge bg-secondary">Όχι</span>
+                                    {% elif field_type == 'BooleanField' or field_type == 'NullBooleanField' %}
+                                        {% if value %}
+                                            <span class="badge bg-success">Ναι</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Όχι</span>
+                                        {% endif %}
+                                    {% elif field_type == 'TextField' %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ value }}">{{ value|truncatechars:50 }}</span>
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                            <td class="text-center text-nowrap">
+                                {% if can_edit %}
+                                <button type="button" class="btn btn-sm btn-primary edit-btn" 
+                                        title="Επεξεργασία"
+                                        data-record-id="{{ record.pk }}"
+                                        data-table-key="{{ table_key }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% endif %}
+                                {% if can_delete %}
+                                <form method="post" action="{% url 'leaves:base_data_table' table_key %}" 
+                                      style="display:inline;" 
+                                      onsubmit="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την εγγραφή;');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="record_id" value="{{ record.pk }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Διαγραφή">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ fields|length|add:2 }}" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                                Δεν υπάρχουν εγγραφές
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Προσθήκης -->
+    <div class="modal fade" id="addRecordModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <form method="post" action="{% url 'leaves:base_data_table' table_key %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add">
+                    
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-plus-circle"></i> 
+                            Προσθήκη {{ display_name }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            {% for field_name, field_label, field_type in fields %}
+                            <div class="col-md-6">
+                                <label for="add_{{ field_name }}" class="form-label">{{ field_label }}</label>
+                                {% if field_type == 'BooleanField' or field_type == 'NullBooleanField' %}
+                                <div class="form-check form-switch mt-2">
+                                    <input type="checkbox" class="form-check-input" id="add_{{ field_name }}" 
+                                           name="{{ field_name }}" value="True">
+                                    <label class="form-check-label" for="add_{{ field_name }}">Ενεργό</label>
+                                </div>
+                                {% elif field_type == 'TextField' %}
+                                <textarea class="form-control" id="add_{{ field_name }}" 
+                                          name="{{ field_name }}" rows="3"></textarea>
+                                {% else %}
+                                <input type="{% if field_type == 'IntegerField' or field_type == 'PositiveIntegerField' or field_type == 'PositiveSmallIntegerField' or field_type == 'SmallIntegerField' or field_type == 'BigIntegerField' %}number{% elif field_type == 'DecimalField' or field_type == 'FloatField' %}number step="any"{% elif field_type == 'EmailField' %}email{% elif field_type == 'URLField' %}url{% elif field_type == 'DateField' %}date{% elif field_type == 'DateTimeField' %}datetime-local{% else %}text{% endif %}" 
+                                       class="form-control" id="add_{{ field_name }}" 
+                                       name="{{ field_name }}" placeholder="{{ field_label }}">
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Αποθήκευση
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Επεξεργασίας -->
+    <div class="modal fade" id="editRecordModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <form method="post" action="{% url 'leaves:base_data_table' table_key %}" id="editForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" name="record_id" id="edit_record_id" value="">
+                    
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-pencil"></i> 
+                            Επεξεργασία {{ display_name }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div id="editFormLoading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Φόρτωση...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Φόρτωση δεδομένων...</p>
+                        </div>
+                        <div id="editFormFields" style="display: none;">
+                            <div class="row g-3" id="editFieldsContainer">
+                                {% for field_name, field_label, field_type in fields %}
+                                <div class="col-md-6">
+                                    <label for="edit_{{ field_name }}" class="form-label">{{ field_label }}</label>
+                                    {% if field_type == 'BooleanField' or field_type == 'NullBooleanField' %}
+                                    <div class="form-check form-switch mt-2">
+                                        <input type="checkbox" class="form-check-input" id="edit_{{ field_name }}" 
+                                               name="{{ field_name }}" value="True">
+                                        <label class="form-check-label" for="edit_{{ field_name }}">Ενεργό</label>
+                                    </div>
+                                    {% elif field_type == 'TextField' %}
+                                    <textarea class="form-control" id="edit_{{ field_name }}" 
+                                              name="{{ field_name }}" rows="3"></textarea>
+                                    {% else %}
+                                    <input type="{% if field_type == 'IntegerField' or field_type == 'PositiveIntegerField' or field_type == 'PositiveSmallIntegerField' or field_type == 'SmallIntegerField' or field_type == 'BigIntegerField' %}number{% elif field_type == 'DecimalField' or field_type == 'FloatField' %}number step="any"{% elif field_type == 'EmailField' %}email{% elif field_type == 'URLField' %}url{% elif field_type == 'DateField' %}date{% elif field_type == 'DateTimeField' %}datetime-local{% else %}text{% endif %}" 
+                                           class="form-control" id="edit_{{ field_name }}" 
+                                           name="{{ field_name }}" placeholder="{{ field_label }}">
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                        <button type="submit" class="btn btn-primary" id="editSaveBtn">
+                            <i class="bi bi-check-lg"></i> Αποθήκευση Αλλαγών
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Handle Edit button click
+    $('.edit-btn').on('click', function() {
+        var recordId = $(this).data('record-id');
+        var tableKey = $(this).data('table-key');
+        var modal = $('#editRecordModal');
+        var loading = $('#editFormLoading');
+        var fields = $('#editFormFields');
+        
+        // Reset and show loading
+        loading.show();
+        fields.hide();
+        $('#edit_record_id').val(recordId);
+        
+        // Show modal
+        modal.modal('show');
+        
+        // Fetch record data via AJAX
+        $.ajax({
+            url: '/leaves/base-data/' + tableKey + '/record/' + recordId + '/',
+            method: 'GET',
+            success: function(data) {
+                loading.hide();
+                fields.show();
+                
+                // Populate form fields
+                {% for field_name, field_label, field_type in fields %}
+                var fieldData = data['{{ field_name }}'];
+                if (fieldData) {
+                    var input = $('#edit_{{ field_name }}');
+                    
+                    {% if field_type == 'BooleanField' or field_type == 'NullBooleanField' %}
+                    input.prop('checked', fieldData.value === true || fieldData.value === 'True');
+                    {% elif field_type == 'DateField' %}
+                    // Format date properly for input
+                    if (fieldData.value) {
+                        var dateValue = fieldData.value;
+                        if (dateValue.includes('T')) {
+                            dateValue = dateValue.split('T')[0];
+                        }
+                        input.val(dateValue);
+                    }
+                    {% elif field_type == 'DateTimeField' %}
+                    if (fieldData.value) {
+                        var dtValue = fieldData.value;
+                        if (dtValue.includes('T')) {
+                            // Keep up to minutes for datetime-local input
+                            var parts = dtValue.split('+')[0];
+                            if (parts.length > 16) {
+                                parts = parts.substring(0, 16);
+                            }
+                            input.val(parts);
+                        } else {
+                            input.val(dtValue);
+                        }
+                    }
+                    {% else %}
+                    input.val(fieldData.value);
+                    {% endif %}
+                }
+                {% endfor %}
+            },
+            error: function(xhr, status, error) {
+                loading.hide();
+                fields.show();
+                alert('Σφάλμα κατά τη φόρτωση των δεδομένων: ' + error);
+            }
+        });
+    });
+    
+    // Reset modal on close
+    $('#editRecordModal').on('hidden.bs.modal', function() {
+        $('#editFormLoading').show();
+        $('#editFormFields').hide();
+        $('#edit_record_id').val('');
+    });
+});
+</script>
+{% endblock %}
