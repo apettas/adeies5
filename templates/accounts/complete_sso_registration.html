@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Ολοκλήρωση Εγγραφής - Αλκίνοος{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Ολοκλήρωση Εγγραφής
+                    </h4>
+                    <small>Συμπληρώστε τα στοιχεία σας για να ολοκληρωθεί η εγγραφή</small>
+                </div>
+                <div class="card-body p-4">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Η σύνδεση μέσω ΠΣΔ (Σχολικό Δίκτυο) ήταν επιτυχής. 
+                        Παρακαλώ συμπληρώστε τα παρακάτω στοιχεία για να ολοκληρωθεί η εγγραφή σας.
+                        <strong>Μετά την υποβολή, θα χρειαστείτε έγκριση από τον χειριστή αδειών.</strong>
+                    </div>
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Στοιχεία από ΠΣΔ (read-only email) -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">
+                                <i class="fas fa-shield-alt me-2"></i>Στοιχεία από Σχολικό Δίκτυο
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label fw-bold">{{ form.email.label }}</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            <input type="email" 
+                                                   class="form-control bg-white" 
+                                                   value="{{ form.email.value|default:'' }}" 
+                                                   disabled 
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Το email σας από το Σχολικό Δίκτυο</small>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.first_name %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.last_name %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Προσωπικά Στοιχεία -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">
+                                <i class="fas fa-user me-2"></i>Προσωπικά Στοιχεία
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.father_name %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.gender %}
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.phone %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.role_description %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Υπηρεσιακά Στοιχεία -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-header">
+                                <i class="fas fa-building me-2"></i>Υπηρεσιακά Στοιχεία
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.department %}
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        {% bootstrap_field form.specialty %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Όροι Χρήσης -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    {% bootstrap_field form.terms_accepted %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Υποβολή Αίτησης Εγγραφής
+                            </button>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                Μετά την υποβολή, η αίτησή σας θα εξεταστεί από τον χειριστή αδειών.
+                                Θα ενημερωθείτε μέσω email όταν ενεργοποιηθεί ο λογαριασμός σας.
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

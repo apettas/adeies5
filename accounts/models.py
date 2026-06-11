@@ -506,7 +506,7 @@ class User(AbstractUser):
         return self.registration_status == 'REJECTED'
     
     def approve_registration(self, approved_by_user, notes=''):
-        """Εγκρίνει την εγγραφή του χρήστη"""
+        """Εγκρίνει την εγγραφή του χρήστη και στέλνει ειδοποίηση/email"""
         from django.utils import timezone
         self.registration_status = 'APPROVED'
         self.approved_by = approved_by_user
@@ -514,6 +514,19 @@ class User(AbstractUser):
         self.approval_notes = notes
         self.is_active = True  # Ενεργοποίηση του χρήστη
         self.save()
+        
+        # Αποστολή email ειδοποίησης
+        try:
+            from pdede_leaves.email_utils import (
+                send_registration_approved_email,
+                send_registration_approved_notification
+            )
+            send_registration_approved_email(self)
+            send_registration_approved_notification(self)
+        except Exception:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not send approval notifications for user {self.email}")
     
     def reject_registration(self, rejected_by_user, notes=''):
         """Απορρίπτει την εγγραφή του χρήστη"""

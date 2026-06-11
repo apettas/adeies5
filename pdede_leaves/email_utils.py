@@ -1,9 +1,77 @@
 """
 Email utilities — αποστολή ενοποιημένου PDF μέσω email
 """
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, send_mail
 from django.conf import settings
 from django.utils import timezone
+
+
+def send_registration_approved_email(user):
+    """
+    Στέλνει email ειδοποίησης στον χρήστη ότι ο λογαριασμός του ενεργοποιήθηκε.
+    
+    Args:
+        user: User instance που μόλις εγκρίθηκε
+    
+    Returns:
+        bool: True αν στάλθηκε επιτυχώς
+    """
+    subject = 'Ενεργοποίηση Λογαριασμού - Σύστημα Διαχείρισης Αδειών ΠΔΕΔΕ'
+    message = (
+        f"Αγαπητέ/ή {user.full_name},\n\n"
+        f"Ο λογαριασμός σας στο Σύστημα Διαχείρισης Αδειών της "
+        f"Περιφερειακής Διεύθυνσης Εκπαίδευσης Δυτικής Ελλάδας ενεργοποιήθηκε επιτυχώς.\n\n"
+        f"Μπορείτε πλέον να συνδεθείτε στο σύστημα:\n"
+        f"  - Μέσω ΠΣΔ (Σχολικό Δίκτυο): {settings.LOGIN_URL}\n"
+        f"  - Μέσω email και κωδικού: {settings.LOGIN_URL}\n\n"
+        f"Παρακαλούμε να αλλάξετε τον κωδικό πρόσβασής σας με την πρώτη σύνδεση.\n\n"
+        f"Με εκτίμηση,\n"
+        f"ΠΔΕ Δυτικής Ελλάδας\n"
+        f"Σύστημα Διαχείρισης Αδειών «Αλκίνοος»"
+    )
+    
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send approval email to {user.email}: {e}")
+        return False
+
+
+def send_registration_approved_notification(user):
+    """
+    Δημιουργεί ειδοποίηση εντός συστήματος για τον χρήστη.
+    
+    Args:
+        user: User instance που μόλις εγκρίθηκε
+    
+    Returns:
+        Notification instance or None
+    """
+    try:
+        from notifications.utils import create_notification
+        return create_notification(
+            user=user,
+            title='Ο λογαριασμός σας ενεργοποιήθηκε',
+            message=(
+                f'Ο λογαριασμός σας στο Σύστημα Διαχείρισης Αδειών ενεργοποιήθηκε. '
+                f'Μπορείτε πλέον να συνδεθείτε και να υποβάλετε αιτήσεις άδειας.'
+            ),
+            notification_type='success'
+        )
+    except Exception:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Could not create notification for approved user {user.email}")
+        return None
 
 
 def build_email_subject(leave_request):

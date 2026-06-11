@@ -1,22 +1,96 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, FormView
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from django.conf import settings
 from .models import User, Role, Department
-from .forms import UserRegistrationForm
+from .forms import UserRegistrationForm, CompleteSSORegistrationForm
+from notifications.utils import create_notification
+from pdede_leaves.email_utils import send_registration_approved_email
 
+
+
+class CompleteSSORegistrationView(FormView):
+    """
+    View για συμπλήρωση στοιχείων από νέο SSO χρήστη.
+    Ο χρήστης έχει δημιουργηθεί από το CAS αλλά είναι PENDING χωρίς στοιχεία.
+    """
+    template_name = 'accounts/complete_sso_registration.html'
+    form_class = CompleteSSORegistrationForm
+
+    def dispatch(self, request, *args, **kwargs):
+        # Ο χρήστης μπορεί να είναι είτε anonymous (με email query param)
+        # είτε logged in αλλά PENDING
+        self.target_email = request.GET.get('email', '')
+        if request.user.is_authenticated:
+            self.target_email = request.user.email
+        if not self.target_email:
+            messages.error(request, 'Δεν βρέθηκε ο λογαριασμός σας. Παρακαλώ κάντε σύνδεση μέσω ΠΣΔ.')
+            return redirect('accounts:login')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_initial(self):
+        initial = super().get_initial()
+        try:
+            user = User.objects.get(email=self.target_email)
+            initial['email'] = user.email
+            initial['first_name'] = user.first_name
+            initial['last_name'] = user.last_name
+        except User.DoesNotExist:
+            pass
+        return initial
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['target_email'] = self.target_email
+        return kwargs
+
+    def form_valid(self, form):
+        try:
+            user = User.objects.get(email=self.target_email)
+            user.first_name = form.cleaned_data['first_name']
+            user.last_name = form.cleaned_data['last_name']
+            user.department = form.cleaned_data['department']
+            user.specialty = form.cleaned_data['specialty']
+            user.phone1 = form.cleaned_data.get('phone', '')
+            user.father_name = form.cleaned_data.get('father_name', '')
+            user.gender = form.cleaned_data.get('gender', '')
+            user.role_description = form.cleaned_data.get('role_description', '')
+            # Παραμένει PENDING — θα το εγκρίνει ο χειριστής
+            user.save()
+
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"SSO user completed registration: {user.email}")
+
+            # Αποσύνδεση για να μην έχει πρόσβαση πριν την έγκριση
+            auth_logout(self.request)
+
+            messages.success(self.request,
+                'Τα στοιχεία σας καταχωρήθηκαν επιτυχώς! '
+                'Η αίτησή σας στάλθηκε για έγκριση. '
+                'Θα ενημερωθείτε στο email σας όταν ενεργοποιηθεί ο λογαριασμός σας.')
+            return redirect('accounts:registration_pending')
+        except User.DoesNotExist:
+            messages.error(self.request, 'Σφάλμα: Ο λογαριασμός σας δεν βρέθηκε.')
+            return redirect('accounts:login')
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
     """Dashboard για όλους τους χρήστες"""
     template_name = 'accounts/dashboard.html'
     
+    def dispatch(self, request, *args, **kwargs):
+        # Αν ο χρήστης είναι PENDING, ανακατεύθυνση στη σελίδα εκκρεμότητας
+        if request.user.is_pending_approval:
+            return redirect('accounts:registration_pending')
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -133,13 +207,25 @@ from django_cas_ng.views import LoginView as CASLoginView
 
 
 class PdedeCASLoginView(CASLoginView):
-    """CAS login — auto-approve new CAS users"""
+    """CAS login — new CAS users go through registration workflow"""
 
     def successful_login(self, request, user):
-        if not user.registration_status:
-            user.registration_status = 'APPROVED'
-            user.is_active = True
+        # Νέος χρήστης από CAS: χωρίς registration_status → PENDING
+        if not user.registration_status or user.registration_status == 'PENDING':
+            user.registration_status = 'PENDING'
+            user.is_active = False
             user.save()
+
+            email = user.email
+
+            # Αποσύνδεση για να μην έχει πρόσβαση ακόμα
+            auth_logout(request)
+
+            # Redirect στη σελίδα ολοκλήρωσης εγγραφής με το email ως param
+            from django.shortcuts import redirect
+            return redirect(f'/accounts/complete-sso-registration/?email={email}')
+
+        # Εγκεκριμένος χρήστης → κανονική σύνδεση
         return super().successful_login(request, user)
 
 
@@ -148,7 +234,7 @@ def logout_view(request):
     cas_enabled = getattr(settings, 'CAS_ENABLED', False)
     cas_server = getattr(settings, 'CAS_SERVER_URL', '')
 
-    logout(request)
+    auth_logout(request)
 
     if cas_enabled and cas_server:
         service_url = 'https://sadeies.pdede.gov.gr'

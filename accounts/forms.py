@@ -139,3 +139,142 @@ class UserRegistrationForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class CompleteSSORegistrationForm(forms.Form):
+    """Form για συμπλήρωση στοιχείων από νέο CAS (SSO) χρήστη"""
+    
+    email = forms.EmailField(
+        required=True,
+        label='Email ΠΣΔ',
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'readonly': 'readonly',
+            'disabled': 'disabled',
+        })
+    )
+    
+    first_name = forms.CharField(
+        max_length=50,
+        required=True,
+        label='Όνομα',
+        help_text='Από το Σχολικό Δίκτυο. Μπορείτε να το διορθώσετε.',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Εισάγετε το όνομά σας'
+        })
+    )
+    
+    last_name = forms.CharField(
+        max_length=50,
+        required=True,
+        label='Επώνυμο',
+        help_text='Από το Σχολικό Δίκτυο. Μπορείτε να το διορθώσετε.',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Εισάγετε το επώνυμό σας'
+        })
+    )
+    
+    father_name = forms.CharField(
+        max_length=50,
+        required=False,
+        label='Πατρώνυμο',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. Γεώργιος'
+        })
+    )
+    
+    gender = forms.ChoiceField(
+        choices=[('', 'Επιλέξτε Φύλο'), ('MALE', 'Άνδρας'), ('FEMALE', 'Γυναίκα'), ('OTHER', 'Άλλο')],
+        required=False,
+        label='Φύλο',
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.filter(is_active=True),
+        required=True,
+        label='Υπηρεσία Υπηρέτησης',
+        empty_label='Επιλέξτε Υπηρεσία Υπηρέτησης',
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    specialty = forms.ModelChoiceField(
+        queryset=Specialty.objects.filter(is_active=True),
+        required=True,
+        label='Ειδικότητα',
+        empty_label='Επιλέξτε Ειδικότητα',
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
+    )
+    
+    phone = forms.CharField(
+        max_length=15,
+        required=False,
+        label='Τηλέφωνο',
+        help_text='Προαιρετικό',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. 2610123456'
+        })
+    )
+    
+    role_description = forms.CharField(
+        max_length=200,
+        required=False,
+        label='Ιδιότητα / Θέση',
+        help_text='Π.χ. Αναπληρωτής Εκπαιδευτικός, Μόνιμος Διοικητικός Υπάλληλος',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Περιγράψτε την ιδιότητά σας'
+        })
+    )
+    
+    terms_accepted = forms.BooleanField(
+        required=True,
+        label='Αποδέχομαι τους όρους χρήσης',
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.target_email = kwargs.pop('target_email', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_first_name(self):
+        value = self.cleaned_data.get('first_name', '')
+        if not value.strip():
+            raise ValidationError('Το όνομα είναι υποχρεωτικό')
+        return value.strip()
+    
+    def clean_last_name(self):
+        value = self.cleaned_data.get('last_name', '')
+        if not value.strip():
+            raise ValidationError('Το επώνυμο είναι υποχρεωτικό')
+        return value.strip()
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        # Verify the user still exists in pending state
+        if self.target_email:
+            try:
+                user = User.objects.get(email=self.target_email)
+                if user.registration_status != 'PENDING' and user.registration_status != '':
+                    raise ValidationError(
+                        'Η εγγραφή σας έχει ήδη ολοκληρωθεί. '
+                        'Παρακαλώ συνδεθείτε στο σύστημα.'
+                    )
+            except User.DoesNotExist:
+                raise ValidationError(
+                    'Ο λογαριασμός σας δεν βρέθηκε. '
+                    'Παρακαλώ κάντε σύνδεση μέσω ΠΣΔ πρώτα.'
+                )
+        return cleaned_data
