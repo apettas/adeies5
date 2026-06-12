@@ -21,7 +21,7 @@
         if (input.files.length > 0) {
             const file = input.files[0];
             if (!isValidFileType(file.name)) {
-                errorMessage.text('Μη επιτρεπτός τύπος αρχείου. Επιτρεπόμενοι: PDF, DOC, DOCX, JPG, PNG');
+                errorMessage.text('Μη επιτρεπτός τύπος αρχείου. Επιτρεπόμενοι: PDF, JPG, PNG');
                 fileErrorElement.show();
                 $(input).addClass('border-danger');
                 descriptionField.prop('required', true);
@@ -60,7 +60,7 @@
             <div class="attachment-group mb-3" data-index="${idx}">
                 <input type="file" name="attachment_${idx}" id="attachment_${idx}"
                        class="form-control attachment-input"
-                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                       accept=".pdf,.jpg,.jpeg,.png">
                 <div class="file-error alert alert-danger mt-2" style="display: none;">
                     <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
                 </div>

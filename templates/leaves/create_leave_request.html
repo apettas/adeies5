@@ -107,9 +107,9 @@
                                 <i class="bi bi-paperclip"></i> Επισύναψη Αρχείων (Προαιρετικό)
                             </label>
                             <div class="attachment-group mb-3" data-index="1">
-                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.jpg,.jpeg,.png">
                                 <div class="form-text">
-                                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, JPG, PNG
                                 </div>
                                 <div class="file-error alert alert-danger mt-2" style="display: none;">
                                     <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
@@ -319,8 +319,8 @@ $(document).ready(function() {
     }
     
     // Allowed file types
-    const allowedFileExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
-    const allowedMimeTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+    const allowedFileExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png'];
     
     
     // Function to validate date range (start before end)
@@ -439,7 +439,7 @@ $(document).ready(function() {
             
             // Check file type
             if (!isValidFileType(file.name)) {
-                errorMessage.text(`Τύπος αρχείου μη αποδεκτός: "${file.name}". Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG`);
+                errorMessage.text(`Τύπος αρχείου μη αποδεκτός: "${file.name}". Επιτρεπόμενοι τύποι: PDF, JPG, PNG`);
                 fileErrorElement.show();
                 $(input).addClass('border-danger');
                 hasError = true;
@@ -778,9 +778,9 @@ $(document).ready(function() {
         attachmentCounter++;
         const newAttachmentGroup = `
             <div class="attachment-group mb-3" data-index="${attachmentCounter}">
-                <input type="file" name="attachment_${attachmentCounter}" id="attachment_${attachmentCounter}" class="form-control attachment-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                <input type="file" name="attachment_${attachmentCounter}" id="attachment_${attachmentCounter}" class="form-control attachment-input" accept=".pdf,.jpg,.jpeg,.png">
                 <div class="form-text">
-                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, DOC, DOCX, JPG, PNG
+                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, JPG, PNG
                 </div>
                 <div class="file-error alert alert-danger mt-2" style="display: none;">
                     <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>

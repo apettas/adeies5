@@ -119,9 +119,11 @@
                         <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;">
                             <li><h6 class="dropdown-header">Ειδοποιήσεις</h6></li>
                             <li><hr class="dropdown-divider"></li>
-                            <div id="notification-list">
-                                <li><span class="dropdown-item-text text-muted">Φόρτωση...</span></li>
-                            </div>
+                            <li>
+                                <ul id="notification-list" class="list-unstyled mb-0">
+                                    <li><span class="dropdown-item-text text-muted">Φόρτωση...</span></li>
+                                </ul>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item text-center" href="{% url 'notifications:notification_list' %}">
@@ -136,7 +138,7 @@
                             <i class="bi bi-person-circle"></i> {{ user.full_name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text">{{ user.get_role_display }}</span></li>
+                            <li><span class="dropdown-item-text">{{ user.get_role_names }}</span></li>
                             <li><span class="dropdown-item-text text-muted">{{ user.department.name|default:"Χωρίς τμήμα" }}</span></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
@@ -329,7 +331,20 @@
             });
         });
     </script>
-    
+
+    <!-- Bootstrap Dropdown Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
+                    new bootstrap.Dropdown(toggle);
+                });
+            } else {
+                console.warn('Bootstrap JS not loaded - dropdowns will not work');
+            }
+        });
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

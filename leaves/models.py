@@ -153,6 +153,7 @@ class LeaveRequest(models.Model):
     STATUS_CHOICES = [
         ('DRAFT', 'Πρόχειρη αίτηση'),
         ('SUBMITTED', 'Υποβληθείσα αίτηση'),
+        ('PENDING_KEDASY_PROTOCOL', 'Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ'),
         ('PENDING_PROTOCOL', 'Για πρωτόκολλο ΠΔΕΔΕ'),
         ('IN_REVIEW', 'Σε επεξεργασία από τμήμα αδειών'),
         ('WAITING_FOR_DOCUMENTS', 'Σε αναμονή δικαιολογητικών'),
@@ -875,7 +876,7 @@ class LeaveRequest(models.Model):
         if not self.is_kedasy_kepea_department():
             return False
         
-        # Έλεγχος αν το status είναι PENDING_KEDASY_KEPEA_PROTOCOL
+        # Έλεγχος αν το status είναι PENDING_KEDASY_PROTOCOL
         if self.status != 'PENDING_KEDASY_PROTOCOL':
             return False
         
@@ -1316,7 +1317,7 @@ class DecisionTemplate(models.Model):
 
 
 class YearlySickLeaveTotal(models.Model):
-    """U+039FU+03B7U+03C3U+03B9U+03B1 U+03BAU+03B1U+03C4U+03B1U+03B3U+03C1U+03B1U+03C6U+03AE U+03C3U+03C5U+03BDU+03CCU+03BBU+03BFU+03C5 U+03B1U+03BDU+03B1U+03C1U+03C1U+03C9U+03C4U+03B9U+03BAU+03CEU+03BD U+03B1U+03B4U+03B5U+03B9U+03CEU+03BD U+03B1U+03BDU+03AC U+03C5U+03C0U+03ACU+03BBU+03B7U+03BBU+03BF"""
+    """Ετήσια καταγραφή συνόλου αναρρωτικών αδειών ανά υπάλληλο"""
     employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yearly_sick_leave_totals',
                                   verbose_name='Υπάλληλος')
     year = models.PositiveIntegerField('Έτος')

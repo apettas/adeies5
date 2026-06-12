@@ -107,7 +107,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 context['my_requests_count'] = LeaveRequest.objects.filter(user=user).count()
                 context['pending_requests_count'] = LeaveRequest.objects.filter(
                     user=user,
-                    status__in=['SUBMITTED', 'APPROVED_MANAGER']
+                    status__in=['SUBMITTED', 'PENDING_PROTOCOL']
                 ).count()
                 
             elif user.is_department_manager:
@@ -123,17 +123,17 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                     from django.db.models import Q
                     context['is_kedasy_kepea_manager'] = True
                     context['kedasy_kepea_pending_protocol_count'] = LeaveRequest.objects.filter(
-                        status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                        status='PENDING_KEDASY_PROTOCOL'
                     ).count()
                 
             elif user.is_leave_handler:
                 context['pending_processing'] = LeaveRequest.objects.filter(
-                    status='APPROVED_MANAGER'
+                    status='PENDING_PROTOCOL'
                 ).count()
                 
             elif user.is_secretary:
                 context['pending_kedasy_kepea_protocol'] = LeaveRequest.objects.filter(
-                    status='PENDING_KEDASY_KEPEA_PROTOCOL'
+                    status='PENDING_KEDASY_PROTOCOL'
                 ).count()
         except ImportError:
             # Αν το leaves app δεν είναι διαθέσιμο ακόμα

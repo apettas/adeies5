@@ -1,4 +1,7 @@
 from django import template
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Try to import num2words for better Greek number conversion
 try:
@@ -28,7 +31,7 @@ def to_accusative(name):
         return name
     
     first_name = parts[0]
-    last_name = parts[1]
+    last_name = parts[-1]
     
     # Μετατροπή ονόματος σε αιτιατική
     first_name_accusative = convert_first_name_to_accusative(first_name)
@@ -36,7 +39,12 @@ def to_accusative(name):
     # Μετατροπή επωνύμου σε αιτιατική
     last_name_accusative = convert_last_name_to_accusative(last_name)
     
-    return f"{first_name_accusative} {last_name_accusative}"
+    # Αν υπάρχουν μεσαία ονόματα, τα μετατρέπουμε κι αυτά
+    middle_parts = parts[1:-1]
+    middle_accusative = [convert_first_name_to_accusative(m) for m in middle_parts]
+    
+    result_parts = [first_name_accusative] + middle_accusative + [last_name_accusative]
+    return " ".join(result_parts)
 
 def convert_first_name_to_accusative(name):
     """Μετατροπή ονόματος σε αιτιατική πτώση"""
@@ -106,9 +114,8 @@ def convert_days_to_greek_genitive(days):
                 elif greek_word.endswith('τρία'):
                     return greek_word[:-4] + 'τριών'
                 return greek_word
-            except:
-                # Fallback to manual conversion if num2words fails
-                pass
+            except Exception as e:
+                logger.warning("num2words failed for %s: %s", days_int, e)
         
         # Manual Greek number conversion (fallback)
         if days_int == 1:
@@ -221,7 +228,7 @@ def gender_article(gender):
 @register.filter
 def gender_subject(gender):
     """
-    Επιστρέφει 'Αυτός' για MALE, 'Αυτή' για FEMALE
+    Επιστρέφει 'του' για MALE, 'της' για FEMALE (γενική/κτητική)
     """
     if gender == 'MALE':
         return 'του'

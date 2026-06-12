@@ -9,11 +9,13 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-file-text"></i> Λεπτομέρειες Αίτησης</h2>
             <div>
-                {% if user.role == 'employee' %}
+                {% if user == leave_request.user %}
                     <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Επιστροφή
                     </a>
-                {% elif user.is_department_manager %}
+                {% endif %}
+
+                {% if user.is_department_manager %}
                     <div class="btn-group" role="group">
                         <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
@@ -30,32 +32,16 @@
                             {% endif %}
                         {% endif %}
                     </div>
-                {% else %}
-                    <!-- Έλεγχος για managers που δεν είναι department managers αλλά έχουν δικαίωμα έγκρισης -->
-                    {% can_manager_approve user leave_request as can_approve %}
-                    {% if can_approve %}
-                        <div class="btn-group" role="group">
-                            <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> Επιστροφή
-                            </a>
-                            {% if leave_request.status == 'SUBMITTED' %}
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
-                                    <i class="bi bi-check"></i> Έγκριση
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
-                                    <i class="bi bi-x"></i> Απόρριψη
-                                </button>
-                            {% endif %}
-                        </div>
-                    {% endif %}
+                {% endif %}
+
                 {% if user.is_leave_handler %}
                     <div class="btn-group" role="group">
                         <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Επιστροφή
                         </a>
-                        {% if leave_request.status == 'PENDING_PROTOCOL' or leave_request.status == 'IN_REVIEW' %}
+                        {% if leave_request.status == 'PENDING_PROTOCOL' or leave_request.status == 'PENDING_KEDASY_PROTOCOL' or leave_request.status == 'IN_REVIEW' %}
                             <a href="{% url 'leaves:request_documents' leave_request.pk %}" class="btn btn-warning">
-                                <i class="bi bi-file-earmark-excel"></i> Αναμονή Δικαιολογητικών
+                                <i class="bi bi-file-earmark-excel"></i> Αίτηση Δικαιολογητικών
                             </a>
                         {% endif %}
                         {% if leave_request.status == 'IN_REVIEW' or leave_request.status == 'DECISION_PREPARATION' or leave_request.status == 'PENDING_SIGNATURES' %}
@@ -63,9 +49,9 @@
                                 <i class="bi bi-file-earmark-text"></i> {% if leave_request.has_decision_pdf %}Αναγέννηση{% else %}Ετοιμασία{% endif %} Απόφασης
                             </a>
                             {% if leave_request.status != 'PENDING_SIGNATURES' %}
-                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
-                                <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
-                            </button>
+                                <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
+                                    <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
+                                </button>
                             {% endif %}
                         {% endif %}
                         {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
@@ -82,7 +68,6 @@
                             </a>
                         {% endif %}
                     </div>
-                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -174,22 +159,32 @@
                     <div class="col-md-6 mb-3">
                         <strong>Κατάσταση:</strong>
                         <p>
-                            {% if leave_request.status == 'SUBMITTED' %}
+                            {% if leave_request.status == 'DRAFT' %}
+                                <span class="badge bg-secondary fs-6">Πρόχειρη</span>
+                            {% elif leave_request.status == 'SUBMITTED' %}
                                 <span class="badge bg-warning fs-6">Υποβλήθηκε</span>
-                            {% elif leave_request.status == 'PENDING_PROTOCOL' %}
-                                <span class="badge bg-info fs-6">Εγκρίθηκε από Προϊστάμενο</span>
-                            {% elif leave_request.status == 'PENDING_PROTOCOL' %}
+                            {% elif leave_request.status == 'PENDING_KEDASY_PROTOCOL' %}
                                 <span class="badge bg-warning fs-6">Εκκρεμεί Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ</span>
                             {% elif leave_request.status == 'PENDING_PROTOCOL' %}
                                 <span class="badge bg-secondary fs-6">Για Πρωτόκολλο ΠΔΕΔΕ</span>
                             {% elif leave_request.status == 'IN_REVIEW' %}
                                 <span class="badge bg-primary fs-6">Προς Επεξεργασία</span>
+                            {% elif leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
+                                <span class="badge bg-warning fs-6">Σε Αναμονή Δικαιολογητικών</span>
+                            {% elif leave_request.status == 'DECISION_PREPARATION' %}
+                                <span class="badge bg-info fs-6">Ετοιμασία Απόφασης</span>
+                            {% elif leave_request.status == 'PENDING_YC_COMMITTEE' %}
+                                <span class="badge bg-danger fs-6">Υγειονομική Επιτροπή</span>
+                            {% elif leave_request.status == 'PENDING_SIGNATURES' %}
+                                <span class="badge bg-warning fs-6">Προς Υπογραφές</span>
                             {% elif leave_request.status == 'COMPLETED' %}
                                 <span class="badge bg-success fs-6">Ολοκληρώθηκε</span>
                             {% elif leave_request.status == 'SUPERVISOR_REJECTED' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Προϊστάμενο</span>
                             {% elif leave_request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Χειριστή</span>
+                            {% elif leave_request.status == 'CANCELLED_BY_APPLICANT' %}
+                                <span class="badge bg-warning fs-6">Ανάκληση</span>
                             {% endif %}
                         </p>
                     </div>
@@ -199,7 +194,7 @@
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong>Ημερομηνία Υποβολής:</strong>
-                        <p class="date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</p>
+                        <p class="date-greek">{{ leave_request.submitted_at|date:"d/m/Y H:i" }}</p>
                     </div>
                 </div>
                 
@@ -459,8 +454,8 @@
         </div>
         {% endif %}
         
-        <!-- Συνημμένα Αρχεία - GDPR Protection: Μόνο χειριστής αδειών και ιδιοκτήτης για αναρρωτικές -->
-        {% if user.is_leave_handler or user == leave_request.user or user.is_department_manager and leave_request.leave_type.requires_approval or user.is_secretary and leave_request.leave_type.requires_approval %}
+        <!-- Συνημμένα Αρχεία - GDPR Protection -->
+        {% if can_view_attachments %}
             {% if leave_request.attachments.exists %}
             <div class="card mb-4">
                 <div class="card-header">
@@ -533,12 +528,7 @@
                 <div class="card-body">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i>
-                        <strong>Προστασία Δεδομένων (GDPR):</strong> Η αίτηση περιέχει {{ leave_request.attachments.count }} συνημμένα αρχεία.
-                        {% if not leave_request.leave_type.requires_approval %}
-                            Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα αναρρωτικών αδειών είναι προσβάσιμα μόνο από τον χειριστή αδειών και τον ιδιοκτήτη της αίτησης.
-                        {% else %}
-                            Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα είναι προσβάσιμα μόνο από εξουσιοδοτημένους χρήστες.
-                        {% endif %}
+                        <strong>Προστασία Δεδομένων (GDPR):</strong> Η αίτηση περιέχει {{ leave_request.attachments.count }} συνημμένα αρχεία. Για λόγους προστασίας προσωπικών δεδομένων, τα συνημμένα είναι προσβάσιμα μόνο από εξουσιοδοτημένους χρήστες.
                     </div>
                 </div>
             </div>
@@ -707,10 +697,10 @@
                         {% if leave_request.description %}
                         <p class="mb-1 small"><em>"{{ leave_request.description }}"</em></p>
                         {% endif %}
-                        <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
+                        <small class="text-muted date-greek">{{ leave_request.submitted_at|date:"d/m/Y H:i" }}</small>
                     </div>
                 </div>
-                
+
                 <!-- Έγκριση/Απόρριψη Προϊσταμένου ή Παράκαμψη -->
                 {% if leave_request.manager_approved_by %}
                 <div class="d-flex mb-3">
@@ -748,11 +738,11 @@
                     <div class="flex-grow-1 ms-3">
                         <h6 class="mb-1">Παρακάμφθηκε Έγκριση Προϊσταμένου</h6>
                         <p class="mb-1 text-muted small">{{ leave_request.leave_type.name }} - δεν απαιτεί έγκριση</p>
-                        <small class="text-muted date-greek">{{ leave_request.created_at|date:"d/m/Y H:i" }}</small>
+                        <small class="text-muted date-greek">{{ leave_request.submitted_at|date:"d/m/Y H:i" }}</small>
                     </div>
                 </div>
                 {% endif %}
-                
+
                 <!-- Επεξεργασία/Ολοκλήρωση -->
                 {% if leave_request.processed_by %}
                 <div class="d-flex mb-3">
@@ -798,13 +788,13 @@
                         {% endif %}
                     </div>
                 </div>
-                {% elif leave_request.status == 'PENDING_PROTOCOL' %}
+                {% elif leave_request.status == 'PENDING_KEDASY_PROTOCOL' %}
                 <div class="d-flex mb-3">
                     <div class="flex-shrink-0">
                         <i class="bi bi-circle text-muted"></i>
                     </div>
                     <div class="flex-grow-1 ms-3">
-                        <h6 class="mb-1 text-muted">Αναμένει επεξεργασία</h6>
+                        <h6 class="mb-1 text-muted">Αναμένει πρωτοκόλληση ΚΕΔΑΣΥ/ΚΕΠΕΑ</h6>
                     </div>
                 </div>
                 {% elif leave_request.status == 'PENDING_PROTOCOL' %}
@@ -917,7 +907,7 @@
                         <form method="post" action="{% url 'leaves:handler_upload_attachment' leave_request.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end">
                             {% csrf_token %}
                             <div class="col-md-5">
-                                <input type="file" name="attachment" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
+                                <input type="file" name="attachment" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png" required>
                             </div>
                             <div class="col-md-5">
                                 <input type="text" name="description" class="form-control form-control-sm" placeholder="Περιγραφή αρχείου">

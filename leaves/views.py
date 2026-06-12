@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, Sum
 from django.conf import settings
+from django.urls import reverse_lazy
 from datetime import timedelta
 import os
 import mimetypes
@@ -2808,8 +2809,6 @@ def withdraw_completed_leave(request, pk):
 
     return render(request, 'leaves/withdraw_completed_confirm.html', {'leave_request': leave_request})
 
-
-@login_required
 
 @login_required
 def handler_upload_attachment(request, pk):
