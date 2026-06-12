@@ -20,7 +20,7 @@ class Command(BaseCommand):
         'decision_text': None,
         'folder': 'Γενικός Φάκελος/',
         'instructions': '',
-        'max_days': 30,
+        'max_days': None,
         'requires_approval': True,
         'is_active': True,
         'affects_regular_leave_balance': False,
@@ -238,7 +238,7 @@ class Command(BaseCommand):
     def _parse_positive_integer(self, value, row_number, code):
         value = self._clean(value)
         if not value:
-            return self.FIELD_DEFAULTS['max_days']
+            return None
 
         try:
             parsed = int(value)

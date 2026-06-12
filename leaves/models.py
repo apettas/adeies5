@@ -15,7 +15,7 @@ class LeaveType(models.Model):
     code = models.CharField('Κωδικός', max_length=50, unique=True, blank=True,
                             help_text='Προγραμματικός κωδικός (π.χ. ANNUAL, SICK, BLOOD)')
     name = models.CharField('Όνομα Τύπου', max_length=100)
-    max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', default=30)
+    max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', null=True, blank=True)
     requires_approval = models.BooleanField('Απαιτεί Έγκριση από Προϊστάμενο', default=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
