@@ -11,27 +11,18 @@ from .models import (
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'max_days', 'requires_approval', 'is_revocation', 'is_active', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total', 'has_instructions')
-    list_filter = ('is_active', 'requires_approval', 'is_revocation', 'general_category', 'is_sick_leave_yd', 'is_sick_leave_total')
-    search_fields = ('name', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
-    list_display = ('name', 'code', 'max_days', 'requires_approval', 'workflow_variant', 'is_revocation', 'is_active', 'general_category', 'has_instructions')
-    list_filter = ('is_active', 'requires_approval', 'is_revocation', 'general_category', 'workflow_variant', 'is_sick_leave_yd', 'is_sick_leave_total')
-    search_fields = ('name', 'code', 'description', 'subject_text', 'decision_text', 'folder', 'general_category')
+    list_display = ('name', 'code', 'max_days', 'requires_approval', 'workflow_variant', 'is_revocation', 'is_active', 'has_instructions')
+    list_filter = ('is_active', 'requires_approval', 'is_revocation', 'workflow_variant', 'is_sick_leave_yd', 'is_sick_leave_total')
+    search_fields = ('name', 'code', 'subject_text', 'decision_text', 'folder')
     fieldsets = (
         ('Βασικά Στοιχεία', {
-            'fields': ('code', 'name', 'description', 'max_days', 'requires_approval', 'is_active')
+            'fields': ('code', 'name', 'max_days', 'requires_approval', 'is_simple', 'is_active')
         }),
         ('Ταξινόμηση', {
-            'fields': ('general_category', 'workflow_variant', 'thematic_folder', 'folder')
-        }),
-        ('Ονομασίες', {
-            'fields': ('name_simple', 'id_adeias', 'is_simple')
-        }),
-        ('Κείμενα', {
-            'fields': ('subject_text', 'decision_text', 'instructions')
+            'fields': ('workflow_variant', 'folder')
         }),
         ('Υπόλοιπο', {
-            'fields': ('counts_against_balance', 'affects_regular_leave_balance')
+            'fields': ('affects_regular_leave_balance',)
         }),
         ('Ειδικές Κατηγορίες', {
             'fields': ('is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation')

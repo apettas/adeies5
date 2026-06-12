@@ -15,7 +15,6 @@ class LeaveType(models.Model):
     code = models.CharField('Κωδικός', max_length=50, unique=True, blank=True,
                             help_text='Προγραμματικός κωδικός (π.χ. ANNUAL, SICK, BLOOD)')
     name = models.CharField('Όνομα Τύπου', max_length=100)
-    description = models.TextField('Περιγραφή', blank=True)
     max_days = models.PositiveIntegerField('Μέγιστες Ημέρες', default=30)
     requires_approval = models.BooleanField('Απαιτεί Έγκριση από Προϊστάμενο', default=True)
     is_active = models.BooleanField('Ενεργός', default=True)
@@ -23,16 +22,10 @@ class LeaveType(models.Model):
     subject_text = models.TextField('Κείμενο Θέματος', blank=True)
     decision_text = models.TextField('Κείμενο Απόφασης', blank=True)
     folder = models.CharField('Φ Φάκελος', max_length=255, blank=True)
-    general_category = models.CharField('Γενική Κατηγορία Αδειών', max_length=100, blank=True)
-    counts_against_balance = models.BooleanField('Μετράει σε Υπόλοιπο Αδειών', default=True,
-        help_text='Αν είναι ενεργό, οι ημέρες αυτής της άδειας αφαιρούνται από το υπόλοιπο του χρήστη')
     affects_regular_leave_balance = models.BooleanField('Επηρεάζει Υπόλοιπο Κανονικών', default=True,
         help_text='Αν είναι ενεργό, η ολοκλήρωση αυτής της άδειας δημιουργεί εγγραφή στο ιστορικό υπολοίπου')
-    id_adeias = models.CharField('Κωδικός Άδειας (ID Αδείας)', max_length=50, blank=True)
-    name_simple = models.CharField('Απλό Όνομα', max_length=100, blank=True)
     is_simple = models.BooleanField('Απλή Άδεια', default=False,
         help_text='Για εορταστικές/προφορικές/επιμορφωτικές άδειες')
-    thematic_folder = models.CharField('Θεματικός Φάκελος', max_length=255, blank=True)
     workflow_variant = models.CharField('Workflow Variant', max_length=30, default='STANDARD',
         help_text='STANDARD, KEDASY, SDEY - καθορίζει το approval path και τα rules')
     is_sick_leave_yd = models.BooleanField('Αναρρωτική Άδεια με ΥΔ', default=False,
