@@ -14,9 +14,13 @@ class LeaveTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'code', 'max_days', 'requires_approval', 'workflow_variant', 'is_revocation', 'is_active', 'has_instructions')
     list_filter = ('is_active', 'requires_approval', 'is_revocation', 'workflow_variant', 'is_sick_leave_yd', 'is_sick_leave_total')
     search_fields = ('name', 'code', 'subject_text', 'decision_text', 'folder')
+    readonly_fields = ('id', 'created_at')
     fieldsets = (
         ('Βασικά Στοιχεία', {
-            'fields': ('code', 'name', 'max_days', 'requires_approval', 'is_simple', 'is_active')
+            'fields': ('id', 'code', 'name', 'max_days', 'requires_approval', 'is_simple', 'is_active')
+        }),
+        ('Κείμενα & Οδηγίες', {
+            'fields': ('subject_text', 'decision_text', 'instructions')
         }),
         ('Ταξινόμηση', {
             'fields': ('workflow_variant', 'folder')
@@ -26,6 +30,10 @@ class LeaveTypeAdmin(admin.ModelAdmin):
         }),
         ('Ειδικές Κατηγορίες', {
             'fields': ('is_sick_leave_yd', 'is_sick_leave_total', 'is_revocation')
+        }),
+        ('Χρονοσήμανση', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
         }),
     )
 
