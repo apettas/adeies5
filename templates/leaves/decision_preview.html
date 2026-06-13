@@ -255,6 +255,11 @@
 {% block extra_js %}
 <script src="{% static 'vendor/quill/quill.min.js' %}"></script>
 <script>
+// Custom size whitelist για Quill (πρέπει να αντιστοιχεί στα options του toolbar)
+var Size = Quill.import('attributors/style/size');
+Size.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '18pt', '22pt', '24pt'];
+Quill.register(Size, true);
+
 // Δημιουργία του Quill editor
 var quill = new Quill('#full-editor-container', {
     theme: 'snow',
