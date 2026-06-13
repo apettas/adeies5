@@ -138,8 +138,9 @@
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
                         
-                        <!-- Hidden field για το HTML περιεχόμενο του Quill editor -->
+                        <!-- Hidden fields για δεδομένα του editor -->
                         <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
+                        <input type="hidden" id="ethnosimo-data" value="{{ ethnosimo_svg_inline|force_escape }}">
 
                         <div class="row">
                             <!-- Αριστερή Στήλη - Επιλογές -->
@@ -303,14 +304,17 @@ function buildFullDecisionHtml() {
     const signeeText = selectedSignee.getAttribute('data-signee-content') || '';
 
     const protocolNum = '{{ leave_request.protocol_number|default:"[Θα συμπληρωθεί]" }}';
-    const fullName = '{{ leave_request.user.full_name }}';
+    const fullName = '{{ leave_request.user.full_name|escapejs }}';
     const totalDays = '{{ leave_request.total_days }}';
-    const leaveDates = '{{ leave_request|format_leave_dates }}';
+    const leaveDates = '{{ leave_request|format_leave_dates|escapejs }}';
+    const ethnosimoData = document.getElementById('ethnosimo-data')?.value || '';
+    const notificationRecipients = '{{ notification_recipients|escapejs }}';
+    const defaultSigneeName = '{{ default_signee.signee_name|default:"Ο/Η Προϊστάμενος/η"|escapejs }}';
     const now = new Date();
     const dateStr = now.getDate().toString().padStart(2,'0') + '/' + (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getFullYear();
 
     // Build the HTML - ίδια δομή με το decision_pdf_template.html
-    var html = '{{ ethnosimo_svg_inline|safe }}';
+    var html = ethnosimoData;
     html += '<div style="text-align:center; font-size:10pt; font-weight:bold; line-height:1.2; margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
     html += '<div style="text-align:left; font-size:9pt; line-height:1.2; margin-bottom:15px;">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
     html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
@@ -329,12 +333,12 @@ function buildFullDecisionHtml() {
     html += '<div style="display:flex; width:100%;">';
     html += '  <div style="flex:1; text-align:left; padding-right:20px;">';
     html += '    <div style="font-weight:bold; font-size:11pt; margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
-    html += '    <div style="font-size:9pt; white-space:pre-line;">{{ notification_recipients|escape }}</div>';
+    html += '    <div style="font-size:9pt; white-space:pre-line;">' + escapeHtml(notificationRecipients) + '</div>';
     html += '  </div>';
     html += '  <div style="flex:1; text-align:center; padding-left:20px;">';
     html += '    <div style="font-size:10pt; white-space:pre-line; line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
     html += '    <div style="height:35px;"></div>';
-    html += '    <div style="font-size:11pt; font-weight:bold;">{{ default_signee.signee_name|default:"Ο/Η Προϊστάμενος/η" }}</div>';
+    html += '    <div style="font-size:11pt; font-weight:bold;">' + escapeHtml(defaultSigneeName) + '</div>';
     html += '  </div>';
     html += '</div>';
     html += '<p style="text-align:right; margin-top:10px;"><strong>Ημερομηνία:</strong> ' + dateStr + '</p>';
