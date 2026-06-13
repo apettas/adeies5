@@ -84,6 +84,15 @@ def prepare_decision_preview(request, leave_request_id):
     default_ypopsin = leave_request.decision_ypopsin or ypopsins.first()
     default_signee = leave_request.decision_signee or signees.first()
     
+    # Διάβασε το SVG εθνόσημου για ενσωμάτωση στο editor
+    ethnosimo_svg_path = Path(settings.BASE_DIR) / 'static' / 'ethnosimo.svg'
+    ethnosimo_svg_inline = ''
+    if ethnosimo_svg_path.exists():
+        with open(ethnosimo_svg_path, 'r', encoding='utf-8') as f:
+            svg_content = f.read()
+        svg_content = svg_content.replace('<svg', '<svg width="80px" style="margin-bottom:8px;"')
+        ethnosimo_svg_inline = svg_content
+    
     context = {
         'leave_request': leave_request,
         'logos': logos,
@@ -95,6 +104,8 @@ def prepare_decision_preview(request, leave_request_id):
         'default_ypopsin': default_ypopsin,
         'default_signee': default_signee,
         'final_decision_text': leave_request.final_decision_text or '',
+        'ethnosimo_svg_inline': ethnosimo_svg_inline,
+        'notification_recipients': leave_request.user.notification_recipients or '',
     }
     
     return render(request, 'leaves/decision_preview.html', context)
@@ -137,11 +148,17 @@ def generate_final_decision_pdf(request):
         ypopsin_id = request.POST.get('ypopsin_id')
         signee_id = request.POST.get('signee_id')
         
-        # Επεξεργασμένα κείμενα
+        # Επεξεργασμένα κείμενα - υποστήριξη νέου ενιαίου editor και παλαιών textareas
         edited_info_text = request.POST.get('info_text', '')
         edited_ypopsin_text = request.POST.get('ypopsin_text', '')
         edited_signee_text = request.POST.get('signee_text', '')
         edited_decision_body = request.POST.get('decision_body', '')
+        full_decision_html = request.POST.get('full_decision_html', '')
+        
+        # Αν χρησιμοποιείται ο ενιαίος WYSIWYG editor, το HTML περιεχόμενο
+        # αντικαθιστά το decision_body για το PDF template
+        if full_decision_html:
+            edited_decision_body = full_decision_html
         
         # Λήψη αντικειμένων
         logo = get_object_or_404(Logo, id=logo_id) if logo_id else None
