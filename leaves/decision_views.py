@@ -235,7 +235,18 @@ def generate_final_decision_pdf(request):
         handler = SecureFileHandler()
         encrypted_path, encryption_key = handler.save_encrypted_bytes(pdf_content, pdf_path)
         
-        # Ενημέρωση των πεδίων PDF
+        # Έλεγχος αν είναι preview ή finalize
+        action = request.POST.get('action', 'finalize')
+        
+        if action == 'preview':
+            # Μόνο προεπισκόπηση: επιστρέφουμε PDF χωρίς αποθήκευση
+            response = HttpResponse(pdf_content, content_type='application/pdf')
+            response['Content-Disposition'] = content_disposition_header(
+                as_attachment=False, filename=filename
+            )
+            return response
+        
+        # Ενημέρωση των πεδίων PDF (finalize)
         leave_request.decision_pdf_path = encrypted_path
         leave_request.decision_pdf_encryption_key = encryption_key
         leave_request.decision_pdf_size = len(pdf_content)

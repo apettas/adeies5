@@ -86,6 +86,19 @@
     position: sticky;
     top: 20px;
   }
+  .btn-group-stack .btn {
+    margin-bottom: 8px;
+  }
+  #pdf-preview-container {
+    display: none;
+    margin-top: 20px;
+  }
+  #pdf-preview-container iframe {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
 </style>
 {% endblock %}
 
@@ -125,10 +138,11 @@
                         </div>
                     </div>
 
-                    <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm">
+                    <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm" target="_blank">
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
                         <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
+                        <input type="hidden" name="action" id="form_action" value="preview">
 
                         <div class="row">
                             <div class="col-md-3">
@@ -189,10 +203,14 @@
                                     </div>
 
                                     <hr>
-                                    <button type="submit" class="btn btn-success btn-lg w-100">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                        Δημιουργία PDF
-                                    </button>
+                                    <div class="btn-group-stack">
+                                        <button type="button" class="btn btn-primary btn-lg w-100" onclick="previewPdf()">
+                                            <i class="bi bi-eye"></i> Προεπισκόπηση PDF
+                                        </button>
+                                        <button type="button" class="btn btn-success btn-lg w-100" onclick="finalizePdf()">
+                                            <i class="bi bi-file-earmark-pdf"></i> Οριστικοποίηση PDF
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -238,8 +256,17 @@
                                 
                                 <p class="text-muted small">
                                     <i class="bi bi-info-circle"></i>
-                                    Μόλις πατήσετε "Δημιουργία PDF", το κείμενο όπως το βλέπετε θα αποθηκευτεί.
+                                    Πατήστε "Προεπισκόπηση PDF" για να δείτε το αποτέλεσμα. Αν είστε ικανοποιημένοι, πατήστε "Οριστικοποίηση PDF".
                                 </p>
+
+                                <!-- Πλαίσιο προεπισκόπησης PDF -->
+                                <div id="pdf-preview-container" class="mt-3" style="display:none;">
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle"></i>
+                                        Η προεπισκόπηση άνοιξε σε νέο παράθυρο/καρτέλα. 
+                                        Αν είστε ικανοποιημένοι, πατήστε "Οριστικοποίηση PDF" παρακάτω.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -255,7 +282,7 @@
 {% block extra_js %}
 <script src="{% static 'vendor/quill/quill.min.js' %}"></script>
 <script>
-// Custom size whitelist για Quill (πρέπει να αντιστοιχεί στα options του toolbar)
+// Custom size whitelist για Quill
 var Size = Quill.import('attributors/style/size');
 Size.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '18pt', '22pt', '24pt'];
 Quill.register(Size, true);
@@ -268,7 +295,6 @@ var quill = new Quill('#full-editor-container', {
     }
 });
 
-// Βοηθητική συνάρτηση escape για HTML
 function escapeHtml(text) {
     var div = document.createElement('div');
     if (div.textContent) {
@@ -279,10 +305,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Λήψη δεδομένων από hidden div (έτοιμο HTML από το Django template)
 var ethnosimoSvg = document.getElementById('ethnosimo-svg').innerHTML;
 
-// Δημιουργεί το πλήρες HTML της απόφασης από τις επιλεγμένες τιμές
 function buildFullDecisionHtml() {
     var logoSelect = document.getElementById('logo_id');
     var selectedLogo = logoSelect.options[logoSelect.selectedIndex];
@@ -328,35 +352,55 @@ function buildFullDecisionHtml() {
     return html;
 }
 
-// Αναδημιουργεί το περιεχόμενο του editor - απενεργοποιούμε MutationObserver παροδικά
 var rebuilding = false;
 function rebuildEditorContent() {
     if (rebuilding) return;
     rebuilding = true;
     var html = buildFullDecisionHtml();
-    // Χρησιμοποιούμε setTimeout για να επιτρέψουμε στο Quill να τελειώσει πριν trigger event
     setTimeout(function() {
         quill.clipboard.dangerouslyPasteHTML(html);
         rebuilding = false;
     }, 10);
 }
 
-// Bind change events στα selects
 document.querySelectorAll('#logo_id, #info_id, #ypopsin_id, #signee_id').forEach(function(sel) {
     sel.addEventListener('change', rebuildEditorContent);
 });
 
-// Αρχικοποίηση μετά τη φόρτωση
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(rebuildEditorContent, 100);
 });
 
-// Πριν την υποβολή
-document.getElementById('decisionForm').addEventListener('submit', function(e) {
+// Υποβολή για προεπισκόπηση (δημιουργεί PDF χωρίς αποθήκευση - ανοίγει νέο tab)
+function previewPdf() {
     document.getElementById('full_decision_html').value = quill.root.innerHTML;
-    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση;')) {
-        e.preventDefault();
+    document.getElementById('form_action').value = 'preview';
+    
+    var form = document.getElementById('decisionForm');
+    form.target = '_blank';
+    form.submit();
+    
+    // Εμφάνιση μηνύματος επιβεβαίωσης
+    document.getElementById('pdf-preview-container').style.display = 'block';
+}
+
+// Υποβολή για οριστικοποίηση (αποθηκεύει και προχωράει)
+function finalizePdf() {
+    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση; Αυτή η ενέργεια θα αποθηκεύσει την απόφαση και θα προχωρήσει στην επόμενη κατάσταση.')) {
+        return;
     }
-});
+    document.getElementById('full_decision_html').value = quill.root.innerHTML;
+    document.getElementById('form_action').value = 'finalize';
+    
+    var form = document.getElementById('decisionForm');
+    form.target = '';
+    form.submit();
+}
+
+// Κλείσιμο προεπισκόπησης
+function closePreview() {
+    document.getElementById('pdf-preview-container').style.display = 'none';
+    document.getElementById('pdf-preview-frame').src = '';
+}
 </script>
 {% endblock %}
