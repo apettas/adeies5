@@ -246,6 +246,17 @@
                                         <button class="ql-underline"></button>
                                     </span>
                                     <span class="ql-formats">
+                                        <select class="ql-line-height">
+                                            <option value="default">Spacing</option>
+                                            <option value="1">1.0</option>
+                                            <option value="1.2">1.2</option>
+                                            <option value="1.4">1.4</option>
+                                            <option value="1.6">1.6</option>
+                                            <option value="1.8">1.8</option>
+                                            <option value="2">2.0</option>
+                                        </select>
+                                    </span>
+                                    <span class="ql-formats">
                                         <button class="ql-align"></button>
                                         <button class="ql-align" value="center"></button>
                                         <button class="ql-align" value="right"></button>
@@ -293,6 +304,15 @@
 var Size = Quill.import('attributors/style/size');
 Size.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '18pt', '22pt', '24pt'];
 Quill.register(Size, true);
+
+// Custom Line Height Attributor για Quill
+var Parchment = Quill.import('parchment');
+if (Parchment && Parchment.Attributor) {
+    var LineHeightStyle = new Parchment.Attributor.Style('line-height', 'line-height', {
+        whitelist: ['1', '1.2', '1.4', '1.6', '1.8', '2', '2.5', '3']
+    });
+    Quill.register(LineHeightStyle);
+}
 
 // Δημιουργία του Quill editor
 var quill = new Quill('#full-editor-container', {
