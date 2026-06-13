@@ -373,6 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Υποβολή για προεπισκόπηση (δημιουργεί PDF χωρίς αποθήκευση - ανοίγει νέο tab)
 function previewPdf() {
+    // Στέλνουμε το περιεχόμενο του editor όπως ακριβώς το βλέπει ο χρήστης
     document.getElementById('full_decision_html').value = quill.root.innerHTML;
     document.getElementById('form_action').value = 'preview';
     
@@ -389,6 +390,7 @@ function finalizePdf() {
     if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση; Αυτή η ενέργεια θα αποθηκεύσει την απόφαση και θα προχωρήσει στην επόμενη κατάσταση.')) {
         return;
     }
+    // Στέλνουμε το περιεχόμενο του editor όπως ακριβώς το βλέπει ο χρήστης
     document.getElementById('full_decision_html').value = quill.root.innerHTML;
     document.getElementById('form_action').value = 'finalize';
     
