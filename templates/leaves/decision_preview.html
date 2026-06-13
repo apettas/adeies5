@@ -144,6 +144,13 @@
                         <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
                         <input type="hidden" name="action" id="form_action" value="preview">
 
+                        <input type="hidden" id="data-staff-name" value="{{ leave_request.user.full_name }}">
+                        <input type="hidden" id="data-total-days" value="{{ leave_request.total_days }}">
+                        <input type="hidden" id="data-leave-dates" value="{{ leave_request|format_leave_dates }}">
+                        <input type="hidden" id="data-protocol-num" value="{{ leave_request.protocol_number|default:'' }}">
+                        <input type="hidden" id="data-notification-recipients" value="{{ notification_recipients|escape }}">
+                         <input type="hidden" id="data-subject-text" value="{{ leave_request.leave_type.subject_text|default:'Χορήγηση άδειας'|escape }}">
+
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="sidebar-card">
@@ -324,6 +331,14 @@ function buildFullDecisionHtml() {
     var selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
     var signeeText = selectedSignee.getAttribute('data-signee-content') || '';
 
+    // Get actual data from hidden fields
+    var staffName = document.getElementById('data-staff-name').value || '';
+    var totalDays = document.getElementById('data-total-days').value || '0';
+    var leaveDates = document.getElementById('data-leave-dates').value || '';
+    var protocolNum = document.getElementById('data-protocol-num').value || '';
+    var notificationRecipients = document.getElementById('data-notification-recipients').value || '';
+    var subjectText = document.getElementById('data-subject-text').value || 'Χορήγηση άδειας';
+    
     var html = '';
     html += ethnosimoSvg;
     html += '<div style="text-align:center;font-size:10pt;font-weight:bold;line-height:1.2;margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
@@ -331,18 +346,40 @@ function buildFullDecisionHtml() {
     html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
     html += '<div style="text-align:center;font-size:22pt;font-weight:bold;text-transform:uppercase;letter-spacing:4px;">ΑΠΟΦΑΣΗ</div>';
     html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
-    html += '<div><span style="font-weight:bold;font-size:12pt;">Θέμα :</span> <span style="font-weight:bold;font-size:12pt;">Χορήγηση άδειας</span></div>';
+    
+    // Subject with actual data
+    var subjectLine = '<div><span style="font-weight:bold;font-size:12pt;">Θέμα :</span> <span style="font-weight:bold;font-size:12pt;">' + escapeHtml(subjectText) + '</span></div>';
+    html += subjectLine;
     html += '<hr style="border:none;border-top:1px dotted #ccc;margin:8px 0;">';
+    
+    // Include employee info in the decision body
+    var employeeInfo = '<div style="font-size:11pt;line-height:1.4;text-align:justify;">';
+    if (staffName) {
+        employeeInfo += 'Ο/Η ' + escapeHtml(staffName);
+    }
+    if (totalDays && totalDays !== '0') {
+        employeeInfo += ' είναι αδειούχος για ' + totalDays + ' ημέρες';
+    }
+    if (leaveDates) {
+        employeeInfo += ' κατά τη διάρκεια: ' + escapeHtml(leaveDates);
+    }
+    if (protocolNum) {
+        employeeInfo += ' (πρωτ: ' + escapeHtml(protocolNum) + ')';
+    }
+    employeeInfo += '.</div>';
     html += '<div><span style="font-weight:bold;font-size:12pt;">Έχοντας Υπόψη :</span></div>';
     html += '<div style="font-size:8.5pt;line-height:1.25;">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
     html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
     html += '<div style="font-weight:bold;text-align:center;font-size:13pt;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;">Αποφασίζουμε</div>';
-    html += '<div style="font-size:11pt;line-height:1.4;text-align:justify;">Αποφασίζουμε την έγκριση της αίτησης άδειας</div>';
+    html += employeeInfo;
     html += '<div style="height:20px;"></div>';
     html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
     html += '<div style="display:flex;width:100%;">';
     html += '  <div style="flex:1;text-align:left;padding-right:20px;">';
-    html += '    <div style="font-weight:bold;font-size:11pt;margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
+    if (notificationRecipients) {
+        html += '    <div style="font-weight:bold;font-size:11pt;margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
+        html += '    <div style="font-size:9pt;white-space:pre-line;">' + escapeHtml(notificationRecipients).replace(/\n/g, '<br>') + '</div>';
+    }
     html += '  </div>';
     html += '  <div style="flex:1;text-align:center;padding-left:20px;">';
     html += '    <div style="font-size:10pt;line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
