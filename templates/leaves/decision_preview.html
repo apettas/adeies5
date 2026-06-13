@@ -5,8 +5,7 @@
 {% block title %}Επεξεργασία Απόφασης - {{ leave_request.user.full_name }}{% endblock %}
 
 {% block extra_css %}
-<!-- Quill.js styles -->
-<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<link href="{% static 'vendor/quill/quill.snow.css' %}" rel="stylesheet">
 <style>
   #full-editor-container {
     height: 500px;
@@ -62,9 +61,6 @@
     letter-spacing: 3px;
     margin-bottom: 8px;
   }
-  .ql-editor .header-spacer {
-    height: 60px;
-  }
   .ql-editor .decision-body {
     font-size: 11pt;
     line-height: 1.4;
@@ -85,9 +81,6 @@
   .ql-editor .koinopoiisi-content {
     font-size: 9pt;
     white-space: pre-line;
-  }
-  .decision-preview-card {
-    min-height: 800px;
   }
   .sidebar-card {
     position: sticky;
@@ -113,7 +106,6 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Πληροφορίες Αίτησης -->
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <h5>Στοιχεία Αίτησης</h5>
@@ -133,23 +125,19 @@
                         </div>
                     </div>
 
-                    <!-- Φόρμα Επεξεργασίας -->
                     <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm">
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
-                        
-                        <!-- Hidden field για το HTML περιεχόμενο του Quill editor -->
                         <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
 
                         <div class="row">
-                            <!-- Αριστερή Στήλη - Επιλογές -->
                             <div class="col-md-3">
                                 <div class="sidebar-card">
                                     <h5>Επιλογές Στοιχείων</h5>
                                     
                                     <div class="mb-3">
                                         <label for="logo_id">Λογότυπο:</label>
-                                        <select name="logo_id" id="logo_id" class="form-control form-control-sm" onchange="rebuildEditorContent()">
+                                        <select name="logo_id" id="logo_id" class="form-control form-control-sm">
                                             {% for logo in logos %}
                                                 <option value="{{ logo.id }}" 
                                                         {% if logo == default_logo %}selected{% endif %}
@@ -163,7 +151,7 @@
 
                                     <div class="mb-3">
                                         <label for="info_id">Πληροφορίες:</label>
-                                        <select name="info_id" id="info_id" class="form-control form-control-sm" onchange="rebuildEditorContent()">
+                                        <select name="info_id" id="info_id" class="form-control form-control-sm">
                                             {% for info in infos %}
                                                 <option value="{{ info.id }}" 
                                                         {% if info == default_info %}selected{% endif %}
@@ -176,7 +164,7 @@
 
                                     <div class="mb-3">
                                         <label for="ypopsin_id">Έχοντας Υπόψη:</label>
-                                        <select name="ypopsin_id" id="ypopsin_id" class="form-control form-control-sm" onchange="rebuildEditorContent()">
+                                        <select name="ypopsin_id" id="ypopsin_id" class="form-control form-control-sm">
                                             {% for ypopsin in ypopsins %}
                                                 <option value="{{ ypopsin.id }}" 
                                                         {% if ypopsin == default_ypopsin %}selected{% endif %}
@@ -189,7 +177,7 @@
 
                                     <div class="mb-3">
                                         <label for="signee_id">Υπογράφων:</label>
-                                        <select name="signee_id" id="signee_id" class="form-control form-control-sm" onchange="rebuildEditorContent()">
+                                        <select name="signee_id" id="signee_id" class="form-control form-control-sm">
                                             {% for signee in signees %}
                                                 <option value="{{ signee.id }}" 
                                                         {% if signee == default_signee %}selected{% endif %}
@@ -208,12 +196,10 @@
                                 </div>
                             </div>
 
-                            <!-- Δεξιά Στήλη - Ενιαίος WYSIWYG Editor -->
                             <div class="col-md-9">
                                 <h5>Επεξεργαστείτε Ελεύθερα την Απόφαση</h5>
                                 <p class="text-muted">Μπορείτε να κάνετε bold, italic, να αλλάξετε μεγέθη και να επεξεργαστείτε οποιοδήποτε σημείο.</p>
                                 
-                                <!-- Quill Toolbar -->
                                 <div id="toolbar">
                                     <span class="ql-formats">
                                         <select class="ql-size">
@@ -248,7 +234,6 @@
                                     </span>
                                 </div>
                                 
-                                <!-- Quill Editor Container -->
                                 <div id="full-editor-container"></div>
                                 
                                 <p class="text-muted small">
@@ -264,12 +249,11 @@
     </div>
 </div>
 
-<!-- Δεδομένα εθνόσημου μέσω data attribute στο body -->
 <div id="ethnosimo-svg" style="display:none;">{{ ethnosimo_svg_inline }}</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="{% static 'vendor/quill/quill.min.js' %}"></script>
 <script>
 // Δημιουργία του Quill editor
 var quill = new Quill('#full-editor-container', {
@@ -282,11 +266,15 @@ var quill = new Quill('#full-editor-container', {
 // Βοηθητική συνάρτηση escape για HTML
 function escapeHtml(text) {
     var div = document.createElement('div');
-    div.textContent = text;
+    if (div.textContent) {
+        div.textContent = text;
+    } else {
+        div.innerText = text;
+    }
     return div.innerHTML;
 }
 
-// Λήψη δεδομένων από hidden div
+// Λήψη δεδομένων από hidden div (έτοιμο HTML από το Django template)
 var ethnosimoSvg = document.getElementById('ethnosimo-svg').innerHTML;
 
 // Δημιουργεί το πλήρες HTML της απόφασης από τις επιλεγμένες τιμές
@@ -307,77 +295,60 @@ function buildFullDecisionHtml() {
     var selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
     var signeeText = selectedSignee.getAttribute('data-signee-content') || '';
 
-    // Τα δεδομένα από το template - απλό string χωρίς JS interpolation
-    // για αποφυγή syntax errors με newlines/ειδικούς χαρακτήρες
     var html = '';
-    
-    // Εθνόσημο
     html += ethnosimoSvg;
-    
-    // Λογότυπο
-    html += '<div style="text-align:center; font-size:10pt; font-weight:bold; line-height:1.2; margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
-    
-    // Πληροφορίες
-    html += '<div style="text-align:left; font-size:9pt; line-height:1.2; margin-bottom:15px;">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
-    
-    // Γραμμή
-    html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
-    
-    // ΑΠΟΦΑΣΗ τίτλος
-    html += '<div style="text-align:center;"><div style="height:10px;"></div></div>';
-    html += '<div style="text-align:center; font-size:22pt; font-weight:bold; text-transform:uppercase; letter-spacing:4px;">ΑΠΟΦΑΣΗ</div>';
-    
-    // Θέμα
-    html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
+    html += '<div style="text-align:center;font-size:10pt;font-weight:bold;line-height:1.2;margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div style="text-align:left;font-size:9pt;line-height:1.2;margin-bottom:15px;">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
+    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
+    html += '<div style="text-align:center;font-size:22pt;font-weight:bold;text-transform:uppercase;letter-spacing:4px;">ΑΠΟΦΑΣΗ</div>';
+    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
     html += '<div><span style="font-weight:bold;font-size:12pt;">Θέμα :</span> <span style="font-weight:bold;font-size:12pt;">Χορήγηση άδειας</span></div>';
-    
-    // Έχοντας Υπόψη
-    html += '<hr style="border:none; border-top:1px dotted #ccc; margin:8px 0;">';
+    html += '<hr style="border:none;border-top:1px dotted #ccc;margin:8px 0;">';
     html += '<div><span style="font-weight:bold;font-size:12pt;">Έχοντας Υπόψη :</span></div>';
-    html += '<div style="font-size:8.5pt; line-height:1.25;">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
-    
-    // Απόφαση
-    html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
+    html += '<div style="font-size:8.5pt;line-height:1.25;">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
+    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
     html += '<div style="font-weight:bold;text-align:center;font-size:13pt;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;">Αποφασίζουμε</div>';
-    
-    // Κύριο κείμενο - placeholder
-    html += '<div style="font-size:11pt;line-height:1.4;text-align:justify;">';
-    html += 'Αποφασίζουμε την έγκριση της αίτησης άδειας</div>';
-    
-    // Κοινοποίηση & Υπογραφή
+    html += '<div style="font-size:11pt;line-height:1.4;text-align:justify;">Αποφασίζουμε την έγκριση της αίτησης άδειας</div>';
     html += '<div style="height:20px;"></div>';
-    html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
-    html += '<div style="display:flex; width:100%;">';
+    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
+    html += '<div style="display:flex;width:100%;">';
     html += '  <div style="flex:1;text-align:left;padding-right:20px;">';
     html += '    <div style="font-weight:bold;font-size:11pt;margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
-    html += '    <div style="font-size:9pt;"></div>';
     html += '  </div>';
     html += '  <div style="flex:1;text-align:center;padding-left:20px;">';
     html += '    <div style="font-size:10pt;line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
     html += '    <div style="height:35px;"></div>';
     html += '  </div>';
     html += '</div>';
-
     return html;
 }
 
-// Αναδημιουργεί το περιεχόμενο του editor
+// Αναδημιουργεί το περιεχόμενο του editor - απενεργοποιούμε MutationObserver παροδικά
+var rebuilding = false;
 function rebuildEditorContent() {
+    if (rebuilding) return;
+    rebuilding = true;
     var html = buildFullDecisionHtml();
-    // Χρήση του Quill API για ασφαλή εισαγωγή HTML
-    quill.clipboard.dangerouslyPasteHTML(html);
+    // Χρησιμοποιούμε setTimeout για να επιτρέψουμε στο Quill να τελειώσει πριν trigger event
+    setTimeout(function() {
+        quill.clipboard.dangerouslyPasteHTML(html);
+        rebuilding = false;
+    }, 10);
 }
 
-// Αρχικοποίηση
-document.addEventListener('DOMContentLoaded', function() {
-    rebuildEditorContent();
+// Bind change events στα selects
+document.querySelectorAll('#logo_id, #info_id, #ypopsin_id, #signee_id').forEach(function(sel) {
+    sel.addEventListener('change', rebuildEditorContent);
 });
 
-// Πριν την υποβολή, γράφουμε το innerHTML του editor στο hidden field
+// Αρχικοποίηση μετά τη φόρτωση
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(rebuildEditorContent, 100);
+});
+
+// Πριν την υποβολή
 document.getElementById('decisionForm').addEventListener('submit', function(e) {
-    var htmlContent = quill.root.innerHTML;
-    document.getElementById('full_decision_html').value = htmlContent;
-    
+    document.getElementById('full_decision_html').value = quill.root.innerHTML;
     if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση;')) {
         e.preventDefault();
     }
