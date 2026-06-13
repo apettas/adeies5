@@ -138,9 +138,8 @@
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
                         
-                        <!-- Hidden fields για δεδομένα του editor -->
+                        <!-- Hidden field για το HTML περιεχόμενο του Quill editor -->
                         <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
-                        <input type="hidden" id="ethnosimo-data" value="{{ ethnosimo_svg_inline|force_escape }}">
 
                         <div class="row">
                             <!-- Αριστερή Στήλη - Επιλογές -->
@@ -155,7 +154,7 @@
                                                 <option value="{{ logo.id }}" 
                                                         {% if logo == default_logo %}selected{% endif %}
                                                         data-logo-short="{{ logo.logo_short }}"
-                                                        data-logo-full="{{ logo.logo | escape }}">
+                                                        data-logo-full="{{ logo.logo|escape }}">
                                                     {{ logo.logo_short }}
                                                 </option>
                                             {% endfor %}
@@ -168,7 +167,7 @@
                                             {% for info in infos %}
                                                 <option value="{{ info.id }}" 
                                                         {% if info == default_info %}selected{% endif %}
-                                                        data-info-content="{{ info.info | escape }}">
+                                                        data-info-content="{{ info.info|escape }}">
                                                     {{ info.info_short }}
                                                 </option>
                                             {% endfor %}
@@ -181,7 +180,7 @@
                                             {% for ypopsin in ypopsins %}
                                                 <option value="{{ ypopsin.id }}" 
                                                         {% if ypopsin == default_ypopsin %}selected{% endif %}
-                                                        data-ypopsin-content="{{ ypopsin.ypopsin | escape }}">
+                                                        data-ypopsin-content="{{ ypopsin.ypopsin|escape }}">
                                                     {{ ypopsin.ypopsin_short }}
                                                 </option>
                                             {% endfor %}
@@ -194,7 +193,7 @@
                                             {% for signee in signees %}
                                                 <option value="{{ signee.id }}" 
                                                         {% if signee == default_signee %}selected{% endif %}
-                                                        data-signee-content="{{ signee.signee | escape }}">
+                                                        data-signee-content="{{ signee.signee|escape }}">
                                                     {{ signee.signee_name }}
                                                 </option>
                                             {% endfor %}
@@ -264,6 +263,9 @@
         </div>
     </div>
 </div>
+
+<!-- Δεδομένα εθνόσημου μέσω data attribute στο body -->
+<div id="ethnosimo-svg" style="display:none;">{{ ethnosimo_svg_inline }}</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -284,86 +286,99 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Λήψη δεδομένων από hidden div
+var ethnosimoSvg = document.getElementById('ethnosimo-svg').innerHTML;
+
 // Δημιουργεί το πλήρες HTML της απόφασης από τις επιλεγμένες τιμές
 function buildFullDecisionHtml() {
-    // Λήψη επιλεγμένων στοιχείων
-    const logoSelect = document.getElementById('logo_id');
-    const selectedLogo = logoSelect.options[logoSelect.selectedIndex];
-    const logoText = selectedLogo.getAttribute('data-logo-full') || 'ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ';
+    var logoSelect = document.getElementById('logo_id');
+    var selectedLogo = logoSelect.options[logoSelect.selectedIndex];
+    var logoText = selectedLogo.getAttribute('data-logo-full') || 'ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ';
     
-    const infoSelect = document.getElementById('info_id');
-    const selectedInfo = infoSelect.options[infoSelect.selectedIndex];
-    const infoText = selectedInfo.getAttribute('data-info-content') || '';
+    var infoSelect = document.getElementById('info_id');
+    var selectedInfo = infoSelect.options[infoSelect.selectedIndex];
+    var infoText = selectedInfo.getAttribute('data-info-content') || '';
     
-    const ypopsinSelect = document.getElementById('ypopsin_id');
-    const selectedYpopsin = ypopsinSelect.options[ypopsinSelect.selectedIndex];
-    const ypopsinText = selectedYpopsin.getAttribute('data-ypopsin-content') || '';
+    var ypopsinSelect = document.getElementById('ypopsin_id');
+    var selectedYpopsin = ypopsinSelect.options[ypopsinSelect.selectedIndex];
+    var ypopsinText = selectedYpopsin.getAttribute('data-ypopsin-content') || '';
     
-    const signeeSelect = document.getElementById('signee_id');
-    const selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
-    const signeeText = selectedSignee.getAttribute('data-signee-content') || '';
+    var signeeSelect = document.getElementById('signee_id');
+    var selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
+    var signeeText = selectedSignee.getAttribute('data-signee-content') || '';
 
-    const protocolNum = '{{ leave_request.protocol_number|default:"[Θα συμπληρωθεί]" }}';
-    const fullName = '{{ leave_request.user.full_name|escapejs }}';
-    const totalDays = '{{ leave_request.total_days }}';
-    const leaveDates = '{{ leave_request|format_leave_dates|escapejs }}';
-    const ethnosimoData = document.getElementById('ethnosimo-data')?.value || '';
-    const notificationRecipients = '{{ notification_recipients|escapejs }}';
-    const defaultSigneeName = '{{ default_signee.signee_name|default:"Ο/Η Προϊστάμενος/η"|escapejs }}';
-    const now = new Date();
-    const dateStr = now.getDate().toString().padStart(2,'0') + '/' + (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getFullYear();
-
-    // Build the HTML - ίδια δομή με το decision_pdf_template.html
-    var html = ethnosimoData;
+    // Τα δεδομένα από το template - απλό string χωρίς JS interpolation
+    // για αποφυγή syntax errors με newlines/ειδικούς χαρακτήρες
+    var html = '';
+    
+    // Εθνόσημο
+    html += ethnosimoSvg;
+    
+    // Λογότυπο
     html += '<div style="text-align:center; font-size:10pt; font-weight:bold; line-height:1.2; margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
+    
+    // Πληροφορίες
     html += '<div style="text-align:left; font-size:9pt; line-height:1.2; margin-bottom:15px;">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
+    
+    // Γραμμή
     html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
-    html += '<div style="text-align:center;"><div style="height:10px;"></div><div class="apofasi-title">ΑΠΟΦΑΣΗ</div></div>';
-    html += '<p style="text-align:center; font-size:9pt;">Αριθμός Πρωτοκόλλου: ' + escapeHtml(protocolNum) + '</p>';
+    
+    // ΑΠΟΦΑΣΗ τίτλος
+    html += '<div style="text-align:center;"><div style="height:10px;"></div></div>';
+    html += '<div style="text-align:center; font-size:22pt; font-weight:bold; text-transform:uppercase; letter-spacing:4px;">ΑΠΟΦΑΣΗ</div>';
+    
+    // Θέμα
     html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
-    html += '<div><span class="subject-label">Θέμα :</span> <span class="subject-content">Χορήγηση κανονικής άδειας</span></div>';
+    html += '<div><span style="font-weight:bold;font-size:12pt;">Θέμα :</span> <span style="font-weight:bold;font-size:12pt;">Χορήγηση άδειας</span></div>';
+    
+    // Έχοντας Υπόψη
     html += '<hr style="border:none; border-top:1px dotted #ccc; margin:8px 0;">';
-    html += '<div><span class="subject-label">Έχοντας Υπόψη :</span></div>';
-    html += '<div class="ypopsin-content">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div><span style="font-weight:bold;font-size:12pt;">Έχοντας Υπόψη :</span></div>';
+    html += '<div style="font-size:8.5pt; line-height:1.25;">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
+    
+    // Απόφαση
     html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
-    html += '<div class="apofasizoume">Αποφασίζουμε</div>';
-    html += '<div class="decision-body">Αποφασίζουμε την έγκριση της αίτησης άδειας του/της ' + escapeHtml(fullName) + ' για ' + totalDays + ' ημέρες, ' + escapeHtml(leaveDates) + '.</div>';
+    html += '<div style="font-weight:bold;text-align:center;font-size:13pt;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;">Αποφασίζουμε</div>';
+    
+    // Κύριο κείμενο - placeholder
+    html += '<div style="font-size:11pt;line-height:1.4;text-align:justify;">';
+    html += 'Αποφασίζουμε την έγκριση της αίτησης άδειας</div>';
+    
+    // Κοινοποίηση & Υπογραφή
     html += '<div style="height:20px;"></div>';
     html += '<hr style="border:none; border-top:1px solid #999; margin:12px 0;">';
     html += '<div style="display:flex; width:100%;">';
-    html += '  <div style="flex:1; text-align:left; padding-right:20px;">';
-    html += '    <div style="font-weight:bold; font-size:11pt; margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
-    html += '    <div style="font-size:9pt; white-space:pre-line;">' + escapeHtml(notificationRecipients) + '</div>';
+    html += '  <div style="flex:1;text-align:left;padding-right:20px;">';
+    html += '    <div style="font-weight:bold;font-size:11pt;margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
+    html += '    <div style="font-size:9pt;"></div>';
     html += '  </div>';
-    html += '  <div style="flex:1; text-align:center; padding-left:20px;">';
-    html += '    <div style="font-size:10pt; white-space:pre-line; line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
+    html += '  <div style="flex:1;text-align:center;padding-left:20px;">';
+    html += '    <div style="font-size:10pt;line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
     html += '    <div style="height:35px;"></div>';
-    html += '    <div style="font-size:11pt; font-weight:bold;">' + escapeHtml(defaultSigneeName) + '</div>';
     html += '  </div>';
     html += '</div>';
-    html += '<p style="text-align:right; margin-top:10px;"><strong>Ημερομηνία:</strong> ' + dateStr + '</p>';
 
     return html;
 }
 
-// Αναδημιουργεί το περιεχόμενο του editor όταν αλλάζουν οι επιλογές
+// Αναδημιουργεί το περιεχόμενο του editor
 function rebuildEditorContent() {
     var html = buildFullDecisionHtml();
-    quill.root.innerHTML = html;
+    // Χρήση του Quill API για ασφαλή εισαγωγή HTML
+    quill.clipboard.dangerouslyPasteHTML(html);
 }
 
-// Αρχικοποίηση: φόρτωση default περιεχομένου
+// Αρχικοποίηση
 document.addEventListener('DOMContentLoaded', function() {
     rebuildEditorContent();
 });
 
 // Πριν την υποβολή, γράφουμε το innerHTML του editor στο hidden field
 document.getElementById('decisionForm').addEventListener('submit', function(e) {
-    // Παίρνουμε το HTML από τον Quill editor
     var htmlContent = quill.root.innerHTML;
     document.getElementById('full_decision_html').value = htmlContent;
     
-    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση; Αυτή η ενέργεια θα αλλάξει την κατάσταση της αίτησης.')) {
+    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση;')) {
         e.preventDefault();
     }
 });
