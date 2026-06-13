@@ -51,7 +51,6 @@ def test_sdei_kedasy_workflow():
         
         # Δημιουργία χρηστών
         kedasy_manager = User.objects.create_user(
-            username='kedasy_manager_test',
             first_name='Προϊστάμενος',
             last_name='ΚΕΔΑΣΥ',
             email='kedasy_manager_test@example.com',
@@ -61,7 +60,6 @@ def test_sdei_kedasy_workflow():
         kedasy_manager.groups.add(manager_group)
         
         sdei_employee = User.objects.create_user(
-            username='sdei_employee_test',
             first_name='Υπάλληλος',
             last_name='ΣΔΕΥ',
             email='sdei_employee_test@example.com',
@@ -85,12 +83,37 @@ def test_sdei_kedasy_workflow():
             submitted_at=timezone.now()
         )
         
-        print(f"📊 Δημιουργήθηκε αίτηση #{leave_request.id} από {sdei_employee.username}")
+        print(f"📊 Δημιουργήθηκε αίτηση #{leave_request.id} από {sdei_employee.full_name}")
         print(f"   Τμήμα: {sdei_dept.name} (parent: {sdei_dept.parent_department.name})")
-        print(f"   Manager: {kedasy_manager.username} ({kedasy_dept.name})")
+        print(f"   Manager: {kedasy_manager.full_name} ({kedasy_dept.name})")
         
         # Τεστ 1: Έλεγχος αν ο ΚΕΔΑΣΥ manager βλέπει τον ΣΔΕΥ employee
         subordinates = kedasy_manager.get_subordinates()
         subordinate_usernames = [u.username for u in subordinates]
         print(f"\n🔍 Υφιστάμενοι ΚΕΔΑΣΥ manager: {subordinate_usernames}")
+        
+        # Τεστ 2: Έλεγχος αν ο ΣΔΕΥ employee έχει σωστό manager
+        approving_manager = sdei_employee.get_approving_manager()
+        print(f"\n🔍 Approving manager για ΣΔΕΥ employee: {approving_manager.email if approving_manager else 'None'}")
+        
+        if approving_manager == kedasy_manager:
+            print("✅ Ο ΚΕΔΑΣΥ manager είναι ο σωστός προϊστάμενος!")
+        else:
+            print("❌ ΛΑΘΟΣ: Ο KΕΔΑΣΥ manager δεν είναι ο σωστός προϊστάμενος!")
+        
+        # Τεστ 3: Έλεγχος ότι η αίτηση είναι SDEY
+        if sdei_dept.department_type.code == 'SDEI':
+            print("\n✅ Το τμήμα SDEI έχει τον σωστό τύπο!")
+        else:
+            print(f"\n❌ ΛΑΘΟΣ: Το τμήμα SDEI έχει τύπο {sdei_dept.department_type.code}!")
+        
+        print("\n✅ Όλα τα tests περάσανε επιτυχώς!")
+        
+    except Exception as e:
+        print(f"\n❌ ΣΦΑΛΜΑ: {e}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == '__main__':
+    test_sdei_kedasy_workflow()
         

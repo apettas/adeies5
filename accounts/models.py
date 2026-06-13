@@ -437,13 +437,13 @@ class User(AbstractUser):
                     department__parent_department=self.department,
                     department__department_type__code='SDEY',
                     is_active=True
-                ) & ~Q(roles__code='MANAGER')
+) & ~Q(roles__code='MANAGER')
                 
                 # Ενώνουμε τα conditions με OR
                 conditions = conditions | sdei_condition
             
             # Αν είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης, περιλαμβάνουμε χρήστες από τα child departments
-            elif self.department.code == 'AUTOTELOUS_DN':
+            if self.department.code == 'AUTOTELOUS_DN':
                 # Προσθέτουμε condition για χρήστες από child departments
                 child_dept_condition = Q(
                     department__parent_department=self.department,

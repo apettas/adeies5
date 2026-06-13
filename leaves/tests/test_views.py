@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.contrib.messages import get_messages
 from accounts.tests.test_data import TestDataMixin
-from leaves.models import LeaveRequest, LeaveType
+from leaves.models import LeaveRequest, LeaveType, LeavePeriod
 from unittest.mock import patch
 
 User = get_user_model()
@@ -359,31 +359,40 @@ class LeaveRequestDashboardTests(TestDataMixin, TestCase):
         self.employee_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date="2025-01-15",
-            end_date="2025-01-20",
-            total_days=5,
+            days=5,
             description="Employee request",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=self.employee_request,
+            start_date="2025-01-15",
+            end_date="2025-01-20"
         )
         
         self.dept_manager_request = LeaveRequest.objects.create(
             user=self.dept_manager,
             leave_type=self.leave_type,
-            start_date="2025-02-15",
-            end_date="2025-02-20",
-            total_days=5,
+            days=5,
             description="Department manager request",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=self.dept_manager_request,
+            start_date="2025-02-15",
+            end_date="2025-02-20"
         )
         
         self.kizilou_request = LeaveRequest.objects.create(
             user=self.kizilou,
             leave_type=self.leave_type,
-            start_date="2025-03-15",
-            end_date="2025-03-20",
-            total_days=5,
+            days=5,
             description="Kizilou request",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=self.kizilou_request,
+            start_date="2025-03-15",
+            end_date="2025-03-20"
         )
         
     def test_dashboard_employee_sees_own_requests_only(self):
@@ -520,32 +529,39 @@ class LeaveRequestPermissionTests(TestDataMixin, TestCase):
         
         # Δημιουργία different department user
         self.pdede_employee = User.objects.create_user(
-            username="pdede_employee",
             email="pdede@test.com",
             first_name="PDEDE",
             last_name="Employee",
             department=self.pdede,
-            role="EMPLOYEE"
+            registration_status='APPROVED',
+            is_active=True
         )
+        self.pdede_employee.roles.add(self.employee_role)
         
         self.pdede_request = LeaveRequest.objects.create(
             user=self.pdede_employee,
             leave_type=self.leave_type,
-            start_date="2025-01-15",
-            end_date="2025-01-20",
-            total_days=5,
+            days=5,
             description="PDEDE request",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=self.pdede_request,
+            start_date="2025-01-15",
+            end_date="2025-01-20"
         )
         
         self.autotelous_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date="2025-02-15",
-            end_date="2025-02-20",
-            total_days=5,
+            days=5,
             description="AUTOTELOUS_DN request",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=self.autotelous_request,
+            start_date="2025-02-15",
+            end_date="2025-02-20"
         )
         
     def test_cross_department_access_denied(self):
@@ -603,8 +619,8 @@ class LeaveRequestPermissionTests(TestDataMixin, TestCase):
         Test: Leave handler access σε όλα τα approved requests
         """
         # Έγκριση requests
-        self.autotelous_request.approve_request(self.dept_manager)
-        self.pdede_request.approve_request(self.delegkos)
+        self.autotelous_request.approve_by_manager(self.dept_manager)
+        self.pdede_request.approve_by_manager(self.delegkos)
         
         self.client.force_login(self.leave_handler)
         

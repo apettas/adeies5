@@ -131,14 +131,14 @@ class LeaveRequestForm(forms.ModelForm):
                 'days': period_days
             })
         
-        # Έλεγχος για επικαλύψεις
+# Έλεγχος για επικαλύψεις
         for i, period1 in enumerate(validated_periods):
             for j, period2 in enumerate(validated_periods[i+1:], i+1):
                 if (period1['start_date'] <= period2['end_date'] and 
                     period1['end_date'] >= period2['start_date']):
                     raise ValidationError(f'Τα διαστήματα {i+1} και {j+1} επικαλύπτονται.')
         
-# Έλεγχος συνολικών ημερών
+        # Έλεγχος συνολικών ημερών
         if total_days > 365:
             raise ValidationError(f'Οι συνολικές ημέρες άδειας ({total_days}) δεν μπορούν να υπερβαίνουν τις 365.')
 
@@ -167,7 +167,7 @@ class LeaveRequestForm(forms.ModelForm):
         
         return file_obj
     
-def save(self, commit=True):
+    def save(self, commit=True):
         """Αποθήκευση αίτησης με διαστήματα"""
         instance = super().save(commit=False)
         days = self.cleaned_data.get('days', 1)

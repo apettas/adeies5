@@ -761,13 +761,13 @@ def reject_leave_request(request, pk):
     if approving_manager == request.user:
         can_reject = True
     
-    # Διατήρηση της υπάρχουσας λογικής για συμβατότητα
+# Διατήρηση της υπάρχουσας λογικής για συμβατότητα
     # Έλεγχος αν είναι ο άμεσος προϊστάμενος
     if not can_reject and leave_request.user.manager == request.user:
         can_reject = True
     
     # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
-    elif (not can_reject and request.user.department and request.user.department.department_type and
+    if (not can_reject and request.user.department and request.user.department.department_type and
           request.user.department.department_type.code == 'KEDASY' and
           leave_request.user.department and leave_request.user.department.department_type and
           leave_request.user.department.department_type.code == 'SDEY' and
