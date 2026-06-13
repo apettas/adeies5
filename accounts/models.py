@@ -212,16 +212,12 @@ class User(AbstractUser):
         help_text='Αυτόματα δημιουργείται από το Όνομα και Επίθετο, π.χ. "Γεώργιο Νικολόπουλο"')
     email = models.EmailField('Email', unique=True)
     phone1 = models.CharField('Τηλέφωνο 1', max_length=15, blank=True)
-    phone2 = models.CharField('Τηλέφωνο 2', max_length=20, blank=True)
-    personal_email = models.EmailField('Προσωπικό Email', blank=True, null=True)
     GENDER_CHOICES = [
         ('MALE', 'Άνδρας'),
         ('FEMALE', 'Γυναίκα'),
         ('OTHER', 'Άλλο'),
     ]
     gender = models.CharField('Φύλο', max_length=10, choices=GENDER_CHOICES, blank=True)
-    email2 = models.EmailField('Εναλλακτικό Email', unique=True, blank=True, null=True)
-    orario = models.IntegerField('Ωράριο', blank=True, null=True, help_text='Ώρες εργασίας')
     father_name = models.CharField('Πατρώνυμο', max_length=50, blank=True)
     
     # Υπηρεσιακά στοιχεία
@@ -258,8 +254,6 @@ class User(AbstractUser):
     # Δικαιώματα άδειας
     can_request_leave = models.BooleanField('Δικαίωμα Αίτησης Άδειας', default=True,
         help_text='Αν είναι False, ο χρήστης δεν μπορεί να κάνει αίτηση άδειας (π.χ. SDEY managers, Περιφ. Δ/ντής)')
-    can_approve_own_leave = models.BooleanField('Έγκριση Δικής Του Άδειας', default=False,
-        help_text='Αν είναι False, δεν μπορεί να εγκρίνει τη δική του αίτηση')
     
     # Κατάσταση Αδειών
     annual_leave_entitlement = models.IntegerField('Δικαιούμενες Ημέρες Κανονικής Άδειας', default=25,

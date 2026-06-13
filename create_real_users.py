@@ -246,7 +246,6 @@ for user_data in users_data:
             user_category=user_data['category'],
             phone1=user_data.get('phone1', ''),
             can_request_leave=user_data.get('can_request_leave', True),
-            can_approve_own_leave=False,
             is_active=True,
             registration_status='APPROVED',
             annual_leave_entitlement=25,
