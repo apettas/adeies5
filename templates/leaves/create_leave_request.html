@@ -46,6 +46,10 @@
                                     <i class="bi bi-info-circle"></i>
                                     <span id="leave-instructions-text"></span>
                                 </div>
+                                <div id="revocation-message" class="alert alert-warning mt-2" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Είναι υποχρεωτικό να γράψετε στο πεδίο Περιγραφή/Αιτιολογία, ποια άδεια θέλετε να ανακαλέσετε.
+                                </div>
                             </div>
                         </div>
 
@@ -307,6 +311,9 @@ $(document).ready(function() {
     // Leave type instructions from server
     const leaveTypeInstructions = {{ leave_type_instructions|safe }};
     
+    // Revocation type IDs from server
+    const revocationTypeIds = {{ revocation_type_ids|safe }};
+    
     function toggleLeaveInstructions() {
         const selectedId = parseInt($('#{{ form.leave_type.id_for_label }}').val());
         const text = leaveTypeInstructions[selectedId];
@@ -315,6 +322,15 @@ $(document).ready(function() {
             $('#leave-instructions').slideDown(200);
         } else {
             $('#leave-instructions').slideUp(200);
+        }
+    }
+    
+    function toggleRevocationMessage() {
+        const selectedId = parseInt($('#{{ form.leave_type.id_for_label }}').val());
+        if (revocationTypeIds.includes(selectedId)) {
+            $('#revocation-message').slideDown(200);
+        } else {
+            $('#revocation-message').slideUp(200);
         }
     }
     
@@ -880,8 +896,12 @@ $(document).ready(function() {
         console.log('Select2 init error:', e);
     }
     
-    $leaveType.on('change', toggleLeaveInstructions);
+    $leaveType.on('change', function() {
+        toggleLeaveInstructions();
+        toggleRevocationMessage();
+    });
     toggleLeaveInstructions();
+    toggleRevocationMessage();
     
     // Check for any existing date errors on page load
     checkOverallDateErrors();
