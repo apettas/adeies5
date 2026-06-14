@@ -39,33 +39,52 @@
                     {% endif %}
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Email Recipient -->
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5><i class="bi bi-envelope"></i> Παραλήπτης Email</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="{% url 'leaves:send_to_protocol' leave_request.pk %}">
-                        {% csrf_token %}
+    <!-- Send Button -->
+    <div class="row">
+        <div class="col-lg-6">
+            <form method="post" action="{% url 'leaves:send_to_protocol' leave_request.pk %}">
+                {% csrf_token %}
+                <!-- Email Recipient -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5><i class="bi bi-envelope"></i> Παραλήπτης Email</h5>
+                    </div>
+                    <div class="card-body">
                         <label for="protocol_email_input" class="form-label"><strong>Email αποστολής:</strong></label>
                         <input type="email" class="form-control" id="protocol_email_input" name="protocol_email"
                                value="{{ protocol_email }}" required>
                         <small class="text-muted">Αλλάξτε τη διεύθυνση αν χρειαστεί. Το ενοποιημένο PDF θα σταλεί σε αυτή τη διεύθυνση.</small>
-                    </form>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Email Subject Preview -->
-            <div class="card mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h5><i class="bi bi-chat-dots"></i> Θέμα Email</h5>
+                <!-- Email Subject (Editable) -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5><i class="bi bi-chat-dots"></i> Θέμα Email</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0"><small class="text-muted">Επεξεργάστε το θέμα του email:</small></p>
+                        <input type="text" class="form-control mt-1" id="email_subject" name="email_subject"
+                               value="{{ email_subject|default:'' }}" placeholder="Ιωάννης Κοτσώνης - Αναρρωτική Άδεια με Ιατρική Γνωμάτευση - kotsonis@sch.gr">
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p class="mb-0"><small class="text-muted">Το θέμα του email θα είναι:</small></p>
-                    <p class="mt-1"><code>{{ email_subject }}</code></p>
+
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <button type="submit" class="btn btn-primary btn-lg"
+                                onclick="return confirm('Είστε σίγουροι ότι θέλετε να στείλετε το ενοποιημένο PDF μέσω email;');">
+                            <i class="bi bi-envelope-paper"></i> Αποστολή στο Email
+                        </button>
+                        <p class="mt-2 small text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Πατώντας το κουμπί, το ενοποιημένο PDF θα σταλεί στο {{ protocol_email }}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </form>
 
             {% if sent_success %}
             <div class="alert alert-success">
@@ -77,27 +96,6 @@
                 <i class="bi bi-x-circle"></i> Σφάλμα κατά την αποστολή: {{ send_error }}
             </div>
             {% endif %}
-        </div>
-    </div>
-
-    <!-- Send Button -->
-    <div class="row">
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-body text-center">
-                    <form method="post" action="{% url 'leaves:send_to_protocol' leave_request.pk %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary btn-lg" 
-                                onclick="return confirm('Είστε σίγουροι ότι θέλετε να στείλετε το ενοποιημένο PDF μέσω email;');">
-                            <i class="bi bi-envelope-paper"></i> Αποστολή στο Email
-                        </button>
-                        <p class="mt-2 small text-muted">
-                            <i class="bi bi-info-circle"></i> 
-                            Πατώντας το κουμπί, το ενοποιημένο PDF θα σταλεί στο {{ protocol_email }}
-                        </p>
-                    </form>
-                </div>
-            </div>
         </div>
     </div>
 </div>

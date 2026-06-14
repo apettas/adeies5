@@ -89,22 +89,23 @@ def build_email_subject(leave_request):
     return ' - '.join(parts)
 
 
-def send_merged_pdf_email(leave_request, pdf_bytes, recipient=None):
+def send_merged_pdf_email(leave_request, pdf_bytes, recipient=None, custom_subject=None):
     """
     Στέλνει το ενοποιημένο PDF μέσω email.
-    
+
     Args:
         leave_request: LeaveRequest instance
         pdf_bytes: bytes του ενοποιημένου PDF
         recipient: (optional) email παραλήπτη. Αν δεν δοθεί, χρησιμοποιείται το PROTOCOL_EMAIL_RECIPIENT από settings.
-    
+        custom_subject: (optional) προσαρμοσμένο θέμα email. Αν δεν δοθεί, χρησιμοποιείται το default.
+
     Returns:
         bool: True αν στάλθηκε επιτυχώς
     """
     if recipient is None:
         recipient = getattr(settings, 'PROTOCOL_EMAIL_RECIPIENT', 'apettas@gmail.com')
-    
-    subject = build_email_subject(leave_request)
+
+    subject = custom_subject if custom_subject else build_email_subject(leave_request)
     body = (
         f"Αποστολή αίτησης άδειας για πρωτόκολλο.\n\n"
         f"Αιτών/Αιτούσα: {leave_request.user.full_name}\n"
