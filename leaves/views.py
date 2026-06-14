@@ -937,6 +937,9 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         ).select_related('department').order_by('last_name')
         context['sick_alert_count'] = context['sick_alert_users'].count()
         
+        # Add today's date for protocol forms
+        context['today'] = timezone.now().date()
+        
         return context
 
 
