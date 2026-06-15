@@ -7,6 +7,9 @@ def can_manager_approve(user, leave_request):
     """
     Ελέγχει αν ο manager μπορεί να εγκρίνει την αίτηση
     """
+    if not user or not leave_request:
+        return False
+
     if leave_request.status != 'SUBMITTED':
         return False
     
@@ -17,5 +20,5 @@ def can_manager_approve(user, leave_request):
     try:
         approving_manager = leave_request.user.get_approving_manager()
         return approving_manager and approving_manager.id == user.id
-    except:
+    except Exception:
         return False

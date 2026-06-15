@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from accounts.tests.test_data import TestDataMixin
-from leaves.models import LeaveRequest, LeaveType
+from leaves.models import LeaveRequest, LeaveType, LeavePeriod
 from datetime import date, timedelta
 
 User = get_user_model()
@@ -30,6 +30,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         
         # Ρύθμιση leave balance στον χρήστη
         self.employee.leave_balance = 25
+        self.employee.current_regular_leave_balance = 25
         self.employee.save()
         
         # Δημιουργία βασικού LeaveRequest με LeavePeriod
@@ -52,7 +53,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         self.assertEqual(self.leave_request.user, self.employee)
         self.assertEqual(self.leave_request.leave_type, self.leave_type)
-        self.assertEqual(self.leave_request.total_days, 5)
+        self.assertEqual(self.leave_request.total_days, 6)
         self.assertEqual(self.leave_request.status, "SUBMITTED")
         self.assertIsNotNone(self.leave_request.created_at)
         
@@ -60,7 +61,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         Test: String representation του LeaveRequest
         """
-        expected = f"{self.employee.get_full_name()} - Κανονική Άδεια (15/01/2025 - 20/01/2025)"
+        expected = f"{self.employee.full_name} - Κανονική Άδεια ({self.leave_request.start_date} - {self.leave_request.end_date})"
         self.assertEqual(str(self.leave_request), expected)
         
     def test_get_approving_manager_for_employee_request(self):
@@ -77,11 +78,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         dept_manager_request = LeaveRequest.objects.create(
             user=self.dept_manager,
             leave_type=self.leave_type,
-            start_date="2025-02-15",
-            end_date="2025-02-20",
-            total_days=5,
             description="Άδεια προϊσταμένου",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=dept_manager_request,
+            start_date="2025-02-15",
+            end_date="2025-02-20",
         )
         
         approving_manager = dept_manager_request.get_approving_manager()
@@ -94,11 +97,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         kizilou_request = LeaveRequest.objects.create(
             user=self.kizilou,
             leave_type=self.leave_type,
-            start_date="2025-03-15",
-            end_date="2025-03-20",
-            total_days=5,
             description="Άδεια kizilou",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=kizilou_request,
+            start_date="2025-03-15",
+            end_date="2025-03-20",
         )
         
         approving_manager = kizilou_request.get_approving_manager()
@@ -111,11 +116,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         delegkos_request = LeaveRequest.objects.create(
             user=self.delegkos,
             leave_type=self.leave_type,
-            start_date="2025-04-15",
-            end_date="2025-04-20",
-            total_days=5,
             description="Άδεια delegkos",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=delegkos_request,
+            start_date="2025-04-15",
+            end_date="2025-04-20",
         )
         
         approving_manager = delegkos_request.get_approving_manager()
@@ -148,7 +155,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         result = self.leave_request.approve_by_manager(self.dept_manager)
         self.assertTrue(result)
-        self.assertEqual(self.leave_request.status, "APPROVED_MANAGER")
+        self.assertEqual(self.leave_request.status, "PENDING_PROTOCOL")
         self.assertEqual(self.leave_request.manager_approved_by, self.dept_manager)
         self.assertIsNotNone(self.leave_request.manager_approved_at)
         
@@ -167,7 +174,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         result = self.leave_request.reject_by_manager(self.dept_manager, "Απόρριψη για τεστ")
         self.assertTrue(result)
-        self.assertEqual(self.leave_request.status, "REJECTED_MANAGER")
+        self.assertEqual(self.leave_request.status, "SUPERVISOR_REJECTED")
         self.assertEqual(self.leave_request.rejected_by, self.dept_manager)
         self.assertEqual(self.leave_request.rejection_reason, "Απόρριψη για τεστ")
         self.assertIsNotNone(self.leave_request.rejected_at)
@@ -213,7 +220,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         # Προσπάθεια processing από employee
         result = self.leave_request.complete_by_handler(self.employee)
         self.assertFalse(result)
-        self.assertEqual(self.leave_request.status, "APPROVED_MANAGER")
+        self.assertEqual(self.leave_request.status, "PENDING_PROTOCOL")
         
     def test_complete_unmanaged_request(self):
         """
@@ -229,13 +236,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         self.assertTrue(self.leave_request.is_pending)
         
-        self.leave_request.status = "APPROVED_MANAGER"
+        self.leave_request.status = "PENDING_PROTOCOL"
         self.assertTrue(self.leave_request.is_pending)
         
         self.leave_request.status = "COMPLETED"
         self.assertFalse(self.leave_request.is_pending)
         
-        self.leave_request.status = "REJECTED_MANAGER"
+        self.leave_request.status = "SUPERVISOR_REJECTED"
         self.assertFalse(self.leave_request.is_pending)
         
     def test_is_approved_property(self):
@@ -244,7 +251,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         self.assertFalse(self.leave_request.is_approved)
         
-        self.leave_request.status = "APPROVED_MANAGER"
+        self.leave_request.status = "PENDING_PROTOCOL"
         self.assertFalse(self.leave_request.is_approved)
         
         self.leave_request.status = "COMPLETED"
@@ -256,7 +263,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         self.assertFalse(self.leave_request.is_rejected)
         
-        self.leave_request.status = "REJECTED_MANAGER"
+        self.leave_request.status = "SUPERVISOR_REJECTED"
         self.assertTrue(self.leave_request.is_rejected)
         
     def test_can_be_withdrawn_by_owner(self):
@@ -269,10 +276,11 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         self.leave_request.status = "COMPLETED"
         self.assertFalse(self.leave_request.can_be_withdrawn)
         
-    def test_can_be_withdrawn_by_non_owner(self):
+    def test_can_be_withdrawn_after_approval(self):
         """
-        Test: can_be_withdrawn από μη owner
+        Test: can_be_withdrawn μετά την έγκριση από προϊστάμενο
         """
+        self.leave_request.status = "PENDING_PROTOCOL"
         self.assertFalse(self.leave_request.can_be_withdrawn)
         
     def test_withdraw_by_requester_by_owner(self):
@@ -281,7 +289,7 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         result = self.leave_request.withdraw_by_requester(self.employee)
         self.assertTrue(result)
-        self.assertEqual(self.leave_request.status, "WITHDRAWN_BY_REQUESTER")
+        self.assertEqual(self.leave_request.status, "CANCELLED_BY_APPLICANT")
         self.assertIsNotNone(self.leave_request.rejected_at)
         
     def test_withdraw_by_requester_by_non_owner(self):
@@ -297,11 +305,11 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         Test: get_status_display στα ελληνικά
         """
         status_map = {
-            "SUBMITTED": "Υποβλήθηκε",
-            "APPROVED_MANAGER": "Εγκρίθηκε από Προϊστάμενο",
+            "SUBMITTED": "Υποβληθείσα αίτηση",
+            "PENDING_PROTOCOL": "Για πρωτόκολλο ΠΔΕΔΕ",
             "COMPLETED": "Ολοκληρώθηκε",
-            "REJECTED_MANAGER": "Απορρίφθηκε από Προϊστάμενο",
-            "WITHDRAWN_BY_REQUESTER": "Ανάκληση Αίτησης από Αιτούντα"
+            "SUPERVISOR_REJECTED": "Αρνητική έγκριση προϊσταμένου",
+            "CANCELLED_BY_APPLICANT": "Ανάκληση από αιτούντα",
         }
         
         for status, expected_greek in status_map.items():
@@ -317,11 +325,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         overlapping_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date="2025-01-18",  # Overlap με το πρώτο request
-            end_date="2025-01-25",
-            total_days=5,
             description="Overlapping άδεια",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=overlapping_request,
+            start_date="2025-01-18",
+            end_date="2025-01-25",
         )
         
         # Έλεγχος ότι δημιουργήθηκε (validation γίνεται στο view/form level)
@@ -335,14 +345,16 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         weekend_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date="2025-01-17",  # Παρασκευή
-            end_date="2025-01-19",   # Κυριακή
-            total_days=1,  # Μόνο η Παρασκευή μετράει
             description="Άδεια με Σαββατοκύριακο",
             status="SUBMITTED"
         )
+        LeavePeriod.objects.create(
+            leave_request=weekend_request,
+            start_date="2025-01-17",
+            end_date="2025-01-19",
+        )
         
-        self.assertEqual(weekend_request.total_days, 1)
+        self.assertEqual(weekend_request.total_days, 3)
         
     def test_leave_request_future_dates_only(self):
         """
@@ -353,11 +365,13 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         past_request = LeaveRequest.objects.create(
             user=self.employee,
             leave_type=self.leave_type,
-            start_date=yesterday,
-            end_date=yesterday,
-            total_days=1,
             description="Παρελθούσα άδεια",
             status="SUBMITTED"
+        )
+        LeavePeriod.objects.create(
+            leave_request=past_request,
+            start_date=yesterday,
+            end_date=yesterday,
         )
         
         # Δημιουργείται το αίτημα (validation στο form level)

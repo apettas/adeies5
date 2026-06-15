@@ -464,21 +464,6 @@ def complete_leave_request_final(request, pk):
     
     try:
         if leave_request.finalize_with_exact_copy(request.user):
-            if leave_request.leave_type.affects_regular_leave_balance:
-                from leaves.utils.balance_ledger import create_balance_entry, get_last_balance
-                last_balance = get_last_balance(leave_request.user)
-                balance_after = last_balance - leave_request.total_days if last_balance is not None else 0
-                days_delta = -leave_request.total_days
-                create_balance_entry(
-                    employee=leave_request.user,
-                    entry_type='LEAVE_GRANTED',
-                    description=f'Ολοκλήρωση άδειας #{leave_request.id} — {leave_request.leave_type.name} (ακριβές αντίγραφο ΣΗΔΕ)',
-                    balance_after=max(0, balance_after),
-                    leave_request=leave_request,
-                    days_delta=days_delta,
-                    notes=f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
-                    created_by=request.user
-                )
             # Ενημέρωση total_sick_leave_last_5_years (5ετία) – το sick_days_current_year
             # ήδη ενημερώνεται μέσα στο finalize_with_exact_copy() → _update_leave_balance_on_completion()
             if leave_request.leave_type.is_sick_leave_total:

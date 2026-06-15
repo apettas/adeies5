@@ -53,11 +53,11 @@ class DashboardFilterMixin:
         # Date range filter
         date_from = self.request.GET.get('date_from')
         if date_from:
-            queryset = queryset.filter(start_date__gte=date_from)
+            queryset = queryset.filter(periods__start_date__gte=date_from)
         
         date_to = self.request.GET.get('date_to')
         if date_to:
-            queryset = queryset.filter(end_date__lte=date_to)
+            queryset = queryset.filter(periods__end_date__lte=date_to)
         
         return queryset
 

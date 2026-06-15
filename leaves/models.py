@@ -318,6 +318,26 @@ class LeaveRequest(models.Model):
     def can_be_approved_by_manager(self):
         """Ελέγχει αν η αίτηση μπορεί να εγκριθεί από προϊστάμενο"""
         return self.status == 'SUBMITTED'
+
+    def can_be_approved_by(self, manager):
+        """Ελέγχει αν ο συγκεκριμένος προϊστάμενος μπορεί να εγκρίνει/απορρίψει την αίτηση"""
+        if not self.can_be_approved_by_manager or not manager:
+            return False
+        if not manager.is_department_manager or self.user == manager:
+            return False
+
+        approving_manager = self.user.get_approving_manager()
+        if approving_manager and approving_manager.id == manager.id:
+            return True
+
+        if (manager.department and manager.department.department_type and
+                manager.department.department_type.code == 'KEDASY' and
+                self.user.department and self.user.department.department_type and
+                self.user.department.department_type.code == 'SDEY' and
+                self.user.department.parent_department == manager.department):
+            return True
+
+        return False
     
     @property
     def can_be_processed(self):
@@ -333,6 +353,11 @@ class LeaveRequest(models.Model):
     def is_completed(self):
         """Ελέγχει αν η αίτηση έχει ολοκληρωθεί"""
         return self.status == 'COMPLETED'
+
+    @property
+    def is_approved(self):
+        """Ελέγχει αν η αίτηση έχει ολοκληρωθεί επιτυχώς"""
+        return self.status == 'COMPLETED'
     
     @property
     def is_rejected(self):
@@ -347,7 +372,11 @@ class LeaveRequest(models.Model):
     @property
     def can_be_withdrawn(self):
         """Ελέγχει αν η αίτηση μπορεί να ανακληθεί από τον αιτούντα"""
-        return self.status in ['SUBMITTED', 'PENDING_KEDASY_PROTOCOL', 'PENDING_PROTOCOL']
+        return self.status in ['SUBMITTED', 'PENDING_KEDASY_PROTOCOL']
+    
+    def get_approving_manager(self):
+        """Επιστρέφει τον προϊστάμενο που πρέπει να εγκρίνει την αίτηση"""
+        return self.user.get_approving_manager()
     
     def submit(self):
         """Υποβολή αίτησης"""
@@ -386,36 +415,41 @@ class LeaveRequest(models.Model):
     
     def approve_by_manager(self, manager, comments=''):
         """Έγκριση από προϊστάμενο"""
-        if self.can_be_approved_by_manager:
-            if self.leave_type.is_simple:
-                self.status = 'COMPLETED'
-                self.manager_approved_by = manager
-                self.manager_approved_at = timezone.now()
-                self.manager_comments = comments
-                self.completed_at = timezone.now()
-                self.processed_by = manager
-                self.processed_at = timezone.now()
-                self.save()
-                return True
+        if not self.can_be_approved_by(manager):
+            return False
 
-            self.status = 'PENDING_PROTOCOL'
+        if self.leave_type.is_simple:
+            self.status = 'COMPLETED'
             self.manager_approved_by = manager
             self.manager_approved_at = timezone.now()
             self.manager_comments = comments
+            self.completed_at = timezone.now()
+            self.processed_by = manager
+            self.processed_at = timezone.now()
             self.save()
+            self._update_leave_balance_on_completion(created_by=manager)
             return True
-        return False
+
+        self.status = 'PENDING_PROTOCOL'
+        self.manager_approved_by = manager
+        self.manager_approved_at = timezone.now()
+        self.manager_comments = comments
+        self.save()
+        return True
     
     def reject_by_manager(self, manager, reason):
         """Απόρριψη από προϊστάμενο"""
-        if self.can_be_approved_by_manager:
-            self.status = 'SUPERVISOR_REJECTED'
-            self.rejected_by = manager
-            self.rejected_at = timezone.now()
-            self.rejection_reason = reason
-            self.save()
-            return True
-        return False
+        if not self.can_be_approved_by(manager):
+            return False
+        if not reason or not str(reason).strip():
+            return False
+
+        self.status = 'SUPERVISOR_REJECTED'
+        self.rejected_by = manager
+        self.rejected_at = timezone.now()
+        self.rejection_reason = reason.strip()
+        self.save()
+        return True
     
     def move_to_protocol(self):
         """Μεταφορά για πρωτόκολλο ΠΔΕΔΕ"""
@@ -449,8 +483,10 @@ class LeaveRequest(models.Model):
             return True
         return False
     
-    def complete_by_handler(self, handler, comments=''):
+    def complete_by_handler(self, handler, comments='', balance_after=None):
         """Ολοκλήρωση αίτησης από χειριστή"""
+        if not handler.is_leave_handler:
+            return False
         if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
             self.status = 'COMPLETED'
             self.completed_at = timezone.now()
@@ -462,12 +498,14 @@ class LeaveRequest(models.Model):
             if comments:
                 self.processing_comments = comments
             self.save()
-            # Ενημέρωση leave balance
-            self._update_leave_balance_on_completion()
+            self._update_leave_balance_on_completion(
+                created_by=handler,
+                balance_after=balance_after,
+            )
             return True
         return False
     
-    def _update_leave_balance_on_completion(self):
+    def _update_leave_balance_on_completion(self, created_by=None, balance_after=None):
         """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται"""
         import logging
         logger = logging.getLogger(__name__)
@@ -476,8 +514,34 @@ class LeaveRequest(models.Model):
             if self.leave_type.affects_regular_leave_balance:
                 days_used = self.total_days
                 if days_used > 0:
-                    logger.info(f"Deducting {days_used} leave days for user {self.user} on completion of request {self.id}")
-                    self.user.use_leave_days(days_used)
+                    from leaves.utils.balance_ledger import create_balance_entry, get_last_balance
+
+                    last_balance = get_last_balance(self.user)
+                    if last_balance is None:
+                        last_balance = self.user.current_regular_leave_balance
+
+                    if balance_after is None:
+                        balance_after = max(0, last_balance - days_used)
+
+                    days_delta = balance_after - last_balance if last_balance is not None else -days_used
+                    create_balance_entry(
+                        employee=self.user,
+                        entry_type='LEAVE_GRANTED',
+                        description=(
+                            f'Ολοκλήρωση άδειας #{self.id} — {self.leave_type.name}'
+                        ),
+                        balance_after=balance_after,
+                        leave_request=self,
+                        days_delta=days_delta,
+                        notes=f'Ημερομηνίες: {self.start_date} - {self.end_date}',
+                        created_by=created_by,
+                    )
+                    self.user.leave_balance = balance_after
+                    self.user.save(update_fields=['leave_balance'])
+                    logger.info(
+                        f"Deducted {days_used} leave days for user {self.user} "
+                        f"on completion of request {self.id} (balance_after={balance_after})"
+                    )
 
             if self.leave_type.is_sick_leave_total:
                 current_year = timezone.now().year
@@ -774,6 +838,12 @@ class LeaveRequest(models.Model):
         # Οι προϊστάμενοι μπορούν να δουν αιτήσεις του τμήματός τους
         if user.is_department_manager and self.user.department == user.department:
             return True
+
+        # Προϊστάμενος PDEDE — πρόσβαση σε όλες τις αιτήσεις
+        if (user.is_department_manager and user.department and
+                user.department.department_type and
+                user.department.department_type.code == 'PDEDE_MAIN'):
+            return True
         
         # Οι προϊστάμενοι ΚΕΔΑΣΥ μπορούν να δουν και αιτήσεις από ΣΔΕΥ
         if (user.is_department_manager and
@@ -812,18 +882,8 @@ class LeaveRequest(models.Model):
         if self.user == user and self.can_be_withdrawn:
             actions.append('withdraw')
         
-        # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις του τμήματός τους
-        if user.is_department_manager and self.user.department == user.department and self.can_be_approved_by_manager:
-            actions.extend(['approve', 'reject'])
-        
-        # Προϊστάμενοι ΚΕΔΑΣΥ μπορούν να εγκρίνουν αιτήσεις από ΣΔΕΥ
-        if (user.is_department_manager and
-            user.department and user.department.department_type and
-            user.department.department_type.code == 'KEDASY' and
-            self.user.department and self.user.department.department_type and
-            self.user.department.department_type.code == 'SDEY' and
-            self.user.department.parent_department == user.department and
-            self.can_be_approved_by_manager):
+        # Προϊστάμενοι μπορούν να εγκρίνουν αιτήσεις που τους αναφέρονται
+        if self.can_be_approved_by(user):
             actions.extend(['approve', 'reject'])
         
         if user.is_leave_handler and self.can_be_processed:

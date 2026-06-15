@@ -6,6 +6,7 @@ from django.template import Context, Template
 from django.contrib.auth import get_user_model
 from accounts.tests.test_data import TestDataMixin
 from leaves.models import LeaveRequest, LeaveType
+from leaves.tests.helpers import create_submitted_leave_request
 from leaves.templatetags.leave_permissions import can_manager_approve
 
 User = get_user_model()
@@ -28,36 +29,16 @@ class LeavePermissionTemplateTagTests(TestDataMixin, TestCase):
         )
         
         # Δημιουργία LeaveRequest από employee
-        self.employee_leave_request = LeaveRequest.objects.create(
-            user=self.employee,
-            leave_type=self.leave_type,
-            start_date="2025-01-15",
-            end_date="2025-01-20",
-            total_days=5,
-            description="Κανονική άδεια",
-            status="SUBMITTED"
+        self.employee_leave_request = create_submitted_leave_request(
+            self.employee, self.leave_type, "Κανονική άδεια", "2025-01-15", "2025-01-20"
         )
         
-        # Δημιουργία LeaveRequest από department manager
-        self.dept_manager_leave_request = LeaveRequest.objects.create(
-            user=self.dept_manager,
-            leave_type=self.leave_type,
-            start_date="2025-02-15",
-            end_date="2025-02-20",
-            total_days=5,
-            description="Κανονική άδεια προϊσταμένου",
-            status="SUBMITTED"
+        self.dept_manager_leave_request = create_submitted_leave_request(
+            self.dept_manager, self.leave_type, "Κανονική άδεια προϊσταμένου", "2025-02-15", "2025-02-20"
         )
         
-        # Δημιουργία LeaveRequest από kizilou
-        self.kizilou_leave_request = LeaveRequest.objects.create(
-            user=self.kizilou,
-            leave_type=self.leave_type,
-            start_date="2025-03-15",
-            end_date="2025-03-20",
-            total_days=5,
-            description="Κανονική άδεια kizilou",
-            status="SUBMITTED"
+        self.kizilou_leave_request = create_submitted_leave_request(
+            self.kizilou, self.leave_type, "Κανονική άδεια kizilou", "2025-03-15", "2025-03-20"
         )
         
     def test_can_manager_approve_employee_request_by_department_manager(self):
@@ -196,7 +177,7 @@ class LeavePermissionTemplateTagTests(TestDataMixin, TestCase):
         Test: Εγκεκριμένο αίτημα δεν εμφανίζει κουμπιά έγκρισης
         """
         # Αλλαγή status σε APPROVED_MANAGER
-        self.employee_leave_request.status = "APPROVED_MANAGER"
+        self.employee_leave_request.status = "PENDING_PROTOCOL"
         self.employee_leave_request.save()
         
         template = Template(
@@ -231,13 +212,14 @@ class LeavePermissionTemplateTagTests(TestDataMixin, TestCase):
         # Δημιουργία user από διαφορετικό τμήμα
         other_dept = self.pdede
         other_manager = User.objects.create_user(
-            username="other_manager",
             email="other@test.com",
             first_name="Other",
             last_name="Manager",
             department=other_dept,
-            role="MANAGER"
+            registration_status='APPROVED',
+            is_active=True,
         )
+        other_manager.roles.add(self.manager_role)
         
         # Other manager ΔΕΝ μπορεί να εγκρίνει employee request
         can_approve = can_manager_approve(other_manager, self.employee_leave_request)
@@ -250,14 +232,12 @@ class LeavePermissionTemplateTagTests(TestDataMixin, TestCase):
         # Δημιουργία πολλών requests
         requests = []
         for i in range(10):
-            request = LeaveRequest.objects.create(
-                user=self.employee,
-                leave_type=self.leave_type,
-                start_date="2025-01-15",
-                end_date="2025-01-20",
-                total_days=5,
-                description=f"Request {i}",
-                status="SUBMITTED"
+            request = create_submitted_leave_request(
+                self.employee,
+                self.leave_type,
+                f"Request {i}",
+                "2025-01-15",
+                "2025-01-20",
             )
             requests.append(request)
         

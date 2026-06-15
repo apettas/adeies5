@@ -666,10 +666,6 @@ def approve_leave_request(request, pk):
             leave_request.user.department.department_type.code == 'SDEY' and
             leave_request.user.department.parent_department == request.user.department):
             can_approve = True
-        
-        # Διατήρηση της υπάρχουσας λογικής για το ίδιο τμήμα (για συμβατότητα)
-        if not can_approve and request.user.department and leave_request.user.department:
-            can_approve = (request.user.department.id == leave_request.user.department.id)
     
     if not can_approve:
         raise PermissionDenied("Δεν μπορείτε να εγκρίνετε αυτή την αίτηση.")
@@ -785,10 +781,16 @@ def reject_leave_request(request, pk):
         raise PermissionDenied("Δεν μπορείτε να απορρίψετε αυτή την αίτηση.")
     
     if request.method == 'POST':
-        reason = request.POST.get('reason', '')
+        reason = request.POST.get('reason', '').strip()
+
+        if not reason:
+            messages.error(request, 'Παρακαλώ συμπληρώστε τον λόγο απόρριψης.')
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
         
         try:
-            leave_request.reject_by_manager(request.user, reason)
+            if not leave_request.reject_by_manager(request.user, reason):
+                messages.error(request, 'Δεν ήταν δυνατή η απόρριψη της αίτησης.')
+                return redirect('leaves:leave_request_detail', pk=leave_request.pk)
             
             # Αναγέννηση PDF με την απόρριψη
             try:
@@ -1151,26 +1153,11 @@ def complete_leave_request(request, pk):
                 messages.error(request, 'Το υπόλοιπο πρέπει να είναι ακέραιος αριθμός.')
                 return redirect('leaves:leave_request_detail', pk=pk)
         
-        leave_request.complete_by_handler(request.user, comments)
-        
-        if leave_request.leave_type.affects_regular_leave_balance and balance_after:
-            from leaves.utils.balance_ledger import create_balance_entry
-            from leaves.utils.balance_ledger import get_last_balance
-            last_balance = get_last_balance(leave_request.user)
-            days_delta = None
-            if last_balance is not None:
-                days_delta = balance_after - last_balance
-            
-            create_balance_entry(
-                employee=leave_request.user,
-                entry_type='LEAVE_GRANTED',
-                description=f'Ολοκλήρωση άδειας #{leave_request.id} — {leave_request.leave_type.name}',
-                balance_after=balance_after,
-                leave_request=leave_request,
-                days_delta=days_delta,
-                notes=comments or f'Ημερομηνίες: {leave_request.start_date} - {leave_request.end_date}',
-                created_by=request.user
-            )
+        leave_request.complete_by_handler(
+            request.user,
+            comments,
+            balance_after=balance_after if leave_request.leave_type.affects_regular_leave_balance else None,
+        )
         
         from notifications.utils import create_notification
         create_notification(
@@ -1530,6 +1517,12 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             obj.user.department.parent_department == user.department):
             can_view = True
             
+        # Έλεγχος αν είναι προϊστάμενος PDEDE — πρόσβαση σε όλες τις αιτήσεις
+        if (not can_view and user.is_department_manager and
+            user.department and user.department.department_type and
+            user.department.department_type.code == 'PDEDE_MAIN'):
+            can_view = True
+        
         # Έλεγχος αν είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης και η αίτηση από child departments
         if (not can_view and user.is_department_manager and
             user.department and user.department.code == 'AUTOTELOUS_DN' and
