@@ -16,6 +16,7 @@ body {
     margin: 0;
     padding: 0;
 }
+.doc-top-spacer { height: 4.8em; }
 .layout-table { width: 100%; border-collapse: collapse; border: none; table-layout: fixed; }
 .layout-table td { border: none; vertical-align: top; padding: 0; }
 .col-half { width: 50%; }
@@ -74,7 +75,6 @@ body {
     font-weight: bold;
     text-align: center;
     font-size: 12pt;
-    text-transform: uppercase;
     letter-spacing: 2px;
     margin: 0;
 }
@@ -160,20 +160,32 @@ def format_decision_days_phrase(days):
 
 
 def format_decision_dates_compact(leave_request):
-    """Συμπαγείς ημερομηνίες: στις 13-5-2025 / από 1-5-2025 έως και 5-5-2025."""
-    start = leave_request.start_date
-    end = leave_request.end_date
-    if not start:
+    """Συμπαγείς ημερομηνίες ανά διάστημα άδειας."""
+    periods = list(leave_request.periods.all().order_by('start_date'))
+    if not periods:
         return ''
 
     def fmt(d):
         return f'{d.day}-{d.month}-{d.year}'
 
-    if leave_request.total_days == 1:
-        return f'στις {fmt(start)}'
-    if end:
-        return f'από {fmt(start)} έως και {fmt(end)}'
-    return f'από {fmt(start)}'
+    def format_period(p):
+        if p.days == 1:
+            return f'στις {fmt(p.start_date)}'
+        return f'από {fmt(p.start_date)} έως και {fmt(p.end_date)}'
+
+    if len(periods) == 1:
+        return format_period(periods[0])
+
+    if all(p.days == 1 for p in periods):
+        dates = [fmt(p.start_date) for p in periods]
+        if len(dates) == 2:
+            return f'στις {dates[0]} και {dates[1]}'
+        return 'στις ' + ', '.join(dates[:-1]) + f' και {dates[-1]}'
+
+    parts = [format_period(p) for p in periods]
+    if len(parts) == 2:
+        return f'{parts[0]} και {parts[1]}'
+    return ', '.join(parts[:-1]) + f' και {parts[-1]}'
 
 
 def build_decision_body_html(leave_request):
