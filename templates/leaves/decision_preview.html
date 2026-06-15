@@ -13,75 +13,12 @@
   }
   .ql-editor {
     font-family: "DejaVu Sans", "Arial", sans-serif;
-    font-size: 11pt;
-    line-height: 1.4;
+    font-size: 10pt;
+    line-height: 1.2;
     min-height: 480px;
+    padding: 8px;
   }
-  .ql-editor .ethnosimo {
-    width: 80px;
-    height: auto;
-    margin-bottom: 8px;
-  }
-  .ql-editor .apofasi-title {
-    font-size: 22pt;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 4px;
-  }
-  .ql-editor .section-divider {
-    border: none;
-    border-top: 1px solid #999;
-    margin: 12px 0;
-  }
-  .ql-editor .small-divider {
-    border: none;
-    border-top: 1px dotted #ccc;
-    margin: 8px 0;
-  }
-  .ql-editor .subject-label {
-    font-weight: bold;
-    font-size: 12pt;
-  }
-  .ql-editor .subject-content {
-    font-weight: bold;
-    font-size: 12pt;
-    margin-left: 5px;
-  }
-  .ql-editor .ypopsin-content {
-    font-size: 8.5pt;
-    white-space: pre-line;
-    line-height: 1.25;
-    margin-top: 2px;
-  }
-  .ql-editor .apofasizoume {
-    font-weight: bold;
-    text-align: center;
-    font-size: 13pt;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    margin-bottom: 8px;
-  }
-  .ql-editor .decision-body {
-    font-size: 11pt;
-    line-height: 1.4;
-    text-align: justify;
-  }
-  .ql-editor .signature-spacer {
-    height: 35px;
-  }
-  .ql-editor .signature-name {
-    font-size: 11pt;
-    font-weight: bold;
-  }
-  .ql-editor .koinopoiisi-title {
-    font-weight: bold;
-    font-size: 11pt;
-    margin-bottom: 5px;
-  }
-  .ql-editor .koinopoiisi-content {
-    font-size: 9pt;
-    white-space: pre-line;
-  }
+  {{ decision_pdf_css|safe }}
   .sidebar-card {
     position: sticky;
     top: 20px;
@@ -144,11 +81,15 @@
                         <input type="hidden" name="action" id="form_action" value="preview">
 
                         <input type="hidden" id="data-staff-name" value="{{ leave_request.user.full_name }}">
-                        <input type="hidden" id="data-total-days" value="{{ leave_request.total_days }}">
-                        <input type="hidden" id="data-leave-dates" value="{{ leave_request|format_leave_dates }}">
-                        <input type="hidden" id="data-protocol-num" value="{{ leave_request.protocol_number|default:'' }}">
+                        <input type="hidden" id="data-name-accusative" value="{{ employee_name_accusative|escape }}">
+                        <input type="hidden" id="data-gender" value="{{ employee_gender|escape }}">
+                        <input type="hidden" id="data-role-description" value="{{ employee_role|escape }}">
+                        <input type="hidden" id="data-decision-text" value="{{ decision_text|escape }}">
+                        <input type="hidden" id="data-days-phrase" value="{{ decision_days_phrase|escape }}">
+                        <input type="hidden" id="data-dates-phrase" value="{{ decision_dates_phrase|escape }}">
                         <input type="hidden" id="data-notification-recipients" value="{{ notification_recipients|escape }}">
-                         <input type="hidden" id="data-subject-text" value="{{ leave_request.leave_type.subject_text|default:'Χορήγηση άδειας'|escape }}">
+                        <input type="hidden" id="data-subject-text" value="{{ subject_text|escape }}">
+                        <input type="hidden" id="data-decision-body" value="{{ default_decision_body|escape }}">
 
                         <div class="row">
                             <div class="col-md-3">
@@ -293,7 +234,7 @@
     </div>
 </div>
 
-<div id="ethnosimo-svg" style="display:none;">{{ ethnosimo_svg_inline|safe }}</div>
+<div id="ethnosimo-markup" style="display:none;">{{ ethnosimo_markup|safe }}</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -331,7 +272,41 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-var ethnosimoSvg = document.getElementById('ethnosimo-svg').innerHTML;
+var ethnosimoMarkup = document.getElementById('ethnosimo-markup').innerHTML;
+
+function getGenderDativeArticle(gender) {
+    if (gender === 'FEMALE') return 'στη(ν)';
+    if (gender === 'MALE') return 'στο(ν)';
+    return 'στο(ν)/στη(ν)';
+}
+
+function buildDecisionBodyHtml() {
+    var nameAccusative = document.getElementById('data-name-accusative').value || '';
+    var gender = document.getElementById('data-gender').value || '';
+    var roleDescription = document.getElementById('data-role-description').value || '';
+    var decisionText = document.getElementById('data-decision-text').value || '';
+    var daysPhrase = document.getElementById('data-days-phrase').value || '';
+    var datesPhrase = document.getElementById('data-dates-phrase').value || '';
+    var article = getGenderDativeArticle(gender);
+
+    var parts = ['Χορηγούμε ' + article];
+    if (nameAccusative) {
+        parts.push('<b>' + escapeHtml(nameAccusative) + '</b>,');
+    }
+    if (roleDescription) {
+        parts.push(escapeHtml(roleDescription) + ',');
+    }
+    if (decisionText) {
+        parts.push(escapeHtml(decisionText));
+    }
+    if (daysPhrase) {
+        parts.push(escapeHtml(daysPhrase) + ',');
+    }
+    if (datesPhrase) {
+        parts.push(escapeHtml(datesPhrase));
+    }
+    return parts.join(' ') + '.';
+}
 
 function buildFullDecisionHtml() {
     var logoSelect = document.getElementById('logo_id');
@@ -350,61 +325,46 @@ function buildFullDecisionHtml() {
     var selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
     var signeeText = selectedSignee.getAttribute('data-signee-content') || '';
 
-    // Get actual data from hidden fields
-    var staffName = document.getElementById('data-staff-name').value || '';
-    var totalDays = document.getElementById('data-total-days').value || '0';
-    var leaveDates = document.getElementById('data-leave-dates').value || '';
-    var protocolNum = document.getElementById('data-protocol-num').value || '';
     var notificationRecipients = document.getElementById('data-notification-recipients').value || '';
     var subjectText = document.getElementById('data-subject-text').value || 'Χορήγηση άδειας';
-    
+    var decisionBody = buildDecisionBodyHtml();
+
     var html = '';
-    html += ethnosimoSvg;
-    html += '<div style="text-align:center;font-size:10pt;font-weight:bold;line-height:1.2;margin-bottom:10px;">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
-    html += '<div style="text-align:left;font-size:9pt;line-height:1.2;margin-bottom:15px;">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
-    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
-    html += '<div style="text-align:center;font-size:22pt;font-weight:bold;text-transform:uppercase;letter-spacing:4px;">ΑΠΟΦΑΣΗ</div>';
-    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
-    
-    // Subject with actual data
-    var subjectLine = '<div><span style="font-weight:bold;font-size:12pt;">Θέμα :</span> <span style="font-weight:bold;font-size:12pt;">' + escapeHtml(subjectText) + '</span></div>';
-    html += subjectLine;
-    html += '<hr style="border:none;border-top:1px dotted #ccc;margin:8px 0;">';
-    
-    // Include employee info in the decision body
-    var employeeInfo = '<div style="font-size:11pt;line-height:1.4;text-align:justify;">';
-    if (staffName) {
-        employeeInfo += 'Ο/Η ' + escapeHtml(staffName);
-    }
-    if (totalDays && totalDays !== '0') {
-        employeeInfo += ' είναι αδειούχος για ' + totalDays + ' ημέρες';
-    }
-    if (leaveDates) {
-        employeeInfo += ' κατά τη διάρκεια: ' + escapeHtml(leaveDates);
-    }
-    if (protocolNum) {
-        employeeInfo += ' (πρωτ: ' + escapeHtml(protocolNum) + ')';
-    }
-    employeeInfo += '.</div>';
-    html += '<div><span style="font-weight:bold;font-size:12pt;">Έχοντας Υπόψη :</span></div>';
-    html += '<div style="font-size:8.5pt;line-height:1.25;">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
-    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
-    html += '<div style="font-weight:bold;text-align:center;font-size:13pt;text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;">Αποφασίζουμε</div>';
-    html += employeeInfo;
-    html += '<div style="height:20px;"></div>';
-    html += '<hr style="border:none;border-top:1px solid #999;margin:12px 0;">';
-    html += '<div style="display:flex;width:100%;">';
-    html += '  <div style="flex:1;text-align:left;padding-right:20px;">';
-    if (notificationRecipients) {
-        html += '    <div style="font-weight:bold;font-size:11pt;margin-bottom:5px;">ΚΟΙΝΟΠΟΙΗΣΗ</div>';
-        html += '    <div style="font-size:9pt;white-space:pre-line;">' + escapeHtml(notificationRecipients).replace(/\n/g, '<br>') + '</div>';
-    }
-    html += '  </div>';
-    html += '  <div style="flex:1;text-align:center;padding-left:20px;">';
-    html += '    <div style="font-size:10pt;line-height:1.2;">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
-    html += '    <div style="height:35px;"></div>';
-    html += '  </div>';
-    html += '</div>';
+    html += '<table class="layout-table"><tr>';
+    html += '<td class="col-half header-left">';
+    html += ethnosimoMarkup;
+    html += '<div class="logo-text">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
+    html += '<hr class="section-divider">';
+    html += '<div class="info-text">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
+    html += '</td>';
+    html += '<td class="col-half header-right">';
+    html += '<div class="apofasi-spacer"></div>';
+    html += '<div class="apofasi-title">ΑΠΟΦΑΣΗ</div>';
+    html += '</td>';
+    html += '</tr></table>';
+
+    html += '<p class="subject-line">Θέμα: ' + escapeHtml(subjectText) + '</p>';
+    html += '<div class="blank-line"></div>';
+
+    html += '<p class="ypopsin-label">Έχοντας υπόψη :</p>';
+    html += '<div class="ypopsin-content">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="blank-line"></div>';
+
+    html += '<p class="apofasizoume">Αποφασίζουμε</p>';
+    html += '<div class="decision-body">' + decisionBody + '</div>';
+    html += '<div class="spacer-3"></div>';
+
+    html += '<table class="layout-table"><tr>';
+    html += '<td class="col-half footer-left">';
+    html += '<div class="footer-spacer-3"></div>';
+    html += '<div class="koinopoiisi-title">ΚΟΙΝΟΠΟΙΗΣΗ :</div>';
+    html += '<div class="koinopoiisi-content">' + escapeHtml(notificationRecipients).replace(/\n/g, '<br>') + '</div>';
+    html += '</td>';
+    html += '<td class="col-half footer-right">';
+    html += '<div class="footer-spacer-2"></div>';
+    html += '<div class="signee-text">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
+    html += '</td>';
+    html += '</tr></table>';
     return html;
 }
 

@@ -8,14 +8,18 @@ from django.utils.http import content_disposition_header
 from django.contrib import messages
 from django.urls import reverse
 import os
-from pathlib import Path
 from datetime import datetime
 
-from django.conf import settings
-
-from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee, Letterhead
+from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee
 from leaves.crypto_utils import SecureFileHandler
-from leaves.decision_helpers import build_decision_pdf_filename
+from leaves.decision_helpers import (
+    build_decision_body_html,
+    build_decision_pdf_filename,
+    DECISION_PDF_CSS,
+    format_decision_dates_compact,
+    format_decision_days_phrase,
+    get_ethnosimo_markup,
+)
 
 
 @login_required
@@ -83,15 +87,10 @@ def prepare_decision_preview(request, leave_request_id):
     default_info = leave_request.decision_info or infos.first()
     default_ypopsin = leave_request.decision_ypopsin or ypopsins.first()
     default_signee = leave_request.decision_signee or signees.first()
-    
-    # Διάβασε το SVG εθνόσημου για ενσωμάτωση στο editor
-    ethnosimo_svg_path = Path(settings.BASE_DIR) / 'static' / 'ethnosimo.svg'
-    ethnosimo_svg_inline = ''
-    if ethnosimo_svg_path.exists():
-        with open(ethnosimo_svg_path, 'r', encoding='utf-8') as f:
-            svg_content = f.read()
-        svg_content = svg_content.replace('<svg', '<svg width="80px" style="margin-bottom:8px;"')
-        ethnosimo_svg_inline = svg_content
+
+    user = leave_request.user
+    ethnosimo_markup = get_ethnosimo_markup()
+    default_decision_body = build_decision_body_html(leave_request)
     
     context = {
         'leave_request': leave_request,
@@ -104,8 +103,17 @@ def prepare_decision_preview(request, leave_request_id):
         'default_ypopsin': default_ypopsin,
         'default_signee': default_signee,
         'final_decision_text': leave_request.final_decision_text or '',
-        'ethnosimo_svg_inline': ethnosimo_svg_inline,
-        'notification_recipients': leave_request.user.notification_recipients or '',
+        'ethnosimo_markup': ethnosimo_markup,
+        'notification_recipients': user.notification_recipients or '',
+        'default_decision_body': default_decision_body,
+        'employee_gender': user.gender or '',
+        'employee_name_accusative': user.name_accusative or user.full_name or '',
+        'employee_role': user.role_description or '',
+        'decision_text': leave_request.leave_type.decision_text or '',
+        'subject_text': leave_request.leave_type.subject_text or 'Χορήγηση άδειας',
+        'decision_days_phrase': format_decision_days_phrase(leave_request.total_days),
+        'decision_dates_phrase': format_decision_dates_compact(leave_request),
+        'decision_pdf_css': DECISION_PDF_CSS,
     }
     
     return render(request, 'leaves/decision_preview.html', context)
@@ -181,43 +189,15 @@ def generate_final_decision_pdf(request):
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <style>
-        @page {{ size: A4; margin: 1.5cm; }}
-        body {{ font-family: "DejaVu Sans", "Arial", sans-serif; font-size: 11pt; line-height: 1.4; color: #000; margin: 0; padding: 0; }}
-        .ethnosimo {{ width: 80px; height: auto; margin-bottom: 8px; }}
-        .apofasi-title {{ font-size: 22pt; font-weight: bold; text-transform: uppercase; letter-spacing: 4px; }}
-        .section-divider {{ border: none; border-top: 1px solid #999; margin: 12px 0; }}
-        .small-divider {{ border: none; border-top: 1px dotted #ccc; margin: 8px 0; }}
-        .subject-label {{ font-weight: bold; font-size: 12pt; }}
-        .subject-content {{ font-weight: bold; font-size: 12pt; margin-left: 5px; }}
-        .ypopsin-content {{ font-size: 8.5pt; white-space: pre-line; line-height: 1.25; margin-top: 2px; }}
-        .apofasizoume {{ font-weight: bold; text-align: center; font-size: 13pt; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; }}
-        .decision-body {{ font-size: 11pt; line-height: 1.4; text-align: justify; }}
-        .signature-spacer {{ height: 35px; }}
-        .signature-name {{ font-size: 11pt; font-weight: bold; }}
-        .koinopoiisi-title {{ font-weight: bold; font-size: 11pt; margin-bottom: 5px; }}
-        .koinopoiisi-content {{ font-size: 9pt; white-space: pre-line; }}
-    </style>
+    <style>{DECISION_PDF_CSS}</style>
 </head>
 <body>
     {full_decision_html}
 </body>
 </html>"""
         else:
-            # Προετοιμασία context για PDF (παλαιός τρόπος με ατομικά πεδία)
-            from leaves.models import Letterhead
-            active_letterhead = Letterhead.get_active()
-            
+            # Προετοιμασία context για PDF (ατομικά πεδία)
             user = leave_request.user
-            name_accusative = user.name_accusative or ''
-            
-            ethnosimo_svg_path = Path(settings.BASE_DIR) / 'static' / 'ethnosimo.svg'
-            ethnosimo_inline = ''
-            if ethnosimo_svg_path.exists():
-                with open(ethnosimo_svg_path, 'r', encoding='utf-8') as f:
-                    svg_content = f.read()
-                svg_content = svg_content.replace('<svg', '<svg width="80px" style="margin-bottom:8px;"')
-                ethnosimo_inline = svg_content
             
             context = {
                 'leave_request': leave_request,
@@ -225,18 +205,12 @@ def generate_final_decision_pdf(request):
                 'info_text': edited_info_text or (info.info if info else ''),
                 'ypopsin_text': edited_ypopsin_text or (ypopsin.ypopsin if ypopsin else ''),
                 'signee_text': edited_signee_text or (signee.signee if signee else ''),
-                'signee_name': signee.signee_name if signee else '',
                 'signee_title': signee.signee if signee else '',
-                'current_date': timezone.now().strftime('%d/%m/%Y'),
                 'subject_text': leave_request.leave_type.subject_text or '',
-                'decision_text': leave_request.leave_type.decision_text or '',
-                'employee_gender': user.gender or 'MALE',
-                'employee_name_accusative': name_accusative,
-                'employee_role': user.role_description or '',
                 'notification_recipients': user.notification_recipients or '',
-                'ethnosimo_inline': ethnosimo_inline,
-                'letterhead': active_letterhead,
-                'decision_body': edited_decision_body,
+                'ethnosimo_markup': get_ethnosimo_markup(),
+                'decision_body': edited_decision_body or build_decision_body_html(leave_request),
+                'decision_pdf_css': DECISION_PDF_CSS,
             }
             
             html_string = render_to_string('leaves/decision_pdf_template.html', context)
