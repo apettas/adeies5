@@ -11,14 +11,17 @@
     background: #fff;
     border: 1px solid #ccc;
     padding: 0.4cm;
+    width: 100%;
     max-width: 21cm;
     min-height: 24cm;
-    margin-bottom: 1rem;
+    margin: 0 auto 1rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
   .sidebar-card {
     position: sticky;
     top: 20px;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
   }
   .btn-group-stack .btn {
     margin-bottom: 8px;
@@ -72,8 +75,8 @@
                         <input type="hidden" id="data-notification-recipients" value="{{ notification_recipients|escape }}">
                         <input type="hidden" id="data-subject-text" value="{{ subject_text|escape }}">
 
-                        <div class="row">
-                            <div class="col-md-3">
+                        <div class="row g-3">
+                            <div class="col-lg-4">
                                 <div class="sidebar-card">
                                     <h5>Επιλογές Στοιχείων</h5>
 
@@ -130,48 +133,48 @@
                                     </div>
 
                                     <hr>
+
+                                    <h6 class="mb-3">Επεξεργασία Κειμένων</h6>
+
+                                    <div class="edit-section mb-3">
+                                        <label for="info_text" class="form-label">Πληροφορίες</label>
+                                        <textarea name="info_text" id="info_text" class="form-control form-control-sm" rows="4">{{ default_info.info }}</textarea>
+                                    </div>
+
+                                    <div class="edit-section mb-3">
+                                        <label for="ypopsin_text" class="form-label">Έχοντας υπόψη</label>
+                                        <textarea name="ypopsin_text" id="ypopsin_text" class="form-control form-control-sm" rows="5">{{ default_ypopsin.ypopsin }}</textarea>
+                                    </div>
+
+                                    <div class="edit-section mb-3">
+                                        <label for="decision_body" class="form-label">Κείμενο απόφασης</label>
+                                        <textarea name="decision_body" id="decision_body" class="form-control form-control-sm" rows="4">{% autoescape off %}{{ default_decision_body }}{% endautoescape %}</textarea>
+                                        <div class="form-text">Χρησιμοποιήστε &lt;b&gt;...&lt;/b&gt; για έντονο κείμενο.</div>
+                                    </div>
+
+                                    <div class="edit-section mb-3">
+                                        <label for="signee_text" class="form-label">Υπογράφοντες</label>
+                                        <textarea name="signee_text" id="signee_text" class="form-control form-control-sm" rows="4">{{ default_signee.signee }}</textarea>
+                                    </div>
+
+                                    <hr>
                                     <div class="btn-group-stack">
-                                        <button type="button" class="btn btn-primary btn-lg w-100" onclick="previewPdf()">
+                                        <button type="button" class="btn btn-primary w-100" onclick="previewPdf()">
                                             <i class="bi bi-eye"></i> Προεπισκόπηση PDF
                                         </button>
-                                        <button type="button" class="btn btn-success btn-lg w-100" onclick="finalizePdf()">
+                                        <button type="button" class="btn btn-success w-100" onclick="finalizePdf()">
                                             <i class="bi bi-file-earmark-pdf"></i> Οριστικοποίηση PDF
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-9">
+                            <div class="col-lg-8">
                                 <h5>Προεπισκόπηση Διάταξης</h5>
-                                <p class="text-muted">Η διάταξη (2 στήλες, εθνόσημο, ΑΠΟΦΑΣΗ) δημιουργείται αυτόματα. Επεξεργαστείτε τα κείμενα παρακάτω.</p>
-
-                                <div id="decision-preview" class="decision-preview-panel"></div>
-
-                                <div class="edit-section mb-3">
-                                    <label for="info_text" class="form-label">Πληροφορίες</label>
-                                    <textarea name="info_text" id="info_text" class="form-control" rows="4">{{ default_info.info }}</textarea>
-                                </div>
-
-                                <div class="edit-section mb-3">
-                                    <label for="ypopsin_text" class="form-label">Έχοντας υπόψη</label>
-                                    <textarea name="ypopsin_text" id="ypopsin_text" class="form-control" rows="6">{{ default_ypopsin.ypopsin }}</textarea>
-                                </div>
-
-                                <div class="edit-section mb-3">
-                                    <label for="decision_body" class="form-label">Κείμενο απόφασης (μετά το «Αποφασίζουμε»)</label>
-                                    <textarea name="decision_body" id="decision_body" class="form-control" rows="4">{% autoescape off %}{{ default_decision_body }}{% endautoescape %}</textarea>
-                                    <div class="form-text">Μπορείτε να χρησιμοποιήσετε &lt;b&gt;...&lt;/b&gt; για έντονο κείμενο (π.χ. το όνομα).</div>
-                                </div>
-
-                                <div class="edit-section mb-3">
-                                    <label for="signee_text" class="form-label">Υπογράφοντες</label>
-                                    <textarea name="signee_text" id="signee_text" class="form-control" rows="4">{{ default_signee.signee }}</textarea>
-                                </div>
-
-                                <p class="text-muted small">
-                                    <i class="bi bi-info-circle"></i>
-                                    Πατήστε «Προεπισκόπηση PDF» για το τελικό αποτέλεσμα. Το PDF δημιουργείται server-side με τη σωστή διάταξη.
+                                <p class="text-muted small mb-3">
+                                    Η διάταξη ενημερώνεται αυτόματα καθώς επεξεργάζεστε τα πεδία αριστερά.
                                 </p>
+                                <div id="decision-preview" class="decision-preview-panel"></div>
                             </div>
                         </div>
                     </form>
