@@ -31,7 +31,7 @@ body {
     vertical-align: top;
 }
 .logo-text {
-    font-size: 10pt;
+    font-size: 8pt;
     font-weight: bold;
     white-space: pre-line;
     line-height: 1.15;
@@ -50,7 +50,7 @@ body {
     border-top: 1px solid #666;
     margin: 6px 0;
 }
-.apofasi-spacer { height: 7em; }
+.apofasi-spacer { height: 13em; }
 .apofasi-title {
     font-size: 16pt;
     font-weight: bold;
