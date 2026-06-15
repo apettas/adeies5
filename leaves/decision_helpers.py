@@ -92,7 +92,7 @@ body {
 .koinopoiisi-title {
     font-weight: bold;
     font-size: 10pt;
-    text-align: center;
+    text-align: left;
     margin: 0 0 4px;
 }
 .koinopoiisi-content {
