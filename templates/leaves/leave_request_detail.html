@@ -92,6 +92,15 @@
                     <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
                     <p><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }} - {{ leave_request.end_date|date:"d/m/Y" }}</p>
                     
+                    {% if leave_request.is_kedasy_kepea_department and leave_request.kedasy_kepea_protocol_number %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong>
+                        {{ leave_request.kedasy_kepea_protocol_number }}
+                        ({{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }})
+                    </div>
+                    {% endif %}
+                    
                     <div class="mb-3">
                         <label for="comments" class="form-label">Σχόλια Έγκρισης</label>
                         <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>

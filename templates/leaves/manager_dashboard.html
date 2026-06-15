@@ -342,9 +342,30 @@
                                                     {% if request.is_kedasy_kepea_department %}
                                                     <div class="alert alert-info">
                                                         <i class="bi bi-info-circle"></i>
-                                                        <strong>Ειδικό Workflow ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong> Αυτή η αίτηση ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ. Μπορείτε να προσθέσετε το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ κατά την έγκριση.
+                                                        <strong>Ειδικό Workflow ΚΕΔΑΣΥ/ΚΕΠΕΑ:</strong>
+                                                        {% if request.kedasy_kepea_protocol_number %}
+                                                        Η αίτηση έχει πρωτοκολληθεί{% if request.kedasy_kepea_protocol_by %} από {{ request.kedasy_kepea_protocol_by.full_name }}{% endif %}.
+                                                        {% else %}
+                                                        Αυτή η αίτηση ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ. Μπορείτε να προσθέσετε το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ κατά την έγκριση.
+                                                        {% endif %}
                                                     </div>
                                                     
+                                                    {% if request.kedasy_kepea_protocol_number %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-8">
+                                                            <label class="form-label">Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</label>
+                                                            <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0">
+                                                                <strong>{{ request.kedasy_kepea_protocol_number }}</strong>
+                                                            </p>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">Ημερομηνία Πρωτοκόλλου</label>
+                                                            <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0 date-greek">
+                                                                {{ request.kedasy_kepea_protocol_date|date:"d/m/Y" }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {% else %}
                                                     <div class="row mb-3">
                                                         <div class="col-md-8">
                                                             <label for="kedasy_protocol_number{{ request.pk }}" class="form-label">Αριθμός Πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</label>
@@ -358,6 +379,7 @@
                                                                    value="{{ today|date:'Y-m-d' }}">
                                                         </div>
                                                     </div>
+                                                    {% endif %}
                                                     {% endif %}
                                                     
                                                     <div class="mb-3">

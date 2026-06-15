@@ -544,7 +544,9 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             # Ενώνουμε τα κριτήρια με OR
             query_conditions = query_conditions | sdei_condition
         
-        return LeaveRequest.objects.filter(query_conditions).select_related('user', 'leave_type').order_by('-created_at')
+        return LeaveRequest.objects.filter(query_conditions).select_related(
+            'user', 'leave_type', 'kedasy_kepea_protocol_by'
+        ).order_by('-created_at')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -679,8 +681,10 @@ def approve_leave_request(request, pk):
             # Έγκριση από προϊστάμενο
             leave_request.approve_by_manager(request.user, comments)
             
-            # Αν η αίτηση είναι από ΚΕΔΑΣΥ/ΚΕΠΕΑ και δόθηκε πρωτόκολλο, το προσθέτουμε
-            if leave_request.is_kedasy_kepea_department() and kedasy_protocol_number:
+            # Αν η αίτηση είναι από ΚΕΔΑΣΥ/ΚΕΠΕΑ, χωρίς ήδη καταχωρημένο πρωτόκολλο, και δόθηκε νέο πρωτόκολλο
+            if (leave_request.is_kedasy_kepea_department()
+                    and kedasy_protocol_number
+                    and not leave_request.kedasy_kepea_protocol_number):
                 # Μετατροπή ημερομηνίας αν δόθηκε
                 protocol_date_obj = timezone.now().date()
                 if kedasy_protocol_date:
