@@ -5,20 +5,17 @@
 {% block title %}Επεξεργασία Απόφασης - {{ leave_request.user.full_name }}{% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'vendor/quill/quill.snow.css' %}" rel="stylesheet">
 <style>
-  #full-editor-container {
-    height: 500px;
-    margin-bottom: 15px;
-  }
-  .ql-editor {
-    font-family: "DejaVu Sans", "Arial", sans-serif;
-    font-size: 10pt;
-    line-height: 1.2;
-    min-height: 480px;
-    padding: 8px;
-  }
   {{ decision_pdf_css|safe }}
+  .decision-preview-panel {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 0.4cm;
+    max-width: 21cm;
+    min-height: 24cm;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
   .sidebar-card {
     position: sticky;
     top: 20px;
@@ -26,15 +23,9 @@
   .btn-group-stack .btn {
     margin-bottom: 8px;
   }
-  #pdf-preview-container {
-    display: none;
-    margin-top: 20px;
-  }
-  #pdf-preview-container iframe {
-    width: 100%;
-    height: 600px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+  .edit-section textarea {
+    font-family: "DejaVu Sans", "Arial", sans-serif;
+    font-size: 10pt;
   }
 </style>
 {% endblock %}
@@ -66,7 +57,7 @@
                         </div>
                         <div class="col-md-6">
                             <h5>Κατάσταση</h5>
-                            <p><strong>Στάτους:</strong> 
+                            <p><strong>Στάτους:</strong>
                                 <span class="badge bg-{{ leave_request.get_status_display_class }}">
                                     {{ leave_request.get_status_display }}
                                 </span>
@@ -77,32 +68,21 @@
                     <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm" target="_blank">
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
-                        <input type="hidden" name="full_decision_html" id="full_decision_html" value="">
                         <input type="hidden" name="action" id="form_action" value="preview">
-
-                        <input type="hidden" id="data-staff-name" value="{{ leave_request.user.full_name }}">
-                        <input type="hidden" id="data-name-accusative" value="{{ employee_name_accusative|escape }}">
-                        <input type="hidden" id="data-gender" value="{{ employee_gender|escape }}">
-                        <input type="hidden" id="data-role-description" value="{{ employee_role|escape }}">
-                        <input type="hidden" id="data-decision-text" value="{{ decision_text|escape }}">
-                        <input type="hidden" id="data-days-phrase" value="{{ decision_days_phrase|escape }}">
-                        <input type="hidden" id="data-dates-phrase" value="{{ decision_dates_phrase|escape }}">
                         <input type="hidden" id="data-notification-recipients" value="{{ notification_recipients|escape }}">
                         <input type="hidden" id="data-subject-text" value="{{ subject_text|escape }}">
-                        <input type="hidden" id="data-decision-body" value="{{ default_decision_body|escape }}">
 
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="sidebar-card">
                                     <h5>Επιλογές Στοιχείων</h5>
-                                    
+
                                     <div class="mb-3">
                                         <label for="logo_id">Λογότυπο:</label>
                                         <select name="logo_id" id="logo_id" class="form-control form-control-sm">
                                             {% for logo in logos %}
-                                                <option value="{{ logo.id }}" 
+                                                <option value="{{ logo.id }}"
                                                         {% if logo == default_logo %}selected{% endif %}
-                                                        data-logo-short="{{ logo.logo_short }}"
                                                         data-logo-full="{{ logo.logo|escape }}">
                                                     {{ logo.logo_short }}
                                                 </option>
@@ -114,7 +94,7 @@
                                         <label for="info_id">Πληροφορίες:</label>
                                         <select name="info_id" id="info_id" class="form-control form-control-sm">
                                             {% for info in infos %}
-                                                <option value="{{ info.id }}" 
+                                                <option value="{{ info.id }}"
                                                         {% if info == default_info %}selected{% endif %}
                                                         data-info-content="{{ info.info|escape }}">
                                                     {{ info.info_short }}
@@ -127,7 +107,7 @@
                                         <label for="ypopsin_id">Έχοντας Υπόψη:</label>
                                         <select name="ypopsin_id" id="ypopsin_id" class="form-control form-control-sm">
                                             {% for ypopsin in ypopsins %}
-                                                <option value="{{ ypopsin.id }}" 
+                                                <option value="{{ ypopsin.id }}"
                                                         {% if ypopsin == default_ypopsin %}selected{% endif %}
                                                         data-ypopsin-content="{{ ypopsin.ypopsin|escape }}">
                                                     {{ ypopsin.ypopsin_short }}
@@ -140,7 +120,7 @@
                                         <label for="signee_id">Υπογράφων:</label>
                                         <select name="signee_id" id="signee_id" class="form-control form-control-sm">
                                             {% for signee in signees %}
-                                                <option value="{{ signee.id }}" 
+                                                <option value="{{ signee.id }}"
                                                         {% if signee == default_signee %}selected{% endif %}
                                                         data-signee-content="{{ signee.signee|escape }}">
                                                     {{ signee.signee_name }}
@@ -162,69 +142,36 @@
                             </div>
 
                             <div class="col-md-9">
-                                <h5>Επεξεργαστείτε Ελεύθερα την Απόφαση</h5>
-                                <p class="text-muted">Μπορείτε να κάνετε bold, italic, να αλλάξετε μεγέθη και να επεξεργαστείτε οποιοδήποτε σημείο.</p>
-                                
-                                <div id="toolbar">
-                                    <span class="ql-formats">
-                                        <select class="ql-size">
-                                            <option value="8pt">8pt</option>
-                                            <option value="9pt">9pt</option>
-                                            <option value="10pt">10pt</option>
-                                            <option value="11pt" selected>11pt</option>
-                                            <option value="12pt">12pt</option>
-                                            <option value="13pt">13pt</option>
-                                            <option value="14pt">14pt</option>
-                                            <option value="18pt">18pt</option>
-                                            <option value="22pt">22pt</option>
-                                            <option value="24pt">24pt</option>
-                                        </select>
-                                    </span>
-                                    <span class="ql-formats">
-                                        <button class="ql-bold"></button>
-                                        <button class="ql-italic"></button>
-                                        <button class="ql-underline"></button>
-                                    </span>
-                                    <span class="ql-formats">
-                                        <select class="ql-line-height">
-                                            <option value="default">Spacing</option>
-                                            <option value="1">1.0</option>
-                                            <option value="1.2">1.2</option>
-                                            <option value="1.4">1.4</option>
-                                            <option value="1.6">1.6</option>
-                                            <option value="1.8">1.8</option>
-                                            <option value="2">2.0</option>
-                                        </select>
-                                    </span>
-                                    <span class="ql-formats">
-                                        <button class="ql-align"></button>
-                                        <button class="ql-align" value="center"></button>
-                                        <button class="ql-align" value="right"></button>
-                                    </span>
-                                    <span class="ql-formats">
-                                        <button class="ql-list" value="ordered"></button>
-                                        <button class="ql-list" value="bullet"></button>
-                                    </span>
-                                    <span class="ql-formats">
-                                        <button class="ql-clean"></button>
-                                    </span>
+                                <h5>Προεπισκόπηση Διάταξης</h5>
+                                <p class="text-muted">Η διάταξη (2 στήλες, εθνόσημο, ΑΠΟΦΑΣΗ) δημιουργείται αυτόματα. Επεξεργαστείτε τα κείμενα παρακάτω.</p>
+
+                                <div id="decision-preview" class="decision-preview-panel"></div>
+
+                                <div class="edit-section mb-3">
+                                    <label for="info_text" class="form-label">Πληροφορίες</label>
+                                    <textarea name="info_text" id="info_text" class="form-control" rows="4">{{ default_info.info }}</textarea>
                                 </div>
-                                
-                                <div id="full-editor-container"></div>
-                                
+
+                                <div class="edit-section mb-3">
+                                    <label for="ypopsin_text" class="form-label">Έχοντας υπόψη</label>
+                                    <textarea name="ypopsin_text" id="ypopsin_text" class="form-control" rows="6">{{ default_ypopsin.ypopsin }}</textarea>
+                                </div>
+
+                                <div class="edit-section mb-3">
+                                    <label for="decision_body" class="form-label">Κείμενο απόφασης (μετά το «Αποφασίζουμε»)</label>
+                                    <textarea name="decision_body" id="decision_body" class="form-control" rows="4">{% autoescape off %}{{ default_decision_body }}{% endautoescape %}</textarea>
+                                    <div class="form-text">Μπορείτε να χρησιμοποιήσετε &lt;b&gt;...&lt;/b&gt; για έντονο κείμενο (π.χ. το όνομα).</div>
+                                </div>
+
+                                <div class="edit-section mb-3">
+                                    <label for="signee_text" class="form-label">Υπογράφοντες</label>
+                                    <textarea name="signee_text" id="signee_text" class="form-control" rows="4">{{ default_signee.signee }}</textarea>
+                                </div>
+
                                 <p class="text-muted small">
                                     <i class="bi bi-info-circle"></i>
-                                    Πατήστε "Προεπισκόπηση PDF" για να δείτε το αποτέλεσμα. Αν είστε ικανοποιημένοι, πατήστε "Οριστικοποίηση PDF".
+                                    Πατήστε «Προεπισκόπηση PDF» για το τελικό αποτέλεσμα. Το PDF δημιουργείται server-side με τη σωστή διάταξη.
                                 </p>
-
-                                <!-- Πλαίσιο προεπισκόπησης PDF -->
-                                <div id="pdf-preview-container" class="mt-3" style="display:none;">
-                                    <div class="alert alert-info">
-                                        <i class="bi bi-info-circle"></i>
-                                        Η προεπισκόπηση άνοιξε σε νέο παράθυρο/καρτέλα. 
-                                        Αν είστε ικανοποιημένοι, πατήστε "Οριστικοποίηση PDF" παρακάτω.
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </form>
@@ -234,108 +181,49 @@
     </div>
 </div>
 
-<div id="ethnosimo-markup" style="display:none;">{{ ethnosimo_markup|safe }}</div>
+<div id="ethnosimo-markup" style="display:none;">
+    <div class="ethnosimo-wrap">
+        <img src="{% static 'ethnosimo.png' %}" class="ethnosimo" alt="Εθνόσημο"
+             onerror="this.onerror=null;this.src='{% static 'ethnosimo.svg' %}';">
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'vendor/quill/quill.min.js' %}"></script>
 <script>
-// Custom size whitelist για Quill
-var Size = Quill.import('attributors/style/size');
-Size.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '13pt', '14pt', '18pt', '22pt', '24pt'];
-Quill.register(Size, true);
-
-// Custom Line Height Attributor για Quill
-var Parchment = Quill.import('parchment');
-if (Parchment && Parchment.Attributor) {
-    var LineHeightStyle = new Parchment.Attributor.Style('line-height', 'line-height', {
-        whitelist: ['1', '1.2', '1.4', '1.6', '1.8', '2', '2.5', '3']
-    });
-    Quill.register(LineHeightStyle);
-}
-
-// Δημιουργία του Quill editor
-var quill = new Quill('#full-editor-container', {
-    theme: 'snow',
-    modules: {
-        toolbar: '#toolbar'
-    }
-});
-
 function escapeHtml(text) {
     var div = document.createElement('div');
-    if (div.textContent) {
-        div.textContent = text;
-    } else {
-        div.innerText = text;
-    }
+    div.textContent = text;
     return div.innerHTML;
+}
+
+function nl2br(text) {
+    return escapeHtml(text || '').replace(/\n/g, '<br>');
 }
 
 var ethnosimoMarkup = document.getElementById('ethnosimo-markup').innerHTML;
 
-function getGenderDativeArticle(gender) {
-    if (gender === 'FEMALE') return 'στη(ν)';
-    if (gender === 'MALE') return 'στο(ν)';
-    return 'στο(ν)/στη(ν)';
+function getSelectedData(selectId, attr) {
+    var sel = document.getElementById(selectId);
+    return sel.options[sel.selectedIndex].getAttribute(attr) || '';
 }
 
-function buildDecisionBodyHtml() {
-    var nameAccusative = document.getElementById('data-name-accusative').value || '';
-    var gender = document.getElementById('data-gender').value || '';
-    var roleDescription = document.getElementById('data-role-description').value || '';
-    var decisionText = document.getElementById('data-decision-text').value || '';
-    var daysPhrase = document.getElementById('data-days-phrase').value || '';
-    var datesPhrase = document.getElementById('data-dates-phrase').value || '';
-    var article = getGenderDativeArticle(gender);
-
-    var parts = ['Χορηγούμε ' + article];
-    if (nameAccusative) {
-        parts.push('<b>' + escapeHtml(nameAccusative) + '</b>,');
-    }
-    if (roleDescription) {
-        parts.push(escapeHtml(roleDescription) + ',');
-    }
-    if (decisionText) {
-        parts.push(escapeHtml(decisionText));
-    }
-    if (daysPhrase) {
-        parts.push(escapeHtml(daysPhrase) + ',');
-    }
-    if (datesPhrase) {
-        parts.push(escapeHtml(datesPhrase));
-    }
-    return parts.join(' ') + '.';
-}
-
-function buildFullDecisionHtml() {
-    var logoSelect = document.getElementById('logo_id');
-    var selectedLogo = logoSelect.options[logoSelect.selectedIndex];
-    var logoText = selectedLogo.getAttribute('data-logo-full') || 'ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ';
-    
-    var infoSelect = document.getElementById('info_id');
-    var selectedInfo = infoSelect.options[infoSelect.selectedIndex];
-    var infoText = selectedInfo.getAttribute('data-info-content') || '';
-    
-    var ypopsinSelect = document.getElementById('ypopsin_id');
-    var selectedYpopsin = ypopsinSelect.options[ypopsinSelect.selectedIndex];
-    var ypopsinText = selectedYpopsin.getAttribute('data-ypopsin-content') || '';
-    
-    var signeeSelect = document.getElementById('signee_id');
-    var selectedSignee = signeeSelect.options[signeeSelect.selectedIndex];
-    var signeeText = selectedSignee.getAttribute('data-signee-content') || '';
-
+function buildPreviewHtml() {
+    var logoText = getSelectedData('logo_id', 'data-logo-full') || 'ΕΛΛΗΝΙΚΗ ΔΗΜΟΚΡΑΤΙΑ';
+    var infoText = document.getElementById('info_text').value;
+    var ypopsinText = document.getElementById('ypopsin_text').value;
+    var signeeText = document.getElementById('signee_text').value;
+    var decisionBody = document.getElementById('decision_body').value;
     var notificationRecipients = document.getElementById('data-notification-recipients').value || '';
     var subjectText = document.getElementById('data-subject-text').value || 'Χορήγηση άδειας';
-    var decisionBody = buildDecisionBodyHtml();
 
     var html = '';
     html += '<table class="layout-table"><tr>';
     html += '<td class="col-half header-left">';
     html += ethnosimoMarkup;
-    html += '<div class="logo-text">' + escapeHtml(logoText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="logo-text">' + nl2br(logoText) + '</div>';
     html += '<hr class="section-divider">';
-    html += '<div class="info-text">' + escapeHtml(infoText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="info-text">' + nl2br(infoText) + '</div>';
     html += '</td>';
     html += '<td class="col-half header-right">';
     html += '<div class="apofasi-spacer"></div>';
@@ -347,7 +235,7 @@ function buildFullDecisionHtml() {
     html += '<div class="blank-line"></div>';
 
     html += '<p class="ypopsin-label">Έχοντας υπόψη :</p>';
-    html += '<div class="ypopsin-content">' + escapeHtml(ypopsinText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="ypopsin-content">' + nl2br(ypopsinText) + '</div>';
     html += '<div class="blank-line"></div>';
 
     html += '<p class="apofasizoume">Αποφασίζουμε</p>';
@@ -358,67 +246,59 @@ function buildFullDecisionHtml() {
     html += '<td class="col-half footer-left">';
     html += '<div class="footer-spacer-3"></div>';
     html += '<div class="koinopoiisi-title">ΚΟΙΝΟΠΟΙΗΣΗ :</div>';
-    html += '<div class="koinopoiisi-content">' + escapeHtml(notificationRecipients).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="koinopoiisi-content">' + nl2br(notificationRecipients) + '</div>';
     html += '</td>';
     html += '<td class="col-half footer-right">';
     html += '<div class="footer-spacer-2"></div>';
-    html += '<div class="signee-text">' + escapeHtml(signeeText).replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="signee-text">' + nl2br(signeeText) + '</div>';
     html += '</td>';
     html += '</tr></table>';
     return html;
 }
 
-var rebuilding = false;
-function rebuildEditorContent() {
-    if (rebuilding) return;
-    rebuilding = true;
-    var html = buildFullDecisionHtml();
-    setTimeout(function() {
-        quill.clipboard.dangerouslyPasteHTML(html);
-        rebuilding = false;
-    }, 10);
+function rebuildPreview() {
+    document.getElementById('decision-preview').innerHTML = buildPreviewHtml();
 }
 
-document.querySelectorAll('#logo_id, #info_id, #ypopsin_id, #signee_id').forEach(function(sel) {
-    sel.addEventListener('change', rebuildEditorContent);
+function syncTextareaFromSelect(selectId, textareaId, attr) {
+    var sel = document.getElementById(selectId);
+    var textarea = document.getElementById(textareaId);
+    textarea.value = sel.options[sel.selectedIndex].getAttribute(attr) || '';
+    rebuildPreview();
+}
+
+document.getElementById('logo_id').addEventListener('change', rebuildPreview);
+document.getElementById('info_id').addEventListener('change', function() {
+    syncTextareaFromSelect('info_id', 'info_text', 'data-info-content');
+});
+document.getElementById('ypopsin_id').addEventListener('change', function() {
+    syncTextareaFromSelect('ypopsin_id', 'ypopsin_text', 'data-ypopsin-content');
+});
+document.getElementById('signee_id').addEventListener('change', function() {
+    syncTextareaFromSelect('signee_id', 'signee_text', 'data-signee-content');
 });
 
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(rebuildEditorContent, 100);
+['info_text', 'ypopsin_text', 'decision_body', 'signee_text'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', rebuildPreview);
 });
 
-// Υποβολή για προεπισκόπηση (δημιουργεί PDF χωρίς αποθήκευση - ανοίγει νέο tab)
+document.addEventListener('DOMContentLoaded', rebuildPreview);
+
 function previewPdf() {
-    // Στέλνουμε το περιεχόμενο του editor όπως ακριβώς το βλέπει ο χρήστης
-    document.getElementById('full_decision_html').value = quill.root.innerHTML;
     document.getElementById('form_action').value = 'preview';
-    
     var form = document.getElementById('decisionForm');
     form.target = '_blank';
     form.submit();
-    
-    // Εμφάνιση μηνύματος επιβεβαίωσης
-    document.getElementById('pdf-preview-container').style.display = 'block';
 }
 
-// Υποβολή για οριστικοποίηση (αποθηκεύει και προχωράει)
 function finalizePdf() {
-    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση; Αυτή η ενέργεια θα αποθηκεύσει την απόφαση και θα προχωρήσει στην επόμενη κατάσταση.')) {
+    if (!confirm('Είστε βέβαιοι ότι θέλετε να οριστικοποιήσετε την απόφαση;')) {
         return;
     }
-    // Στέλνουμε το περιεχόμενο του editor όπως ακριβώς το βλέπει ο χρήστης
-    document.getElementById('full_decision_html').value = quill.root.innerHTML;
     document.getElementById('form_action').value = 'finalize';
-    
     var form = document.getElementById('decisionForm');
     form.target = '';
     form.submit();
-}
-
-// Κλείσιμο προεπισκόπησης
-function closePreview() {
-    document.getElementById('pdf-preview-container').style.display = 'none';
-    document.getElementById('pdf-preview-frame').src = '';
 }
 </script>
 {% endblock %}

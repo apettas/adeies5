@@ -16,7 +16,7 @@ body {
     margin: 0;
     padding: 0;
 }
-.layout-table { width: 100%; border-collapse: collapse; border: none; }
+.layout-table { width: 100%; border-collapse: collapse; border: none; table-layout: fixed; }
 .layout-table td { border: none; vertical-align: top; padding: 0; }
 .col-half { width: 50%; }
 .header-left { text-align: center; padding-right: 6px; }
@@ -202,6 +202,34 @@ def build_decision_body_html(leave_request):
         parts.append(dates_phrase)
 
     return ' '.join(parts) + '.'
+
+
+def build_decision_pdf_context(
+    leave_request,
+    logo=None,
+    info=None,
+    ypopsin=None,
+    signee=None,
+    edited_info_text='',
+    edited_ypopsin_text='',
+    edited_signee_text='',
+    edited_decision_body='',
+):
+    """Context για το decision_pdf_template.html."""
+    user = leave_request.user
+    return {
+        'leave_request': leave_request,
+        'logo': logo,
+        'info_text': edited_info_text or (info.info if info else ''),
+        'ypopsin_text': edited_ypopsin_text or (ypopsin.ypopsin if ypopsin else ''),
+        'signee_text': edited_signee_text or (signee.signee if signee else ''),
+        'signee_title': signee.signee if signee else '',
+        'subject_text': leave_request.leave_type.subject_text or '',
+        'notification_recipients': user.notification_recipients or '',
+        'ethnosimo_markup': get_ethnosimo_markup(),
+        'decision_body': edited_decision_body or build_decision_body_html(leave_request),
+        'decision_pdf_css': DECISION_PDF_CSS,
+    }
 
 
 def build_decision_pdf_filename(leave_request, reference_date=None):

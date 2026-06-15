@@ -14,6 +14,7 @@ from leaves.models import LeaveRequest, Logo, Info, Ypopsin, Signee
 from leaves.crypto_utils import SecureFileHandler
 from leaves.decision_helpers import (
     build_decision_body_html,
+    build_decision_pdf_context,
     build_decision_pdf_filename,
     DECISION_PDF_CSS,
     format_decision_dates_compact,
@@ -161,7 +162,6 @@ def generate_final_decision_pdf(request):
         edited_ypopsin_text = request.POST.get('ypopsin_text', '')
         edited_signee_text = request.POST.get('signee_text', '')
         edited_decision_body = request.POST.get('decision_body', '')
-        full_decision_html = request.POST.get('full_decision_html', '')
         
         # Λήψη αντικειμένων
         logo = get_object_or_404(Logo, id=logo_id) if logo_id else None
@@ -181,39 +181,19 @@ def generate_final_decision_pdf(request):
             leave_request.start_decision_preparation(request.user)
         leave_request.save()
         
-        # Αν υπάρχει full_decision_html από τον WYSIWYG editor,
-        # το χρησιμοποιούμε απευθείας ως ολόκληρο το περιεχόμενο του PDF
-        # (wrap σε βασικό template με page size και CSS)
-        if full_decision_html:
-            html_string = f"""<!DOCTYPE html>
-<html lang="el">
-<head>
-    <meta charset="UTF-8">
-    <style>{DECISION_PDF_CSS}</style>
-</head>
-<body>
-    {full_decision_html}
-</body>
-</html>"""
-        else:
-            # Προετοιμασία context για PDF (ατομικά πεδία)
-            user = leave_request.user
-            
-            context = {
-                'leave_request': leave_request,
-                'logo': logo,
-                'info_text': edited_info_text or (info.info if info else ''),
-                'ypopsin_text': edited_ypopsin_text or (ypopsin.ypopsin if ypopsin else ''),
-                'signee_text': edited_signee_text or (signee.signee if signee else ''),
-                'signee_title': signee.signee if signee else '',
-                'subject_text': leave_request.leave_type.subject_text or '',
-                'notification_recipients': user.notification_recipients or '',
-                'ethnosimo_markup': get_ethnosimo_markup(),
-                'decision_body': edited_decision_body or build_decision_body_html(leave_request),
-                'decision_pdf_css': DECISION_PDF_CSS,
-            }
-            
-            html_string = render_to_string('leaves/decision_pdf_template.html', context)
+        # Πάντα server-side template — το Quill/HTML editor καταστρέφει πίνακες & εικόνες
+        context = build_decision_pdf_context(
+            leave_request,
+            logo=logo,
+            info=info,
+            ypopsin=ypopsin,
+            signee=signee,
+            edited_info_text=edited_info_text,
+            edited_ypopsin_text=edited_ypopsin_text,
+            edited_signee_text=edited_signee_text,
+            edited_decision_body=edited_decision_body,
+        )
+        html_string = render_to_string('leaves/decision_pdf_template.html', context)
         
         # Δημιουργία PDF
         html = HTML(string=html_string)
