@@ -313,10 +313,10 @@ class FileAccessController:
         if leave_request.user == user:
             return True
         
-        # SDEY managers δεν έχουν πρόσβαση σε ΚΑΝΕΝΑ attachment
-        if user.department and user.department.department_type:
-            if user.department.department_type.code == 'SDEY':
-                return False
+        # Προϊστάμενοι ΣΔΕΥ δεν έχουν πρόσβαση σε ΚΑΝΕΝΑ attachment
+        from accounts.department_utils import is_sdey_department
+        if is_sdey_department(user.department):
+            return False
         
         # Secretary έχει πρόσβαση σε attachments για αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ
         if user.is_secretary:

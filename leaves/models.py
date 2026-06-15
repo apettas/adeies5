@@ -6,6 +6,7 @@ from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 from django.contrib.contenttypes.fields import GenericRelation
 from notifications.models import Notification
+from accounts.department_utils import is_sdey_department, is_sdey_under_kedasy
 
 User = get_user_model()
 
@@ -332,8 +333,7 @@ class LeaveRequest(models.Model):
 
         if (manager.department and manager.department.department_type and
                 manager.department.department_type.code == 'KEDASY' and
-                self.user.department and self.user.department.department_type and
-                self.user.department.department_type.code == 'SDEY' and
+                is_sdey_department(self.user.department) and
                 self.user.department.parent_department == manager.department):
             return True
 
@@ -849,8 +849,7 @@ class LeaveRequest(models.Model):
         if (user.is_department_manager and
             user.department and user.department.department_type and
             user.department.department_type.code == 'KEDASY' and
-            self.user.department and self.user.department.department_type and
-            self.user.department.department_type.code == 'SDEY' and
+            is_sdey_department(self.user.department) and
             self.user.department.parent_department == user.department):
             return True
         
@@ -864,8 +863,7 @@ class LeaveRequest(models.Model):
                 return True
             if (user.department and user.department.department_type and
                 user.department.department_type.code == 'KEDASY' and
-                self.user.department and self.user.department.department_type and
-                self.user.department.department_type.code == 'SDEY' and
+                is_sdey_department(self.user.department) and
                 self.user.department.parent_department == user.department):
                 return True
         
@@ -909,13 +907,9 @@ class LeaveRequest(models.Model):
                 # Άμεσα τμήματα ΚΕΔΑΣΥ/ΚΕΠΕΑ
                 if department.department_type.code in ['KEDASY', 'KEPEA']:
                     return True
-                # ΣΔΕΥ που ανήκουν σε ΚΕΔΑΣΥ
-                elif department.department_type.code == 'SDEY':
-                    # Ελέγχουμε αν το γονικό τμήμα είναι ΚΕΔΑΣΥ
-                    if (department.parent_department and
-                        department.parent_department.department_type and
-                        department.parent_department.department_type.code == 'KEDASY'):
-                        return True
+                # ΣΔΕΥ που ανήκουν σε ΚΕΔΑΣΥ (SDEY ή legacy SDEI)
+                elif is_sdey_under_kedasy(department):
+                    return True
         except AttributeError:
             pass
         return False
@@ -946,11 +940,8 @@ class LeaveRequest(models.Model):
                     return user.department == department
                 
                 # Για ΣΔΕΥ: Ο χρήστης πρέπει να είναι Manager/Secretary του γονικού ΚΕΔΑΣΥ
-                elif department.department_type.code == 'SDEY':
-                    if (department.parent_department and
-                        department.parent_department.department_type and
-                        department.parent_department.department_type.code == 'KEDASY'):
-                        return user.department == department.parent_department
+                elif is_sdey_under_kedasy(department):
+                    return user.department == department.parent_department
                 
         except AttributeError:
             pass

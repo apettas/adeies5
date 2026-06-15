@@ -427,13 +427,10 @@ class User(AbstractUser):
     
     def has_leave_request_permission(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
-        # SDEY χωρίς γονικό ΚΕΔΑΣΥ δεν μπορούν να αιτηθούν
-        if self.department and self.department.department_type:
-            if (self.department.department_type.code == 'SDEY' and
-                not (self.department.parent_department and
-                     self.department.parent_department.department_type and
-                     self.department.parent_department.department_type.code == 'KEDASY')):
-                return False
+        # ΣΔΕΥ χωρίς γονικό ΚΕΔΑΣΥ δεν μπορούν να αιτηθούν
+        from accounts.department_utils import is_sdey_department, is_sdey_under_kedasy
+        if is_sdey_department(self.department) and not is_sdey_under_kedasy(self.department):
+            return False
 
         # Αν το πεδίο can_request_leave είναι False, δεν μπορεί
         field_value = self._meta.get_field('can_request_leave').value_from_object(self)
@@ -465,11 +462,12 @@ class User(AbstractUser):
             if (self.department.department_type and
                 self.department.department_type.code == 'KEDASY'):
                 # Προσθέτουμε condition για ΣΔΕΥ υπαλλήλους
+                from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES
                 sdei_condition = Q(
                     department__parent_department=self.department,
-                    department__department_type__code='SDEY',
+                    department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     is_active=True
-) & ~Q(roles__code='MANAGER')
+                ) & ~Q(roles__code='MANAGER')
                 
                 # Ενώνουμε τα conditions με OR
                 conditions = conditions | sdei_condition

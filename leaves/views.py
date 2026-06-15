@@ -19,6 +19,7 @@ from .crypto_utils import SecureFileHandler, FileAccessController
 from .attachment_helpers import save_leave_request_attachments_from_request
 from .dashboard_utils import DashboardFilterMixin, get_available_actions
 from notifications.utils import create_notification
+from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES, is_sdey_department
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -535,7 +536,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             # Προσθήκη αιτήσεων από ΣΔΕΥ που έχουν το ΚΕΔΑΣΥ ως parent
             # αλλά μόνο αυτές που είναι SUBMITTED (χρειάζονται έγκριση)
             sdei_condition = Q(
-                user__department__department_type__code='SDEY',
+                user__department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                 user__department__parent_department=self.request.user.department,
                 status='SUBMITTED'
             )
@@ -590,7 +591,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             # Αν είναι ΚΕΔΑΣΥ, προσθέτουμε και ΣΔΕΥ τμήματα
             if self.request.user.department.department_type.code == 'KEDASY':
                 sdei_filter = Q(
-                    user__department__department_type__code='SDEY',
+                    user__department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     user__department__parent_department=self.request.user.department
                 )
                 department_filter = department_filter | sdei_filter
@@ -627,7 +628,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             if self.request.user.department.department_type.code == 'KEDASY':
                 from accounts.models import User
                 sdeu_users = User.objects.filter(
-                    department__department_type__code='SDEY',
+                    department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     department__parent_department=self.request.user.department,
                     is_active=True
                 ).select_related('department').order_by('last_name', 'first_name')
@@ -662,8 +663,7 @@ def approve_leave_request(request, pk):
         if (not can_approve and
             request.user.department and request.user.department.department_type and
             request.user.department.department_type.code == 'KEDASY' and
-            leave_request.user.department and leave_request.user.department.department_type and
-            leave_request.user.department.department_type.code == 'SDEY' and
+            is_sdey_department(leave_request.user.department) and
             leave_request.user.department.parent_department == request.user.department):
             can_approve = True
     
@@ -772,8 +772,7 @@ def reject_leave_request(request, pk):
     # Έλεγχος αν είναι προϊστάμενος ΚΕΔΑΣΥ και η αίτηση από ΣΔΕΥ
     if (not can_reject and request.user.department and request.user.department.department_type and
           request.user.department.department_type.code == 'KEDASY' and
-          leave_request.user.department and leave_request.user.department.department_type and
-          leave_request.user.department.department_type.code == 'SDEY' and
+          is_sdey_department(leave_request.user.department) and
           leave_request.user.department.parent_department == request.user.department):
         can_reject = True
     
@@ -1446,8 +1445,7 @@ def serve_protocol_pdf(request, pk):
     if (not can_view and user.is_department_manager and
         user.department and user.department.department_type and
         user.department.department_type.code == 'KEDASY' and
-        leave_request.user.department and leave_request.user.department.department_type and
-        leave_request.user.department.department_type.code == 'SDEY' and
+        is_sdey_department(leave_request.user.department) and
         leave_request.user.department.parent_department == user.department):
         can_view = True
     
@@ -1503,8 +1501,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         if (not can_view and user.is_department_manager and
             user.department and user.department.department_type and
             user.department.department_type.code == 'KEDASY' and
-            obj.user.department and obj.user.department.department_type and
-            obj.user.department.department_type.code == 'SDEY' and
+            is_sdey_department(obj.user.department) and
             obj.user.department.parent_department == user.department):
             can_view = True
         
@@ -1512,8 +1509,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         if (not can_view and user.is_secretary and
             user.department and user.department.department_type and
             user.department.department_type.code == 'KEDASY' and
-            obj.user.department and obj.user.department.department_type and
-            obj.user.department.department_type.code == 'SDEY' and
+            is_sdey_department(obj.user.department) and
             obj.user.department.parent_department == user.department):
             can_view = True
             
@@ -1605,9 +1601,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             context['yearly_sick_leave_sum'] = sum(data_by_year.values())
         if context['is_sick_leave'] and user.is_department_manager and user != leave_request.user:
             context['can_view_attachments'] = False
-        if user.is_department_manager and leave_request.user.department and \
-           leave_request.user.department.department_type and \
-           leave_request.user.department.department_type.code == 'SDEY' and \
+        if user.is_department_manager and is_sdey_department(leave_request.user.department) and \
            user.department and user.department.department_type and \
            user.department.department_type.code == 'KEDASY' and \
            leave_request.user.department.parent_department == user.department and \
@@ -1807,8 +1801,7 @@ def submit_final_request(request):
                 if leave_request.is_kedasy_kepea_department():
                     # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ: ειδοποίηση γραμματέα/προϊσταμένου για πρωτόκολλο
                     target_department = leave_request.user.department
-                    if (leave_request.user.department.department_type and
-                        leave_request.user.department.department_type.code == 'SDEY' and
+                    if (is_sdey_department(leave_request.user.department) and
                         leave_request.user.department.parent_department):
                         target_department = leave_request.user.department.parent_department
                     
@@ -1851,8 +1844,7 @@ def submit_final_request(request):
                     # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ειδοποίηση γραμματέα και προϊσταμένου για πρωτόκολλο
                     # Για ΣΔΕΥ, βρίσκουμε τους γραμματείς του parent ΚΕΔΑΣΥ
                     target_department = leave_request.user.department
-                    if (leave_request.user.department.department_type and
-                        leave_request.user.department.department_type.code == 'SDEY' and
+                    if (is_sdey_department(leave_request.user.department) and
                         leave_request.user.department.parent_department):
                         target_department = leave_request.user.department.parent_department
                     
@@ -1872,8 +1864,7 @@ def submit_final_request(request):
                     
                     # Ειδοποίηση προϊσταμένου - για ΣΔΕΥ, ειδοποιούμε τον ΚΕΔΑΣΥ προϊστάμενο
                     manager_to_notify = leave_request.user.manager
-                    if (leave_request.user.department.department_type and
-                        leave_request.user.department.department_type.code == 'SDEY' and
+                    if (is_sdey_department(leave_request.user.department) and
                         leave_request.user.department.parent_department):
                         # Βρίσκουμε τον προϊστάμενο του ΚΕΔΑΣΥ
                         kedasy_managers = User.objects.filter(
@@ -2060,7 +2051,7 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
                 self.request.user.department.department_type.code == 'KEDASY'):
                 sdei_condition = Q(
                     status='PENDING_KEDASY_PROTOCOL',
-                    user__department__department_type__code='SDEY',
+                    user__department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     user__department__parent_department=self.request.user.department
                 )
                 department_filter = department_filter | sdei_condition
@@ -2083,7 +2074,7 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
                 self.request.user.department.department_type.code == 'KEDASY'):
                 
                 sdei_filter = Q(
-                    user__department__department_type__code='SDEY',
+                    user__department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     user__department__parent_department=self.request.user.department
                 )
                 department_filter = department_filter | sdei_filter

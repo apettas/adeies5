@@ -6,6 +6,7 @@ from django.db.models import Q
 from datetime import datetime, timedelta, date
 import calendar
 from .models import LeaveRequest, LeavePeriod
+from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -50,7 +51,7 @@ def leave_calendar_view(request, year=None, month=None):
         request.user.department.department_type.code == 'KEDASY'):
         
         sdeu_users = User.objects.filter(
-            department__department_type__code='SDEY',
+            department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
             department__parent_department=request.user.department,
             is_active=True
         )
