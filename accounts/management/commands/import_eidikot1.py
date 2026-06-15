@@ -5,8 +5,15 @@ from accounts.models import Specialty
 class Command(BaseCommand):
     help = 'Εισαγωγή ειδικοτήτων από το αρχείο eidikot1.csv'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--csv-path',
+            default='/app/adeies5/eidikot1.csv',
+            help='Διαδρομή στο αρχείο CSV (π.χ. /app/adeies5/eidikot1.csv ή /path/to/eidikot1.csv)',
+        )
+
     def handle(self, *args, **options):
-        csv_path = '/app/adeies5/eidikot1.csv'
+        csv_path = options['csv_path']
 
         with open(csv_path, encoding='utf-8') as f:
             lines = f.readlines()
