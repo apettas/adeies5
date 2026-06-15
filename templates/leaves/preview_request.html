@@ -43,8 +43,8 @@
                             <div class="row">
                                 <!-- Left Column: Static Elements -->
                                 <div class="col-md-4 left-column">
-                                    <!-- 5 empty lines -->
-                                    <div style="height: 100px;"></div>
+                                    <!-- 7 empty lines (~2 more than before) -->
+                                    <div style="height: 122px;"></div>
                                     
                                     <h3 class="fw-bold">Αίτηση</h3>
                                     
@@ -65,7 +65,7 @@
                                     <!-- 5 empty lines -->
                                     <div style="height: 100px;"></div>
                                     
-                                    <p class="fw-bold">Θέμα: Χορήγηση άδειας {{ form_data.leave_type.name }}</p>
+                                    <p class="fw-bold">Θέμα: {{ form_data.leave_type.subject_text|default:form_data.leave_type.name }}</p>
                                 </div>
                                 
                                 <!-- Right Column: Main Body -->
@@ -73,7 +73,7 @@
                                     <!-- 9 empty lines -->
                                     <div style="height: 180px;"></div>
                                     
-                                    <div class="text-center">
+                                    <div class="text-center fw-bold">
                                         <p>ΠΡΟΣ</p>
                                         <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
                                         <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
@@ -85,7 +85,7 @@
                                     <!-- Editable request text -->
                                     <div class="mb-3">
                                         <label for="request_text" class="form-label fw-bold">Κείμενο Αίτησης (Επεξεργάσιμο):</label>
-                                        <textarea name="request_text" id="request_text" class="form-control" rows="3" style="border: 2px solid #007bff;">Παρακαλώ να μου χορηγήσετε άδεια {{ form_data.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</textarea>
+                                        <textarea name="request_text" id="request_text" class="form-control" rows="3" style="border: 2px solid #007bff;">Παρακαλώ να μου χορηγήσετε {{ form_data.leave_type.decision_text|default:form_data.leave_type.name }} για τα κάτωθι χρονικά διαστήματα:</textarea>
                                         <small class="text-muted">Μπορείτε να επεξεργαστείτε το κείμενο της αίτησης εδώ</small>
                                     </div>
                                     
@@ -99,14 +99,14 @@
                                                 <li>Δεν έχουν οριστεί περίοδοι άδειας</li>
                                             {% endfor %}
                                         </ul>
-                                        <p><strong>Σύνολο ημερών: {{ total_days }}</strong></p>
+                                        <p class="text-center"><strong>Σύνολο ημερών: {{ total_days }}</strong></p>
                                     </div>
                                     
                                     <!-- 5 empty lines -->
                                     <div style="height: 100px;"></div>
                                     
                                     <div class="text-center">
-                                        <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
+                                        <p class="fw-bold">{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
                                         
                                         <!-- 2 empty lines -->
                                         <div style="height: 40px;"></div>
@@ -117,11 +117,23 @@
                                         <!-- 2 empty lines -->
                                         <div style="height: 40px;"></div>
                                         
-                                        <p>{{ user.first_name }} {{ user.last_name }}</p>
+                                        <p class="fw-bold">{{ user.first_name }} {{ user.last_name }}</p>
                                     </div>
                                     
                                     <!-- spacing before attachments -->
                                     <div style="height: 30px;"></div>
+                                    
+                                    {% if leave_request.is_kedasy_kepea_department and leave_request.kedasy_kepea_protocol_number %}
+                                    <div class="text-center" style="border-top: 1px solid #ccc; padding-top: 10px;">
+                                        <div style="height: 5px;"></div>
+                                        <p class="fw-bold">Πρωτοκολλήθηκε</p>
+                                        <div style="height: 5px;"></div>
+                                        <p>Υπηρεσία: {{ leave_request.user.department.parent_department.name|default:leave_request.user.department.name }}</p>
+                                        <p>Αρ. Πρωτοκόλλου: {{ leave_request.kedasy_kepea_protocol_number }}</p>
+                                        <p>Ημερομηνία: {{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div style="height: 10px;"></div>
+                                    {% endif %}
                                     
                                     {% if leave_request.rejected_by %}
                                     <div class="text-center" style="border-top: 1px solid #ccc; padding-top: 10px; margin-top: 10px;">
@@ -153,18 +165,6 @@
                                         <div style="height: 10px;"></div>
                                         <p>{{ leave_request.manager_approved_by.first_name }} {{ leave_request.manager_approved_by.last_name }}</p>
                                         <p><em>{{ leave_request.manager_approved_by.department.name }}</em></p>
-                                    </div>
-                                    <div style="height: 10px;"></div>
-                                    {% endif %}
-                                    
-                                    {% if leave_request.is_kedasy_kepea_department and leave_request.kedasy_kepea_protocol_number %}
-                                    <div class="text-center" style="border-top: 1px solid #ccc; padding-top: 10px;">
-                                        <div style="height: 5px;"></div>
-                                        <p class="fw-bold">Πρωτοκολλήθηκε</p>
-                                        <div style="height: 5px;"></div>
-                                        <p>Υπηρεσία: {{ leave_request.user.department.parent_department.name|default:leave_request.user.department.name }}</p>
-                                        <p>Αρ. Πρωτοκόλλου: {{ leave_request.kedasy_kepea_protocol_number }}</p>
-                                        <p>Ημερομηνία: {{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
                                     </div>
                                     <div style="height: 10px;"></div>
                                     {% endif %}

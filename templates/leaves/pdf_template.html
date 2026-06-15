@@ -73,9 +73,10 @@
     </style>
 </head>
 <body>
+{% load leave_pdf_tags %}
     <div class="container">
         <div class="left-column">
-            <div style="height: 40px;"></div>
+            <div style="height: 62px;"></div>
             <h3 class="bold">Αίτηση</h3>
             <div style="height: 20px;"></div>
             <p><span>Επώνυμο:</span> <span class="bold">{{ user.last_name }}</span></p>
@@ -86,19 +87,19 @@
             <div style="height: 15px;"></div>
             <p><span>Οργανική Θέση:</span> <span class="bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
             <div style="height: 30px;"></div>
-            <p class="bold">Θέμα: Χορήγηση άδειας {{ leave_request.leave_type.name }}</p>
+            <p class="bold">Θέμα: {{ leave_request.leave_type.subject_text|default:leave_request.leave_type.name }}</p>
         </div>
         
         <div class="right-column">
             <div style="height: 60px;"></div>
-            <div class="center">
+            <div class="center bold">
                 <p>ΠΡΟΣ</p>
                 <p>ΠΕΡΙΦΕΡΕΙΑΚΗ ΔΙΕΥΘΗΝΣΗ Π/ΘΜΙΑΣ &</p>
                 <p>Δ/ΘΜΙΑΣ ΕΚΠ/ΣΗΣ ΔΥΤΙΚΗΣ ΕΛΛΑΔΑΣ</p>
             </div>
             <div style="height: 30px;"></div>
             
-            <p>{{ request_text|default:"Παρακαλώ να μου χορηγήσετε άδεια "|add:leave_request.leave_type.name|add:" για τα κάτωθι χρονικά διαστήματα:" }}</p>
+            <p>{{ leave_request|leave_request_body_text:request_text }}</p>
             
             <ul class="no-bullets">
                 {% for period in periods %}
@@ -107,20 +108,32 @@
                     <li>Δεν έχουν καθοριστεί χρονικά διαστήματα άδειας.</li>
                 {% endfor %}
             </ul>
-            <p>Σύνολο ημερών: {{ leave_request.total_days }}</p>
+            <p class="center">Σύνολο ημερών: {{ leave_request.total_days }}</p>
             
             <div style="height: 30px;"></div>
             
             <div class="center">
-                <p>{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
+                <p class="bold">{% if user.gender|upper == 'F' or user.gender|upper == 'FEMALE' %}Η Αιτούσα{% elif user.gender|upper == 'M' or user.gender|upper == 'MALE' %}Ο Αιτών{% else %}Ο/Η Αιτών/Αιτούσα{% endif %}</p>
                 <div style="height: 15px;"></div>
                 <p class="signature-small">Υπογεγραμμένο ηλεκτρονικά μέσω αυθεντικοποίησης SSO του Σχολικού Δικτύου</p>
                 <p class="signature-small">{{ leave_request.submitted_at|date:"d/m/Y" }} - {{ leave_request.submitted_at|time:"H:i" }}</p>
                 <div style="height: 15px;"></div>
-                <p>{{ user.first_name }} {{ user.last_name }}</p>
+                <p class="bold">{{ user.first_name }} {{ user.last_name }}</p>
             </div>
             
             <div style="height: 15px;"></div>
+            
+            {% if leave_request.kedasy_kepea_protocol_number %}
+            <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
+                <div style="height: 5px;"></div>
+                <p class="bold">Πρωτοκολλήθηκε</p>
+                <div style="height: 5px;"></div>
+                <p>Υπηρεσία: {{ leave_request.user.department.parent_department.name|default:leave_request.user.department.name }}</p>
+                <p>Αρ. Πρωτοκόλλου: {{ leave_request.kedasy_kepea_protocol_number }}</p>
+                <p>Ημερομηνία: {{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
+            </div>
+            <div style="height: 10px;"></div>
+            {% endif %}
             
             {% if leave_request.rejected_by %}
             <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
@@ -152,18 +165,6 @@
                 <div style="height: 10px;"></div>
                 <p>{{ leave_request.manager_approved_by.first_name }} {{ leave_request.manager_approved_by.last_name }}</p>
                 <p class="signature-small">{{ leave_request.manager_approved_by.department.name }}</p>
-            </div>
-            <div style="height: 10px;"></div>
-            {% endif %}
-            
-            {% if leave_request.kedasy_kepea_protocol_number %}
-            <div class="center" style="border-top: 1px solid #ccc; padding-top: 8px;">
-                <div style="height: 5px;"></div>
-                <p class="bold">Πρωτοκολλήθηκε</p>
-                <div style="height: 5px;"></div>
-                <p>Υπηρεσία: {{ leave_request.user.department.parent_department.name|default:leave_request.user.department.name }}</p>
-                <p>Αρ. Πρωτοκόλλου: {{ leave_request.kedasy_kepea_protocol_number }}</p>
-                <p>Ημερομηνία: {{ leave_request.kedasy_kepea_protocol_date|date:"d/m/Y" }}</p>
             </div>
             <div style="height: 10px;"></div>
             {% endif %}
