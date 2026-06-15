@@ -1,5 +1,34 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+def convert_first_name_to_accusative(name):
+    if not name:
+        return name
+    if name.endswith('ας'):
+        return name[:-2] + 'α'
+    elif name.endswith('ης'):
+        return name[:-2] + 'η'
+    elif name.endswith('ος'):
+        return name[:-2] + 'ο'
+    elif name.endswith('ες'):
+        return name[:-2] + 'η'
+    return name
+
+def convert_last_name_to_accusative(surname):
+    if not surname:
+        return surname
+    if surname.endswith('ας'):
+        return surname[:-2] + 'α'
+    elif surname.endswith('ης'):
+        return surname[:-2] + 'η'
+    elif surname.endswith('ος'):
+        return surname[:-2] + 'ο'
+    elif surname.endswith('ου'):
+        return surname
+    return surname
 
 
 class UserManager(BaseUserManager):
@@ -210,6 +239,15 @@ class User(AbstractUser):
     last_name = models.CharField('Επίθετο', max_length=50)
     name_accusative = models.CharField('Ονοματεπώνυμο (Αιτιατική)', max_length=150, blank=True,
         help_text='Αυτόματα δημιουργείται από το Όνομα και Επίθετο, π.χ. "Γεώργιο Νικολόπουλο"')
+
+    def save(self, *args, **kwargs):
+        if self.first_name and self.last_name:
+            first = convert_first_name_to_accusative(self.first_name)
+            last = convert_last_name_to_accusative(self.last_name)
+            if self.name_accusative != f"{first} {last}":
+                self.name_accusative = f"{first} {last}"
+        super().save(*args, **kwargs)
+
     email = models.EmailField('Email', unique=True)
     phone1 = models.CharField('Τηλέφωνο 1', max_length=15, blank=True)
     GENDER_CHOICES = [
