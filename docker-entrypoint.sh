@@ -1,9 +1,16 @@
 #!/bin/bash
 set -e
 
+# Αν τρέχουμε ως root (entrypoint), διόρθωση δικαιωμάτων volumes πριν το collectstatic.
+# Συχνό πρόβλημα: τα staticfiles στο volume είναι owned by root από παλιό deploy.
+if [ "$(id -u)" = "0" ]; then
+    chown -R app:app /app/staticfiles /app/media /app/private_media 2>/dev/null || true
+    exec gosu app "$0" "$@"
+fi
+
 # Wait for database to be ready
 echo "Waiting for database..."
-while ! nc -z $DB_HOST $DB_PORT; do
+while ! nc -z "$DB_HOST" "$DB_PORT"; do
   sleep 0.1
 done
 echo "Database started"
@@ -48,6 +55,9 @@ fi
 # Load initial data if needed
 echo "Loading initial data..."
 python manage.py loaddata --ignorenonexistent initial_data.json || echo "No initial data to load"
+
+echo "Running migrations..."
+python manage.py migrate --noinput
 
 # Collect static files
 echo "Collecting static files..."

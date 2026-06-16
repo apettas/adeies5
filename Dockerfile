@@ -24,6 +24,8 @@ RUN apt-get update \
         gettext \
         curl \
         wget \
+        netcat-openbsd \
+        gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -41,8 +43,11 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles /app/media /app/private_media \
     && chown -R app:app /app
 
-# Switch to app user
-USER app
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Entrypoint τρέχει ως root για chown volumes, μετά gosu app
+USER root
 
 # Expose port
 EXPOSE 8000
@@ -51,5 +56,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/admin/login/ || exit 1
 
-# Default command
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

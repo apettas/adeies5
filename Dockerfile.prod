@@ -44,6 +44,8 @@ RUN apt-get update \
         shared-mime-info \
         gettext \
         curl \
+        netcat-openbsd \
+        gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -62,11 +64,11 @@ COPY --chown=app:app . /app/
 RUN mkdir -p /app/staticfiles /app/media /app/private_media /app/logs \
     && chown -R app:app /app
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-# Switch to app user
-USER app
+# Entrypoint: chown volumes (root) → migrate/collectstatic (app) → gunicorn
+USER root
 
 # Expose port
 EXPOSE 8000
@@ -75,5 +77,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f -H "Host: sadeies.pdede.gov.gr" http://localhost:8000/health/ || exit 1
 
-# Use gunicorn for production
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "pdede_leaves.wsgi:application"]
