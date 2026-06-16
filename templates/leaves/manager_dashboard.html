@@ -63,21 +63,6 @@
 </div>
 {% endif %}
 
-<!-- Στατιστικά ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα -->
-{% if is_kedasy_kepea_manager %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h4><i class="bi bi-archive text-warning"></i> Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ</h4>
-    </div>
-</div>
-
-<div class="row mb-4">
-    {% include 'includes/stat_card.html' with icon='clock' value=kedasy_kepea_pending_protocol_count label='Προς Πρωτοκόλληση' tone='warning' %}
-    {% include 'includes/stat_card.html' with icon='check-circle' value=kedasy_kepea_completed_this_month label='Πρωτοκολλήθηκαν Μήνα' tone='success' %}
-    {% include 'includes/stat_card.html' with icon='archive' value=kedasy_kepea_total_processed label='Συνολικά Επεξεργασμένες' tone='info' %}
-</div>
-{% endif %}
-
 <!-- Λίστα Αιτήσεων προς Έγκριση -->
 <div class="row">
     <div class="col-12">

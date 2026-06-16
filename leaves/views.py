@@ -596,13 +596,6 @@ class ManagerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
             
             context.update({
                 'is_kedasy_kepea_manager': True,
-                'kedasy_kepea_pending_protocol_count': LeaveRequest.objects.filter(
-                    status='PENDING_KEDASY_PROTOCOL'
-                ).filter(department_filter).count(),
-                'kedasy_kepea_completed_this_month': LeaveRequest.objects.filter(
-                    kedasy_kepea_protocol_date__month=timezone.now().month,
-                    kedasy_kepea_protocol_number__isnull=False
-                ).filter(department_filter).count(),
                 'kedasy_kepea_total_processed': LeaveRequest.objects.filter(
                     kedasy_kepea_protocol_number__isnull=False
                 ).filter(department_filter).count(),
@@ -2014,11 +2007,6 @@ class SecretaryDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFi
                 department_filter = department_filter | sdei_filter
             
             context.update({
-                'pending_protocol_count': self.get_queryset().count(),
-                'completed_this_month': LeaveRequest.objects.filter(
-                    kedasy_kepea_protocol_date__month=timezone.now().month,
-                    kedasy_kepea_protocol_number__isnull=False
-                ).filter(department_filter).count(),
                 'total_processed': LeaveRequest.objects.filter(
                     kedasy_kepea_protocol_number__isnull=False
                 ).filter(department_filter).count(),
@@ -2048,8 +2036,6 @@ class SecretaryDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFi
             context['search_query'] = q
         else:
             context.update({
-                'pending_protocol_count': 0,
-                'completed_this_month': 0,
                 'total_processed': 0,
             })
             context['recent_processed'] = []
