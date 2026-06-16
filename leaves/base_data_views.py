@@ -3,325 +3,350 @@ Views for basic database data management.
 Προβολή, προσθήκη, επεξεργασία και διαγραφή βασικών στοιχείων της βάσης.
 Access: LEAVE_HANDLER, ADMIN, HR_ADMIN
 """
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse, reverse_lazy
-from django.views.generic import ListView, CreateView, DeleteView, TemplateView
 from django.views import View
-from django.http import HttpResponseRedirect, JsonResponse
-from django.core.exceptions import PermissionDenied
+from django.views.generic import TemplateView
+from django.http import JsonResponse
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.contrib.auth import get_user_model
 from django.db import models as db_models
 
-from .models import Logo, Info, Ypopsin, Signee, LeaveType
-from accounts.models import DepartmentType, EmployeeType, Specialty
+from .base_data_config import (
+    TABLE_REGISTRY,
+    get_table_config,
+    build_field_specs,
+    get_list_field_specs,
+    get_form_field_specs,
+    get_field_raw_value,
+    get_field_display_value,
+)
+from .models import PublicHoliday
 
 User = get_user_model()
 
+SENSITIVE_USER_FIELDS = {'is_superuser'}
+
+
+class BaseDataPermissionMixin:
+    """Έλεγχος δικαιώματος μετά το login."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not _user_can_manage_db(request.user):
+            raise PermissionDenied("Δεν έχετε δικαίωμα διαχείρισης βασικών στοιχείων.")
+        return super().dispatch(request, *args, **kwargs)
+
 
 def _user_can_manage_db(user):
-    """Check if user has permission to manage base data."""
+    """Έλεγχος δικαιώματος διαχείρισης βασικών στοιχείων."""
+    if not user.is_authenticated:
+        return False
     return (
-        user.is_superuser or
-        user.roles.filter(code__in=['LEAVE_HANDLER', 'ADMIN', 'HR_ADMIN']).exists()
+        user.is_superuser
+        or user.roles.filter(code__in=['LEAVE_HANDLER', 'ADMIN', 'HR_ADMIN']).exists()
     )
 
 
 def _get_model_for_table(table_key):
-    """Return (model_class, display_name) for the given table key."""
-    tables = {
-        'users': (User, 'Χρήστες'),
-        'department_types': (DepartmentType, 'Τύποι Τμημάτων'),
-        'employee_types': (EmployeeType, 'Τύποι Υπαλλήλων'),
-        'specialties': (Specialty, 'Ειδικότητες'),
-        'logos': (Logo, 'Λογότυπα'),
-        'infos': (Info, 'Πληροφορίες'),
-        'leave_types': (LeaveType, 'Τύποι Αδειών'),
-        'signees': (Signee, 'Υπογράφοντες'),
-        'ypopsins': (Ypopsin, 'Έχοντας Υπόψη'),
+    """Επιστρέφει (model_class, display_name) για τον πίνακα."""
+    result = get_table_config(table_key)
+    if not result:
+        return None
+    model_class, config = result
+    return model_class, config['name']
+
+
+def _filter_specs_for_user(specs, user):
+    """Αποκρύπτει ευαίσθητα πεδία από μη superuser."""
+    if user.is_superuser:
+        return specs
+    return [s for s in specs if s['name'] not in SENSITIVE_USER_FIELDS]
+
+
+def _get_table_context(table_key, user):
+    """Κοινό context για πίνακα."""
+    result = get_table_config(table_key)
+    if not result:
+        return None
+    model_class, config = result
+    all_specs = build_field_specs(model_class, config)
+    all_specs = _filter_specs_for_user(all_specs, user)
+    return {
+        'model_class': model_class,
+        'config': config,
+        'all_field_specs': all_specs,
+        'list_field_specs': get_list_field_specs(all_specs),
+        'form_field_specs': get_form_field_specs(all_specs),
+        'm2m_fields': set(config.get('m2m_fields', set())),
     }
-    return tables.get(table_key)
 
 
-def _get_table_display_name(model_class):
-    """Get the verbose_name_plural for a model."""
-    return model_class._meta.verbose_name_plural
-
-
-def _get_fields_for_model(model_class, for_edit=False):
-    """
-    Return a list of (field_name, field_verbose_name, field_type) tuples.
-    Excludes auto-generated fields like id, auto_now fields, relations.
-    If for_edit=True, also include is_active, is_active fields are included.
-    """
-    exclude_fields = ['id', 'user', 'employee', 'leave_request']
-    
-    # For User model, we show specific fields only in view mode
+def _optimize_queryset(model_class, qs):
+    """select_related / prefetch_related για γρηγορότερη εμφάνιση."""
     if model_class == User:
-        return [
-            ('last_name', 'Επίθετο', 'CharField'),
-            ('first_name', 'Όνομα', 'CharField'),
-            ('email', 'Email', 'EmailField'),
-            ('is_active', 'Ενεργός', 'BooleanField'),
-        ]
-    
-    fields = []
-    for field in model_class._meta.get_fields():
-        if field.is_relation or field.primary_key:
-            continue
-        if field.name in exclude_fields:
-            continue
-        # Skip auto_now_add and auto_now fields
-        if getattr(field, 'auto_now_add', False) or getattr(field, 'auto_now', False):
-            continue
-        # Skip OneToOneField, ManyToManyField
-        if isinstance(field, (db_models.OneToOneField, db_models.ManyToManyField)):
-            continue
-        
-        field_type = field.get_internal_type()
-        
-        # Only include basic field types
-        if field_type in ('CharField', 'TextField', 'IntegerField', 'BooleanField',
-                          'DateField', 'DateTimeField', 'EmailField', 'PositiveIntegerField',
-                          'PositiveSmallIntegerField', 'SmallIntegerField', 'BigIntegerField',
-                          'DecimalField', 'FloatField', 'URLField', 'SlugField',
-                          'BinaryField', 'GenericIPAddressField', 'IPAddressField',
-                          'NullBooleanField'):
-            fields.append((field.name, field.verbose_name, field_type))
-    
-    return fields
+        return qs.select_related(
+            'department', 'specialty', 'employee_type'
+        ).prefetch_related('roles')
+    if model_class.__name__ == 'Department':
+        return qs.select_related(
+            'department_type', 'parent_department', 'prefecture',
+            'headquarters', 'manager',
+        )
+    return qs
 
 
-def _get_field_value(record, field_name, field_type):
-    """Get the display value of a field for a record."""
-    value = getattr(record, field_name, None)
-    
-    if value is None or value == '':
-        return '', ''
-    
+def _parse_post_value(spec, request):
+    """Μετατροπή τιμής POST σε κατάλληλο τύπο."""
+    name = spec['name']
+    field_type = spec['type']
+    widget = spec['widget']
+
+    if widget == 'multiselect':
+        return request.POST.getlist(name)
+
+    if field_type == 'ForeignKey':
+        raw = request.POST.get(name, '').strip()
+        if not raw:
+            return None
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            return None
+
     if field_type in ('BooleanField', 'NullBooleanField'):
-        if value is None:
-            return '', ''
-        return value, value
-    
-    if field_type in ('DateField', 'DateTimeField'):
-        if hasattr(value, 'strftime'):
-            formatted = value.strftime('%d/%m/%Y %H:%M')
-            iso = value.isoformat() if hasattr(value, 'isoformat') else str(value)
-            return formatted, iso
-        return str(value), str(value)
-    
-    return str(value), str(value)
+        return request.POST.get(name) in ('on', 'True', 'true', '1')
+
+    raw = request.POST.get(name)
+    if raw is None or raw == '':
+        if field_type in (
+            'IntegerField', 'PositiveIntegerField', 'PositiveSmallIntegerField',
+            'SmallIntegerField', 'BigIntegerField', 'DecimalField', 'FloatField',
+        ):
+            return None
+        if spec.get('blank') or field_type in ('TextField', 'CharField', 'EmailField'):
+            return ''
+        return None
+
+    if field_type in (
+        'IntegerField', 'PositiveIntegerField', 'PositiveSmallIntegerField',
+        'SmallIntegerField', 'BigIntegerField',
+    ):
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            return None
+
+    if field_type in ('DecimalField', 'FloatField'):
+        try:
+            return float(raw)
+        except (ValueError, TypeError):
+            return None
+
+    return raw
 
 
-class BaseDataIndexView(LoginRequiredMixin, TemplateView):
-    """View that lists all available tables for management."""
+def _build_field_data_from_post(request, form_specs, m2m_fields):
+    """Δημιουργία dict πεδίων από POST (χωρίς M2M)."""
+    field_data = {}
+    m2m_data = {}
+    for spec in form_specs:
+        if spec.get('readonly'):
+            continue
+        name = spec['name']
+        if name in m2m_fields:
+            m2m_data[name] = _parse_post_value(spec, request)
+            continue
+        field_data[name] = _parse_post_value(spec, request)
+    return field_data, m2m_data
+
+
+def _apply_m2m(record, m2m_data, m2m_fields):
+    """Εφαρμογή τιμών ManyToMany μετά το save."""
+    for name, values in m2m_data.items():
+        if name not in m2m_fields:
+            continue
+        manager = getattr(record, name)
+        pks = [int(v) for v in values if str(v).strip()]
+        manager.set(pks)
+
+
+def _save_record(record, field_data, m2m_data, m2m_fields):
+    """Αποθήκευση με full_clean και M2M."""
+    for field_name, value in field_data.items():
+        try:
+            field = record._meta.get_field(field_name)
+        except db_models.FieldDoesNotExist:
+            setattr(record, field_name, value)
+            continue
+        if isinstance(field, db_models.ForeignKey):
+            setattr(record, f'{field_name}_id', value)
+        else:
+            setattr(record, field_name, value)
+    record.full_clean()
+    record.save()
+    _apply_m2m(record, m2m_data, m2m_fields)
+
+
+class BaseDataIndexView(LoginRequiredMixin, BaseDataPermissionMixin, TemplateView):
+    """Λίστα διαθέσιμων πινάκων για διαχείριση."""
+
     template_name = 'leaves/base_data_index.html'
-    
-    def dispatch(self, request, *args, **kwargs):
-        if not _user_can_manage_db(request.user):
-            raise PermissionDenied("Δεν έχετε δικαίωμα διαχείρισης βασικών στοιχείων.")
-        return super().dispatch(request, *args, **kwargs)
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         tables = [
-            {'key': 'users', 'name': 'Χρήστες', 'icon': 'bi-people'},
-            {'key': 'department_types', 'name': 'Τύποι Τμημάτων', 'icon': 'bi-building'},
-            {'key': 'employee_types', 'name': 'Τύποι Υπαλλήλων', 'icon': 'bi-person-badge'},
-            {'key': 'specialties', 'name': 'Ειδικότητες', 'icon': 'bi-bookmark-check'},
-            {'key': 'logos', 'name': 'Λογότυπα', 'icon': 'bi-image'},
-            {'key': 'infos', 'name': 'Πληροφορίες', 'icon': 'bi-info-circle'},
-            {'key': 'leave_types', 'name': 'Τύποι Αδειών', 'icon': 'bi-card-list'},
-            {'key': 'signees', 'name': 'Υπογράφοντες', 'icon': 'bi-pen'},
-            {'key': 'ypopsins', 'name': 'Έχοντας Υπόψη', 'icon': 'bi-eye'},
+            {
+                'key': key,
+                'name': cfg['name'],
+                'icon': cfg['icon'],
+            }
+            for key, cfg in TABLE_REGISTRY.items()
         ]
         context['tables'] = tables
         return context
 
 
-class BaseDataTableView(LoginRequiredMixin, View):
-    """View that displays records of a specific table and allows CRUD operations."""
+class BaseDataTableView(LoginRequiredMixin, BaseDataPermissionMixin, View):
+    """Προβολή και CRUD εγγραφών συγκεκριμένου πίνακα."""
+
     template_name = 'leaves/base_data_table.html'
-    
+
     def dispatch(self, request, *args, **kwargs):
-        if not _user_can_manage_db(request.user):
-            raise PermissionDenied("Δεν έχετε δικαίωμα διαχείρισης βασικών στοιχείων.")
-        
         table_key = kwargs.get('table_key')
-        result = _get_model_for_table(table_key)
-        if not result:
-            messages.error(request, 'Μη έγκυρος πίνακας.')
-            return redirect('leaves:base_data_index')
-        
-        self.model_class, self.display_name = result
+        ctx = _get_table_context(table_key, request.user)
+        if not ctx:
+            if request.user.is_authenticated:
+                messages.error(request, 'Μη έγκυρος πίνακας.')
+                return redirect('leaves:base_data_index')
+            return super().dispatch(request, *args, **kwargs)
+
+        self.table_key = table_key
+        self.model_class = ctx['model_class']
+        self.config = ctx['config']
+        self.form_field_specs = ctx['form_field_specs']
+        self.list_field_specs = ctx['list_field_specs']
+        self.m2m_fields = ctx['m2m_fields']
+        self.display_name = self.config['name']
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get(self, request, table_key):
-        records = self.model_class.objects.all()
-        
-        # For User model, select related department and prefetch roles
-        if self.model_class == User:
-            records = records.select_related('department', 'specialty', 'employee_type').prefetch_related('roles')
-        
-        fields = _get_fields_for_model(self.model_class)
-        
+        records = _optimize_queryset(
+            self.model_class,
+            self.model_class.objects.all(),
+        )
         context = {
             'table_key': table_key,
             'display_name': self.display_name,
             'model_name': self.model_class._meta.model_name,
             'records': records,
-            'fields': fields,
-            'can_add': self.model_class != User,
+            'list_field_specs': self.list_field_specs,
+            'form_field_specs': self.form_field_specs,
+            'can_add': self.config.get('can_add', True),
             'can_delete': True,
             'can_edit': True,
         }
         return render(request, self.template_name, context)
-    
+
     def post(self, request, table_key):
         action = request.POST.get('action')
-        
         if action == 'add':
             return self._handle_add(request)
-        elif action == 'edit':
+        if action == 'edit':
             return self._handle_edit(request)
-        elif action == 'delete':
+        if action == 'delete':
             return self._handle_delete(request)
-        
         messages.error(request, 'Μη έγκυρη ενέργεια.')
         return redirect('leaves:base_data_table', table_key=table_key)
-    
-    def _get_editable_fields(self):
-        """Get all fields that can be edited (excludes pk, auto_now, relations)."""
-        fields = []
-        for field in self.model_class._meta.get_fields():
-            if field.is_relation or field.primary_key:
-                continue
-            if getattr(field, 'auto_now_add', False) or getattr(field, 'auto_now', False):
-                continue
-            if isinstance(field, (db_models.OneToOneField, db_models.ManyToManyField)):
-                continue
-            fields.append(field)
-        return fields
-    
-    def _build_field_data_from_post(self, request):
-        """Build field data dictionary from POST data."""
-        field_data = {}
-        for field in self._get_editable_fields():
-            value = request.POST.get(field.name)
-            if value is not None:
-                field_type = field.get_internal_type()
-                
-                if field_type in ('BooleanField', 'NullBooleanField'):
-                    field_data[field.name] = (value == 'on' or value == 'True')
-                elif field_type in ('IntegerField', 'PositiveIntegerField', 'PositiveSmallIntegerField',
-                                   'SmallIntegerField', 'BigIntegerField'):
-                    try:
-                        field_data[field.name] = int(value) if value else None
-                    except (ValueError, TypeError):
-                        field_data[field.name] = None
-                elif field_type in ('DecimalField', 'FloatField'):
-                    try:
-                        field_data[field.name] = float(value) if value else None
-                    except (ValueError, TypeError):
-                        field_data[field.name] = None
-                else:
-                    field_data[field.name] = value
-        
-        return field_data
-    
+
     def _handle_add(self, request):
-        """Handle adding a new record."""
-        table_key = self.kwargs.get('table_key')
-        
-        if self.model_class == User:
-            messages.error(request, 'Η προσθήκη χρηστών γίνεται μέσω εγγραφής.')
+        table_key = self.table_key
+        if not self.config.get('can_add', True):
+            messages.error(request, 'Η προσθήκη εγγραφών δεν επιτρέπεται σε αυτόν τον πίνακα.')
             return redirect('leaves:base_data_table', table_key=table_key)
-        
-        field_data = self._build_field_data_from_post(request)
-        
+
+        field_data, m2m_data = _build_field_data_from_post(
+            request, self.form_field_specs, self.m2m_fields,
+        )
+        if self.model_class == PublicHoliday:
+            field_data['created_by'] = request.user.pk
+
         try:
-            self.model_class.objects.create(**field_data)
+            record = self.model_class()
+            _save_record(record, field_data, m2m_data, self.m2m_fields)
             messages.success(request, 'Η εγγραφή προστέθηκε επιτυχώς.')
+        except (ValidationError, ValueError, TypeError) as e:
+            messages.error(request, f'Σφάλμα κατά την προσθήκη: {e}')
         except Exception as e:
-            messages.error(request, f'Σφάλμα κατά την προσθήκη: {str(e)}')
-        
+            messages.error(request, f'Σφάλμα κατά την προσθήκη: {e}')
         return redirect('leaves:base_data_table', table_key=table_key)
-    
+
     def _handle_edit(self, request):
-        """Handle editing an existing record."""
-        table_key = self.kwargs.get('table_key')
+        table_key = self.table_key
         record_id = request.POST.get('record_id')
-        
         if not record_id:
             messages.error(request, 'Δεν επιλέχθηκε εγγραφή προς επεξεργασία.')
             return redirect('leaves:base_data_table', table_key=table_key)
-        
+
         try:
             record = get_object_or_404(self.model_class, pk=record_id)
-            field_data = self._build_field_data_from_post(request)
-            
-            for field_name, value in field_data.items():
-                setattr(record, field_name, value)
-            
-            record.save()
+            field_data, m2m_data = _build_field_data_from_post(
+                request, self.form_field_specs, self.m2m_fields,
+            )
+            _save_record(record, field_data, m2m_data, self.m2m_fields)
             messages.success(request, 'Η εγγραφή ενημερώθηκε επιτυχώς.')
+        except (ValidationError, ValueError, TypeError) as e:
+            messages.error(request, f'Σφάλμα κατά την επεξεργασία: {e}')
         except Exception as e:
-            messages.error(request, f'Σφάλμα κατά την επεξεργασία: {str(e)}')
-        
+            messages.error(request, f'Σφάλμα κατά την επεξεργασία: {e}')
         return redirect('leaves:base_data_table', table_key=table_key)
-    
+
     def _handle_delete(self, request):
-        """Handle deleting a record."""
-        table_key = self.kwargs.get('table_key')
+        table_key = self.table_key
         record_id = request.POST.get('record_id')
-        
         if not record_id:
             messages.error(request, 'Δεν επιλέχθηκε εγγραφή προς διαγραφή.')
             return redirect('leaves:base_data_table', table_key=table_key)
-        
+
         try:
             record = get_object_or_404(self.model_class, pk=record_id)
             record.delete()
             messages.success(request, 'Η εγγραφή διαγράφηκε επιτυχώς.')
         except Exception as e:
-            messages.error(request, f'Σφάλμα κατά τη διαγραφή: {str(e)}')
-        
+            messages.error(request, f'Σφάλμα κατά τη διαγραφή: {e}')
         return redirect('leaves:base_data_table', table_key=table_key)
 
 
-class GetRecordDataView(LoginRequiredMixin, View):
-    """AJAX endpoint to get record data for editing."""
-    
+class GetRecordDataView(LoginRequiredMixin, BaseDataPermissionMixin, View):
+    """AJAX endpoint για φόρτωση δεδομένων εγγραφής στην επεξεργασία."""
+
     def dispatch(self, request, *args, **kwargs):
-        if not _user_can_manage_db(request.user):
-            return JsonResponse({'error': 'Δεν έχετε δικαίωμα'}, status=403)
-        
         table_key = kwargs.get('table_key')
-        result = _get_model_for_table(table_key)
-        if not result:
+        ctx = _get_table_context(table_key, request.user)
+        if not ctx:
             return JsonResponse({'error': 'Μη έγκυρος πίνακας'}, status=400)
-        
-        self.model_class, self.display_name = result
+
+        self.model_class = ctx['model_class']
+        self.form_field_specs = ctx['form_field_specs']
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get(self, request, table_key, record_id):
         try:
             record = get_object_or_404(self.model_class, pk=record_id)
-            fields = _get_fields_for_model(self.model_class)
-            
+            if self.model_class == User:
+                record = _optimize_queryset(User, User.objects.filter(pk=record_id)).first()
+
             data = {'id': record.pk}
-            for field_name, field_label, field_type in fields:
-                display_value, raw_value = _get_field_value(record, field_name, field_type)
-                data[field_name] = {
-                    'label': field_label,
-                    'type': field_type,
-                    'value': raw_value,
-                    'display': display_value,
+            for spec in self.form_field_specs:
+                name = spec['name']
+                data[name] = {
+                    'label': spec['label'],
+                    'type': spec['type'],
+                    'widget': spec['widget'],
+                    'value': get_field_raw_value(record, spec),
+                    'display': get_field_display_value(record, spec),
+                    'readonly': spec.get('readonly', False),
                 }
-            
             return JsonResponse(data)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)

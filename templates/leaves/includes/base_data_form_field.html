@@ -1,0 +1,71 @@
+{% comment %}
+Πεδίο φόρμας για base-data (prefix: add ή edit).
+Μεταβλητές: spec, prefix
+{% endcomment %}
+<div class="col-md-{% if spec.widget == 'textarea' %}12{% else %}6{% endif %}">
+    <label for="{{ prefix }}_{{ spec.name }}" class="form-label">
+        {{ spec.label }}
+        {% if spec.readonly %}<span class="text-muted small">(μόνο ανάγνωση)</span>{% endif %}
+    </label>
+
+    {% if spec.readonly %}
+        <input type="text" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               value="" readonly disabled
+               data-readonly-field="{{ spec.name }}">
+    {% elif spec.widget == 'checkbox' %}
+        <div class="form-check form-switch mt-2">
+            <input type="checkbox" class="form-check-input" id="{{ prefix }}_{{ spec.name }}"
+                   name="{{ spec.name }}" value="True">
+            <label class="form-check-label" for="{{ prefix }}_{{ spec.name }}">Ναι</label>
+        </div>
+    {% elif spec.widget == 'select' %}
+        <select class="form-select" id="{{ prefix }}_{{ spec.name }}" name="{{ spec.name }}">
+            {% if spec.blank or spec.type == 'ForeignKey' %}
+            <option value="">—</option>
+            {% endif %}
+            {% for choice_value, choice_label in spec.choices %}
+                {% if choice_value != '' %}
+                <option value="{{ choice_value }}">{{ choice_label }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    {% elif spec.widget == 'multiselect' %}
+        <select class="form-select" id="{{ prefix }}_{{ spec.name }}" name="{{ spec.name }}"
+                multiple size="5">
+            {% for choice_value, choice_label in spec.choices %}
+                {% if choice_value != '' %}
+                <option value="{{ choice_value }}">{{ choice_label }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        <div class="form-text">Κρατήστε Ctrl (ή Cmd) για πολλαπλή επιλογή.</div>
+    {% elif spec.widget == 'textarea' %}
+        <textarea class="form-control" id="{{ prefix }}_{{ spec.name }}"
+                  name="{{ spec.name }}" rows="4"></textarea>
+    {% elif spec.widget == 'date' %}
+        <input type="date" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}">
+    {% elif spec.widget == 'datetime' %}
+        <input type="datetime-local" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}">
+    {% elif spec.type == 'EmailField' %}
+        <input type="email" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}" placeholder="{{ spec.label }}">
+    {% elif spec.type == 'URLField' %}
+        <input type="url" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}" placeholder="{{ spec.label }}">
+    {% elif spec.type == 'IntegerField' or spec.type == 'PositiveIntegerField' or spec.type == 'PositiveSmallIntegerField' or spec.type == 'SmallIntegerField' or spec.type == 'BigIntegerField' %}
+        <input type="number" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}" placeholder="{{ spec.label }}">
+    {% elif spec.type == 'DecimalField' or spec.type == 'FloatField' %}
+        <input type="number" step="any" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}" placeholder="{{ spec.label }}">
+    {% else %}
+        <input type="text" class="form-control" id="{{ prefix }}_{{ spec.name }}"
+               name="{{ spec.name }}" placeholder="{{ spec.label }}">
+    {% endif %}
+
+    {% if spec.help_text %}
+    <div class="form-text">{{ spec.help_text }}</div>
+    {% endif %}
+</div>

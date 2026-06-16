@@ -17,6 +17,13 @@ def get_attr(obj, attr_name):
     """Πρόσβαση σε attribute αντικειμένου από template με όνομα attribute."""
     return getattr(obj, attr_name, '')
 
+
+@register.filter
+def base_data_display(record, spec):
+    """Εμφάνιση τιμής πεδίου βασικών στοιχείων στον πίνακα."""
+    from leaves.base_data_config import get_field_display_value
+    return get_field_display_value(record, spec)
+
 @register.filter
 def to_accusative(name):
     """
