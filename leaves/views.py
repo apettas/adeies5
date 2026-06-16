@@ -73,8 +73,13 @@ class EmployeeDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFil
         context['recent_balance_entries'] = get_balance_entries(user)[:5]
         
         # Sick leave information
+        from leaves.utils.sick_leave_alerts import (
+            calculate_yearly_sick_total,
+            user_exceeds_sick_threshold,
+            user_has_acknowledged_own_sick_alert,
+        )
         context['sick_days_remaining'] = user.sick_leave_with_declaration
-        context['sick_days_current_year'] = user.sick_days_current_year
+        context['sick_days_current_year'] = calculate_yearly_sick_total(user)
         
         # Αναρρωτικές Άδειες με ΥΔ — χρήση τρέχοντος έτους
         from django.utils import timezone
@@ -86,22 +91,10 @@ class EmployeeDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFil
         ).count()
         context['sick_leave_yd_limit'] = user.sick_leave_with_declaration
         
-        # Σύνολο Αναρρωτικών Αδειών τρέχοντος έτους (όχι μόνο completed — όλες εκτός draft/rejected)
-        year = timezone.now().year
-        sick_lrs = LeaveRequest.objects.filter(
-            user=user,
-            leave_type__is_sick_leave_total=True,
-            submitted_at__year=year
-        ).exclude(
-            status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
-        ).prefetch_related('periods')
-        sick_total = sum(lr.total_days for lr in sick_lrs)
+        sick_total = calculate_yearly_sick_total(user)
         context['sick_total_days'] = sick_total
-        context['sick_exceeds_threshold'] = sick_total > 8
-        from leaves.models import YCCommitteeAcknowledgment
-        context['sick_alert_acknowledged'] = YCCommitteeAcknowledgment.objects.filter(
-            handler=user, employee=user
-        ).exists() if sick_total > 8 else True
+        context['sick_exceeds_threshold'] = user_exceeds_sick_threshold(user)
+        context['sick_alert_acknowledged'] = user_has_acknowledged_own_sick_alert(user)
         
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
@@ -579,11 +572,11 @@ class ManagerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
         })
 
         # Sick days alert - υπάλληλοι με >8 αναρρωτικές ημέρες τρέχοντος έτους
-        from accounts.models import User
-        context['sick_days_alert_users'] = User.objects.filter(
-            id__in=subordinates.values_list('id', flat=True),
-            sick_days_current_year__gt=8
-        ).select_related('department').prefetch_related('roles')
+        from leaves.utils.sick_leave_alerts import get_sick_alert_users
+        context['sick_days_alert_users'] = get_sick_alert_users(
+            self.request.user,
+            scope_user_ids=subordinates.values_list('id', flat=True),
+        )
 
         # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα
         if (self.request.user.department and
@@ -918,30 +911,10 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
             status='PENDING_PROTOCOL'
         ).select_related('user', 'user__department', 'leave_type').order_by('-submitted_at')
         
-        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες (Python-level calculation)
-        from accounts.models import User
-        from leaves.models import YCCommitteeAcknowledgment
-        from django.utils import timezone
-        acknowledged = YCCommitteeAcknowledgment.objects.filter(
-            handler=self.request.user
-        ).values_list('employee_id', flat=True)
-        year = timezone.now().year
-        sick_lrs = LeaveRequest.objects.filter(
-            leave_type__is_sick_leave_total=True,
-            submitted_at__year=year
-        ).exclude(
-            status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
-        ).select_related('user').prefetch_related('periods')
-        user_totals = {}
-        for lr in sick_lrs:
-            uid = lr.user_id
-            user_totals[uid] = user_totals.get(uid, 0) + lr.total_days
-        alert_user_ids = [uid for uid, total in user_totals.items() if total > 8 and uid not in acknowledged]
-        context['sick_alert_users'] = User.objects.filter(
-            id__in=alert_user_ids,
-            is_active=True
-        ).select_related('department').prefetch_related('roles').order_by('last_name')
-        context['sick_alert_count'] = context['sick_alert_users'].count()
+        # Alert για Υγειονομική Επιτροπή — χρήστες > 8 αναρρωτικές ημέρες
+        from leaves.utils.sick_leave_alerts import get_sick_alert_users
+        context['sick_alert_users'] = get_sick_alert_users(self.request.user)
+        context['sick_alert_count'] = len(context['sick_alert_users'])
         
         # Add today's date for protocol forms
         context['today'] = timezone.now().date()
@@ -1181,7 +1154,9 @@ def complete_leave_request(request, pk):
         )
 
         # Alert για Υγειονομική Επιτροπή (μετά την ενημέρωση υπολοίπου από το model)
-        if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
+        from leaves.utils.sick_leave_alerts import calculate_yearly_sick_total
+        sick_total = calculate_yearly_sick_total(leave_request.user)
+        if leave_request.leave_type.is_sick_leave_total and sick_total > 8:
             from accounts.models import User
             handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
             for handler in handlers:
@@ -1190,7 +1165,7 @@ def complete_leave_request(request, pk):
                     title="Υγειονομική Επιτροπή",
                     message=(
                         f"Ο/Η {leave_request.user.full_name} έχει ξεπεράσει τις 8 αναρρωτικές ημέρες "
-                        f"({leave_request.user.sick_days_current_year} ημέρες). Απαιτείται παραπομπή."
+                        f"({sick_total} ημέρες). Απαιτείται παραπομπή."
                     ),
                     related_object=leave_request
                 )
@@ -1198,7 +1173,7 @@ def complete_leave_request(request, pk):
                 user=leave_request.user,
                 title="Υγειονομική Επιτροπή",
                 message=(
-                    f"Το σύνολο των αναρρωτικών σας αδειών ({leave_request.user.sick_days_current_year} ημέρες) "
+                    f"Το σύνολο των αναρρωτικών σας αδειών ({sick_total} ημέρες) "
                     f"ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
                 ),
                 related_object=leave_request
@@ -2424,19 +2399,27 @@ def provide_documents(request, pk):
 
 @login_required
 def acknowledge_yc_alert(request, user_id):
-    """Δήλωση γνώσης για υπέρβαση αναρρωτικών — από χειριστή ή από τον ίδιο τον υπάλληλο"""
-    if not request.user.is_leave_handler and request.user.pk != user_id:
-        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+    """Δήλωση γνώσης για υπέρβαση αναρρωτικών — χειριστής, προϊστάμενος ή ο ίδιος ο υπάλληλος."""
     from leaves.models import YCCommitteeAcknowledgment
+    from leaves.utils.sick_leave_alerts import can_acknowledge_sick_alert
+
+    employee = get_object_or_404(User, pk=user_id)
+    if not can_acknowledge_sick_alert(request.user, employee):
+        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+
     YCCommitteeAcknowledgment.objects.get_or_create(
         handler=request.user,
-        employee_id=user_id
+        employee=employee,
     )
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         from django.http import JsonResponse
         return JsonResponse({'success': True})
     messages.success(request, 'Η γνώση καταχωρήθηκε.')
-    return redirect('leaves:handler_dashboard')
+    if request.user.is_leave_handler:
+        return redirect('leaves:handler_dashboard')
+    if request.user.is_department_manager:
+        return redirect('leaves:manager_dashboard')
+    return redirect('leaves:employee_dashboard')
 
 
 @login_required

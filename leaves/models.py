@@ -726,17 +726,10 @@ class LeaveRequest(models.Model):
         
         from notifications.utils import create_notification as _create_notification
         
+        from leaves.utils.sick_leave_alerts import calculate_yearly_sick_total
+        
         current_year = timezone.now().year
-        # Σύνολο όλων των αναρρωτικών (συμπεριλαμβανομένων IN_REVIEW, PENDING_SIGNATURES κλπ)
-        sick_total = sum(
-            lr.total_days for lr in LeaveRequest.objects.filter(
-                user=self.user,
-                leave_type__is_sick_leave_total=True,
-                submitted_at__year=current_year
-            ).exclude(
-                status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
-            ).prefetch_related('periods')
-        )
+        sick_total = calculate_yearly_sick_total(self.user, year=current_year)
         
         if sick_total > 8:
             from accounts.models import User

@@ -37,15 +37,27 @@
 <!-- Alert για Υγειονομική Επιτροπή -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Υγειονομική Επιτροπή</h5>
-            <p>Οι παρακάτω υπάλληλοι έχουν ξεπεράσει τις 8 αναρρωτικές ημέρες τρέχοντος έτους:</p>
-            <ul class="mb-0">
-                {% for user in sick_days_alert_users %}
-                <li><strong>{{ user.get_full_name }}</strong> ({{ user.department.name }}) - {{ user.sick_days_current_year }} ημέρες</li>
-                {% endfor %}
-            </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert alert-danger border-start border-danger border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-heart-pulse"></i> Υγειονομική Επιτροπή</h5>
+                    <p>Οι παρακάτω υπάλληλοι έχουν ξεπεράσει τις 8 αναρρωτικές ημέρες τρέχοντος έτους:</p>
+                    <ul class="mb-0">
+                        {% for user in sick_days_alert_users %}
+                        <li>
+                            <strong>{{ user.get_full_name }}</strong>
+                            {% if user.department %}({{ user.department.name }}){% endif %}
+                            — <span class="fw-bold">{{ user.sick_alert_days }} ημέρες</span>
+                            <a href="{% url 'leaves:acknowledge_yc_alert' user.pk %}" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Το alert κρύβεται για εσάς αφού πατήσετε «Έλαβα Γνώση».</small>
+                </div>
+            </div>
         </div>
     </div>
 </div>
