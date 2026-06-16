@@ -8,75 +8,28 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-file-text"></i> Λεπτομέρειες Αίτησης</h2>
-            <div>
+            <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center">
                 {% if user == leave_request.user %}
                     <a href="{% url 'leaves:employee_dashboard' %}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Επιστροφή
                     </a>
+                {% elif user.is_department_manager %}
+                    <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Επιστροφή
+                    </a>
+                {% elif user.is_leave_handler %}
+                    <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Επιστροφή
+                    </a>
                 {% endif %}
-
-                {% if user.is_department_manager %}
-                    <div class="btn-group" role="group">
-                        <a href="{% url 'leaves:manager_dashboard' %}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Επιστροφή
-                        </a>
-                        {% if leave_request.status == 'SUBMITTED' %}
-                            {% can_manager_approve user leave_request as can_approve %}
-                            {% if can_approve %}
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
-                                    <i class="bi bi-check"></i> Έγκριση
-                                </button>
-                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
-                                    <i class="bi bi-x"></i> Απόρριψη
-                                </button>
-                            {% endif %}
-                        {% endif %}
-                    </div>
-                {% endif %}
-
-                {% if user.is_leave_handler %}
-                    <div class="btn-group" role="group">
-                        <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Επιστροφή
-                        </a>
-                        {% if leave_request.status == 'PENDING_PROTOCOL' or leave_request.status == 'PENDING_KEDASY_PROTOCOL' or leave_request.status == 'IN_REVIEW' %}
-                            <a href="{% url 'leaves:request_documents' leave_request.pk %}" class="btn btn-warning">
-                                <i class="bi bi-file-earmark-excel"></i> Αίτηση Δικαιολογητικών
-                            </a>
-                        {% endif %}
-                        {% if leave_request.status == 'IN_REVIEW' or leave_request.status == 'DECISION_PREPARATION' or leave_request.status == 'PENDING_SIGNATURES' %}
-                            <a href="{% url 'leaves:prepare_decision_preview' leave_request.id %}" class="btn btn-{% if leave_request.status == 'PENDING_SIGNATURES' %}warning{% else %}primary{% endif %}">
-                                <i class="bi bi-file-earmark-text"></i> {% if leave_request.has_decision_pdf %}Αναγέννηση{% else %}Ετοιμασία{% endif %} Απόφασης
-                            </a>
-                            {% if leave_request.status != 'PENDING_SIGNATURES' %}
-                                <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
-                                    <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
-                                </button>
-                            {% endif %}
-                        {% endif %}
-                        {% if leave_request.status == 'WAITING_FOR_DOCUMENTS' %}
-                            <a href="{% url 'leaves:provide_documents' leave_request.pk %}" class="btn btn-info">
-                                <i class="bi bi-file-earmark-check"></i> Παροχή Δικ/κων
-                            </a>
-                            <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
-                                <i class="bi bi-arrow-return-left"></i> Επιστροφή για Διόρθωση
-                            </button>
-                        {% endif %}
-                        {% if leave_request.has_decision_pdf %}
-                            <a href="{% url 'leaves:serve_decision_pdf' leave_request.id %}" class="btn btn-info" target="_blank">
-                                <i class="bi bi-file-earmark-pdf"></i> Προβολή Απόφασης PDF
-                            </a>
-                        {% endif %}
-                    </div>
-                {% endif %}
+                {% include 'leaves/includes/detail_action_buttons.html' with actions=detail_actions leave_request=leave_request %}
             </div>
         </div>
     </div>
 </div>
 
-{% if user.is_department_manager and leave_request.status == 'SUBMITTED' %}
-    {% can_manager_approve user leave_request as can_approve %}
-    {% if can_approve %}
+{% can_manager_approve user leave_request as can_approve %}
+{% if can_approve %}
 <!-- Modal Έγκρισης για Προϊστάμενο -->
 <div class="modal fade" id="approveModal{{ leave_request.pk }}" tabindex="-1">
     <div class="modal-dialog">
@@ -146,7 +99,72 @@
         </div>
     </div>
 </div>
-    {% endif %}
+{% endif %}
+
+{% if handler_can_reject %}
+<!-- Modal Απόρριψης από Χειριστή -->
+<div class="modal fade" id="handlerRejectModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Απόρριψη Αίτησης</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:reject_leave_request_by_handler' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    <div class="mb-3">
+                        <label for="handler_reject_reason" class="form-label">Λόγος Απόρριψης <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="handler_reject_reason" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x"></i> Απόρριψη
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if user.is_leave_handler and leave_request.status == 'PENDING_PROTOCOL' %}
+<!-- Modal Καταχώρησης Πρωτοκόλλου ΠΔΕΔΕ -->
+<div class="modal fade" id="pdedeProtocolModal{{ leave_request.pk }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Καταχώρηση Πρωτοκόλλου ΠΔΕΔΕ</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'leaves:send_to_protocol_pdede' leave_request.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Αριθμός Πρωτοκόλλου ΠΔΕΔΕ <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="protocol_number" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ημερομηνία Πρωτοκόλλου</label>
+                        <input type="date" class="form-control" name="protocol_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Στοιχεία Πρωτοκόλλου</label>
+                        <textarea class="form-control" name="protocol_details" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <button type="submit" class="btn btn-primary">Καταχώρηση &amp; Προώθηση</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <div class="row">
@@ -663,17 +681,6 @@
                 </div>
                 {% endif %}
                 
-                <!-- Κουμπί Ολοκλήρωσης -->
-                {% if user.is_leave_handler and leave_request.can_complete_request %}
-                <div class="d-grid gap-2 mt-3">
-                    <a href="{% url 'leaves:complete_leave_request_final' leave_request.id %}"
-                       class="btn btn-success btn-lg"
-                       onclick="return confirm('Είστε σίγουροι ότι θέλετε να ολοκληρώσετε την αίτηση;')">
-                        <i class="bi bi-check-circle"></i> Ολοκλήρωση Αίτησης
-                    </a>
-                </div>
-                {% endif %}
-                
                 {% if user.is_leave_handler %}
                 <div class="mt-2">
                     <small class="text-muted">
@@ -935,6 +942,7 @@
                     </div>
                 </div>
                 <hr>
+                {% if leave_request.status == 'PENDING_PROTOCOL' %}
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <p class="mb-2">
@@ -968,6 +976,7 @@
                         </a>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

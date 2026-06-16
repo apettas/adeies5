@@ -1,0 +1,58 @@
+{% comment %}
+Κουμπιά ενεργειών για την προβολή αίτησης (ίδια λογική με τη λίστα dashboard).
+{% endcomment %}
+
+{% for action_code, label, url_name in actions %}
+    {% if url_name %}
+        <a href="{% url url_name leave_request.pk %}" class="btn btn-sm btn-outline-primary" title="{{ label }}">
+            <i class="bi bi-{% if action_code == 'view' %}eye{% elif action_code == 'cancel' or action_code == 'cancel_completed' %}x-circle{% elif action_code == 'complete' %}check-lg{% elif action_code == 'decision' or action_code == 'edit_decision' %}file-earmark-text{% elif action_code == 'request_documents' %}file-earmark-excel{% elif action_code == 'send_protocol_pdf' %}file-earmark-pdf{% elif action_code == 'yc_referral' %}file-medical{% elif action_code == 'upload_docs' %}paperclip{% else %}arrow-right{% endif %}"></i>
+            {{ label }}
+        </a>
+    {% elif action_code == 'approve' %}
+        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ leave_request.pk }}">
+            <i class="bi bi-check"></i> {{ label }}
+        </button>
+    {% elif action_code == 'reject' %}
+        {% if leave_request.status == 'SUBMITTED' %}
+        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ leave_request.pk }}">
+            <i class="bi bi-x"></i> {{ label }}
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#handlerRejectModal{{ leave_request.pk }}">
+            <i class="bi bi-x"></i> {{ label }}
+        </button>
+        {% endif %}
+    {% elif action_code == 'return' %}
+        <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#returnModal{{ leave_request.pk }}">
+            <i class="bi bi-arrow-return-left"></i> {{ label }}
+        </button>
+    {% elif action_code == 'protocol' %}
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#pdedeProtocolModal{{ leave_request.pk }}">
+            <i class="bi bi-upc-scan"></i> {{ label }}
+        </button>
+    {% elif action_code == 'kedasy_protocol' %}
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#kedasyProtocolModal{{ leave_request.pk }}">
+            <i class="bi bi-upc-scan"></i> {{ label }}
+        </button>
+    {% elif action_code == 'upload_docs' %}
+        <a href="{% url 'leaves:provide_documents' leave_request.pk %}" class="btn btn-sm btn-info">
+            <i class="bi bi-file-earmark-check"></i> {{ label }}
+        </a>
+    {% elif action_code == 'upload_final' %}
+        <a href="#exact-copy-upload" class="btn btn-sm btn-primary">
+            <i class="bi bi-upload"></i> {{ label }}
+        </a>
+    {% elif action_code == 'edit' %}
+        <a href="{% url 'leaves:edit_leave_request' leave_request.pk %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil"></i> {{ label }}
+        </a>
+    {% elif action_code == 'submit' %}
+        <a href="{% url 'leaves:submit_leave_request' leave_request.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-send"></i> {{ label }}
+        </a>
+    {% else %}
+        <button type="button" class="btn btn-sm btn-outline-secondary" title="{{ label }}" data-action="{{ action_code }}" data-pk="{{ leave_request.pk }}">
+            <i class="bi bi-gear"></i> {{ label }}
+        </button>
+    {% endif %}
+{% endfor %}

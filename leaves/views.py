@@ -1540,12 +1540,19 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         context['can_withdraw'] = False
         context['can_withdraw_completed'] = False
         if user == leave_request.user:
-            # Ανάκληση αίτησης (μέχρι ΠΡΟΣ ΕΠΕΞΕΡΓΑΣΙΑ)
-            if leave_request.status in ['SUBMITTED', 'PENDING_PROTOCOL']:
+            if leave_request.can_be_withdrawn:
                 context['can_withdraw'] = True
-            # Ανάκληση ολοκληρωμένης
             if leave_request.status == 'COMPLETED':
                 context['can_withdraw_completed'] = True
+
+        all_actions = get_available_actions(leave_request, user)
+        context['available_actions'] = all_actions
+        context['detail_actions'] = [
+            action for action in all_actions if action[0] != 'view'
+        ]
+        context['handler_can_reject'] = user.is_leave_handler and any(
+            action[0] == 'reject' for action in all_actions
+        )
 
         # Delete by handler (μόνο σε UNDER_PROCESSING)
         context['can_delete'] = user.is_leave_handler and leave_request.status == 'IN_REVIEW'

@@ -269,7 +269,7 @@
 
 <!-- Modals Απόρριψης Αίτησης -->
 {% for lr in leave_requests %}
-    {% if lr.status == 'PENDING_PROTOCOL' or lr.status == 'IN_REVIEW' or lr.status == 'WAITING_FOR_DOCUMENTS' %}
+    {% if lr.status == 'PENDING_PROTOCOL' or lr.status == 'IN_REVIEW' or lr.status == 'WAITING_FOR_DOCUMENTS' or lr.status == 'DECISION_PREPARATION' or lr.status == 'PENDING_SIGNATURES' or lr.status == 'PENDING_YC_COMMITTEE' %}
     <div class="modal fade" id="rejectModal{{ lr.pk }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ lr.pk }}" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -384,7 +384,7 @@
 
 <!-- Modal Επιστροφής στον Αιτούντα (για WAITING_FOR_DOCUMENTS) -->
 {% for lr in leave_requests %}
-    {% if lr.status == 'WAITING_FOR_DOCUMENTS' %}
+    {% if lr.status == 'IN_REVIEW' or lr.status == 'WAITING_FOR_DOCUMENTS' %}
     <div class="modal fade" id="returnModal{{ lr.pk }}" tabindex="-1" aria-labelledby="returnModalLabel{{ lr.pk }}" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -532,22 +532,13 @@
         window.location.href = '/leaves/detail/' + pk + '/#exact-copy-upload';
     });
 
-    // Άνοιγμα σελίδας για αίτημα δικαιολογητικών (IN_REVIEW - κουμπί ΑΝΑΜΟΝΗ ΔΙΚ/ΚΩΝ)
+    // Upload τελικής απόφασης — μετάβαση στην προβολή αίτησης
     document.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-action="documents"]');
+        var btn = e.target.closest('[data-action="upload_final"]');
         if (!btn) return;
         var pk = btn.getAttribute('data-pk');
         if (!pk) return;
-        window.location.href = '/leaves/request-documents/' + pk + '/';
-    });
-
-    // Κουμπί ΟΛΟΚΛΗΡΩΣΗ (PENDING_SIGNATURES)
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-action="complete"]');
-        if (!btn) return;
-        var pk = btn.getAttribute('data-pk');
-        if (!pk) return;
-        window.location.href = '/leaves/complete-final/' + pk + '/';
+        window.location.href = '/leaves/detail/' + pk + '/#exact-copy-upload';
     });
 })();
 </script>
