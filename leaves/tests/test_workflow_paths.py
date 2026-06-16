@@ -8,7 +8,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import Department, Role
+from accounts.models import Department
 from accounts.tests.test_data import TestDataMixin
 from leaves.models import LeaveRequest, LeaveType, RegularLeaveBalanceEntry, YearlySickLeaveTotal
 from leaves.tests.helpers import (
@@ -346,6 +346,7 @@ class CompletedRevocationTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase)
         child = LeaveRequest.objects.filter(parent_leave=req).first()
         self.assertIsNotNone(child)
         self.assertEqual(child.status, 'SUBMITTED')
+        self.assertEqual(child.leave_type, self.revocation_type)
         self.assertEqual(child.periods.count(), 1)
 
 
@@ -493,20 +494,16 @@ class SickLeaveWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
 
 
 class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
-    """
-    Tests που επιβεβαιώνουν γνωστά προβλήματα ή αναμένουν διόρθωση.
-    Αν αποτύχουν, υπάρχει ασυνέπεια view/model.
-    """
+    """Regression tests για διορθώσεις workflow bugs."""
 
     def setUp(self):
         super().setUp()
         self.client = Client()
         self._create_leave_types()
 
-    def test_handler_reject_from_decision_preparation_fails_silently(self):
-        """View επιτρέπει απόρριψη, model όχι — η αίτηση μένει κολλημένη."""
+    def test_handler_reject_from_decision_preparation(self):
         req = create_submitted_leave_request(
-            self.employee, self.regular_type, 'stuck', START, END,
+            self.employee, self.regular_type, 'reject decision', START, END,
         )
         req.status = 'DECISION_PREPARATION'
         req.save()
@@ -515,25 +512,21 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         response = reject_leave_as_handler(self.client, req, reason='Λάθος απόφαση')
         self.assertEqual(response.status_code, 302)
         req.refresh_from_db()
-        # Γνωστό bug: μένει DECISION_PREPARATION
-        self.assertEqual(req.status, 'DECISION_PREPARATION')
+        self.assertEqual(req.status, 'REJECTED_BY_LEAVES_DEPT')
 
-    def test_withdraw_completed_notifies_hr_officer_not_leave_handler(self):
-        """Ανάκληση ολοκληρωμένης ειδοποιεί HR_OFFICER — όχι LEAVE_HANDLER."""
-        hr_role, _ = Role.objects.get_or_create(
-            code='HR_OFFICER',
-            defaults={'name': 'Υπεύθυνος Προσωπικού', 'is_active': True},
+    def test_handler_reject_from_pending_signatures(self):
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'reject signatures', START, END,
         )
-        hr_user = User.objects.create_user(
-            email='hr@test.com',
-            first_name='HR',
-            last_name='Officer',
-            department=self.pdede,
-            registration_status='APPROVED',
-            is_active=True,
-        )
-        hr_user.roles.add(hr_role)
+        req.status = 'PENDING_SIGNATURES'
+        req.save()
 
+        self.client.force_login(self.leave_handler)
+        reject_leave_as_handler(self.client, req, reason='Ακυρώθηκε ΣΗΔΕ')
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'REJECTED_BY_LEAVES_DEPT')
+
+    def test_withdraw_completed_notifies_leave_handler_and_uses_revocation_type(self):
         req = create_submitted_leave_request(
             self.employee, self.regular_type, 'revoke notify', START, END,
         )
@@ -546,13 +539,14 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
                 reverse('leaves:withdraw_completed_leave', kwargs={'pk': req.pk}),
             )
             notified_users = {call.kwargs['user'] for call in mock_notify.call_args_list}
-            self.assertIn(hr_user, notified_users)
-            self.assertNotIn(self.leave_handler, notified_users)
+            self.assertIn(self.leave_handler, notified_users)
 
-    def test_sick_total_double_counted_on_handler_complete(self):
-        """Πιθανό διπλό μέτρημα αναρρωτικών: model + view."""
+        child = LeaveRequest.objects.filter(parent_leave=req).first()
+        self.assertEqual(child.leave_type, self.revocation_type)
+
+    def test_sick_total_counted_once_on_handler_complete(self):
         req = create_submitted_leave_request(
-            self.employee, self.sick_total_type, 'double sick', START, END,
+            self.employee, self.sick_total_type, 'single sick count', START, END,
         )
         req.status = 'PENDING_PROTOCOL'
         req.submitted_at = timezone.now()
@@ -566,9 +560,5 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
             year=timezone.now().year,
         )
         self.employee.refresh_from_db()
-        # Αν είναι 10 αντί για 5, υπάρχει διπλό μέτρημα
-        expected_days = req.total_days
-        if yearly.total_days == expected_days * 2:
-            self.assertEqual(yearly.total_days, expected_days * 2)  # documents bug
-        else:
-            self.assertEqual(yearly.total_days, expected_days)
+        self.assertEqual(yearly.total_days, req.total_days)
+        self.assertEqual(self.employee.sick_days_current_year, req.total_days)

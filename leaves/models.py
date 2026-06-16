@@ -557,7 +557,10 @@ class LeaveRequest(models.Model):
     
     def reject_by_handler(self, handler, reason):
         """Απόρριψη από χειριστή"""
-        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS']:
+        if self.status in [
+            'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
+            'DECISION_PREPARATION', 'PENDING_SIGNATURES',
+        ]:
             self.status = 'REJECTED_BY_LEAVES_DEPT'
             self.rejected_by = handler
             self.rejected_at = timezone.now()

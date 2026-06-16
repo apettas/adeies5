@@ -1163,7 +1163,8 @@ def complete_leave_request(request, pk):
             comments,
             balance_after=balance_after if leave_request.leave_type.affects_regular_leave_balance else None,
         )
-        
+        leave_request.user.refresh_from_db()
+
         from notifications.utils import create_notification
         create_notification(
             user=leave_request.user,
@@ -1171,31 +1172,8 @@ def complete_leave_request(request, pk):
             message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
             related_object=leave_request
         )
-        
-        # Καταγραφή στο ετήσιο σύνολο αναρρωτικών
-        if leave_request.leave_type.is_sick_leave_total:
-            from leaves.models import YearlySickLeaveTotal
-            current_year = timezone.now().year
-            yearly_total, created = YearlySickLeaveTotal.objects.get_or_create(
-                employee=leave_request.user,
-                year=current_year,
-                defaults={'total_days': 0}
-            )
-            if not yearly_total.is_locked:
-                yearly_total.total_days += leave_request.total_days
-                yearly_total.save()
-            
-            # Update user field
-            user = leave_request.user
-            user.sick_days_current_year = yearly_total.total_days
-            five_years_ago = current_year - 5
-            last_5 = YearlySickLeaveTotal.objects.filter(
-                employee=user, year__gte=five_years_ago, year__lte=current_year
-            ).aggregate(total=Sum('total_days'))['total'] or 0
-            user.total_sick_leave_last_5_years = last_5
-            user.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
-        
-        # Alert για Υγειονομική Επιτροπή
+
+        # Alert για Υγειονομική Επιτροπή (μετά την ενημέρωση υπολοίπου από το model)
         if leave_request.leave_type.is_sick_leave_total and leave_request.user.sick_days_current_year > 8:
             from accounts.models import User
             handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
@@ -1249,8 +1227,10 @@ def reject_leave_request_by_handler(request, pk):
             return render(request, 'leaves/reject_confirm.html', {'leave_request': leave_request})
         
         try:
-            leave_request.reject_by_handler(request.user, reason)
-            
+            if not leave_request.reject_by_handler(request.user, reason):
+                messages.error(request, 'Η αίτηση δεν μπορεί να απορριφθεί σε αυτή τη φάση.')
+                return render(request, 'leaves/reject_confirm.html', {'leave_request': leave_request})
+
             # Ειδοποίηση στον υπάλληλο
             create_notification(
                 user=leave_request.user,
@@ -2760,10 +2740,13 @@ def withdraw_completed_leave(request, pk):
         return redirect('leaves:employee_dashboard')
 
     if request.method == 'POST':
-        # Create new leave request for the revocation process
+        revocation_type = LeaveType.objects.filter(
+            is_revocation=True, is_active=True,
+        ).order_by('pk').first()
+
         new_request = LeaveRequest.objects.create(
             user=leave_request.user,
-            leave_type=leave_request.leave_type,
+            leave_type=revocation_type or leave_request.leave_type,
             description=f'Ανάκληση άδειας #{leave_request.id}',
             status='SUBMITTED',
             parent_leave=leave_request,
@@ -2782,8 +2765,10 @@ def withdraw_completed_leave(request, pk):
         leave_request.status = 'CANCELLED_BY_APPLICANT'
         leave_request.save()
 
-        # Notify handlers
-        leave_handlers = User.objects.filter(roles__code='HR_OFFICER', is_active=True).distinct()
+        # Ειδοποίηση στους χειριστές αδειών
+        leave_handlers = User.objects.filter(
+            roles__code='LEAVE_HANDLER', is_active=True,
+        ).distinct()
         for handler in leave_handlers:
             create_notification(
                 user=handler,
