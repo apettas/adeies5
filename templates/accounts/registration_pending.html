@@ -1,31 +1,28 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Εγγραφή Ολοκληρώθηκε - Αλκίνοος{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card shadow">
-                <div class="card-header bg-success text-white text-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Εγγραφή Ολοκληρώθηκε
-                    </h4>
-                </div>
-                <div class="card-body p-4 text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-clock text-warning" style="font-size: 4rem;"></i>
-                    </div>
-                    
-                    <h5 class="text-success mb-3">
-                        <i class="fas fa-thumbs-up me-2"></i>
-                        Η αίτηση εγγραφής σας υποβλήθηκε επιτυχώς!
-                    </h5>
+<div class="page-shell">
+    <div class="page-card mb-4">
+        <div class="page-card-header">
+            <img src="{% static 'Alkinoos-icon.svg' %}" alt="" class="page-card-logo" aria-hidden="true">
+            <h4>Εγγραφή Ολοκληρώθηκε</h4>
+        </div>
+        <div class="page-card-body text-center">
+            <div class="mb-4">
+                <i class="bi bi-clock text-warning" style="font-size: 3rem;"></i>
+            </div>
+            
+            <h5 class="text-success mb-3">
+                <i class="bi bi-hand-thumbs-up me-2"></i>
+                Η αίτηση εγγραφής σας υποβλήθηκε επιτυχώς!
+            </h5>
                     
                     <div class="alert alert-info text-start">
                         <h6 class="alert-heading">
-                            <i class="fas fa-info-circle me-2"></i>
+                            <i class="bi bi-info-circle me-2"></i>
                             Τι συμβαίνει τώρα;
                         </h6>
                         <hr>
@@ -47,7 +44,7 @@
 
                     <div class="alert alert-warning text-start">
                         <h6 class="alert-heading">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <i class="bi bi-exclamation-triangle me-2"></i>
                             Σημαντικό
                         </h6>
                         <p class="mb-0">
@@ -59,25 +56,24 @@
                     <div class="row mt-4">
                         <div class="col-md-6 mb-2">
                             <a href="{% url 'accounts:registration_status' %}" class="btn btn-outline-primary w-100">
-                                <i class="fas fa-search me-2"></i>
+                                <i class="bi bi-search me-2"></i>
                                 Έλεγχος Κατάστασης
                             </a>
                         </div>
                         <div class="col-md-6 mb-2">
                             <a href="{% url 'accounts:login' %}" class="btn btn-primary w-100">
-                                <i class="fas fa-sign-in-alt me-2"></i>
+                                <i class="bi bi-box-arrow-in-right me-2"></i>
                                 Πίσω στη Σύνδεση
                             </a>
                         </div>
                     </div>
-                </div>
-            </div>
+        </div>
+    </div>
 
-            <!-- Additional Information Card -->
-            <div class="card mt-4">
-                <div class="card-body">
+    <div class="page-card mb-4">
+        <div class="page-card-body">
                     <h6 class="card-title">
-                        <i class="fas fa-question-circle me-1"></i>
+                        <i class="bi bi-question-circle me-1"></i>
                         Χρειάζεστε Βοήθεια;
                     </h6>
                     <p class="card-text small mb-3">
@@ -88,14 +84,14 @@
                     <div class="row text-center">
                         <div class="col-md-6">
                             <div class="border rounded p-3 mb-2">
-                                <i class="fas fa-user-tie text-primary mb-2"></i>
+                                <i class="bi bi-person-badge text-primary mb-2"></i>
                                 <h6 class="small mb-1">Χειριστή Αδειών</h6>
                                 <p class="small text-muted mb-0">Του τμήματός σας</p>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="border rounded p-3 mb-2">
-                                <i class="fas fa-cog text-secondary mb-2"></i>
+                                <i class="bi bi-cog text-secondary mb-2"></i>
                                 <h6 class="small mb-1">Διαχειριστή Συστήματος</h6>
                                 <p class="small text-muted mb-0">ΠΔΕΔΕ</p>
                             </div>
@@ -104,116 +100,35 @@
                 </div>
             </div>
 
-            <!-- Status Timeline Card -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-tasks me-2"></i>
-                        Πορεία Εγγραφής
-                    </h6>
+    <div class="page-card">
+        <div class="page-card-header text-start">
+            <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>Πορεία Εγγραφής</h6>
+        </div>
+        <div class="page-card-body">
+            <div class="registration-timeline">
+                <div class="timeline-item completed">
+                    <div class="timeline-marker"><i class="bi bi-check"></i></div>
+                    <div class="timeline-content">
+                        <h6 class="mb-1">Υποβολή Αίτησης</h6>
+                        <p class="small text-muted mb-0">Η αίτηση εγγραφής σας υποβλήθηκε επιτυχώς</p>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="timeline">
-                        <div class="timeline-item completed">
-                            <div class="timeline-marker bg-success">
-                                <i class="fas fa-check text-white"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Υποβολή Αίτησης</h6>
-                                <p class="small text-muted mb-0">Η αίτηση εγγραφής σας υποβλήθηκε επιτυχώς</p>
-                            </div>
-                        </div>
-                        
-                        <div class="timeline-item current">
-                            <div class="timeline-marker bg-warning">
-                                <i class="fas fa-clock text-white"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Εκκρεμότητα Έγκρισης</h6>
-                                <p class="small text-muted mb-0">Η αίτησή σας αναμένει έγκριση από τον χειριστή αδειών</p>
-                            </div>
-                        </div>
-                        
-                        <div class="timeline-item">
-                            <div class="timeline-marker bg-secondary">
-                                <i class="fas fa-user-check text-white"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">Έγκριση & Ενεργοποίηση</h6>
-                                <p class="small text-muted mb-0">Ενεργοποίηση λογαριασμού και πρόσβαση στο σύστημα</p>
-                            </div>
-                        </div>
+                <div class="timeline-item current">
+                    <div class="timeline-marker"><i class="bi bi-clock"></i></div>
+                    <div class="timeline-content">
+                        <h6 class="mb-1">Εκκρεμότητα Έγκρισης</h6>
+                        <p class="small text-muted mb-0">Η αίτησή σας αναμένει έγκριση από τον χειριστή αδειών</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-marker"><i class="bi bi-person-check"></i></div>
+                    <div class="timeline-content">
+                        <h6 class="mb-1">Έγκριση & Ενεργοποίηση</h6>
+                        <p class="small text-muted mb-0">Ενεργοποίηση λογαριασμού και πρόσβαση στο σύστημα</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-.timeline {
-    position: relative;
-    padding-left: 2rem;
-}
-
-.timeline::before {
-    content: '';
-    position: absolute;
-    left: 1rem;
-    top: 0;
-    height: 100%;
-    width: 2px;
-    background: #dee2e6;
-}
-
-.timeline-item {
-    position: relative;
-    padding-bottom: 2rem;
-}
-
-.timeline-item:last-child {
-    padding-bottom: 0;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -2rem;
-    top: 0;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 3px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.timeline-item.completed .timeline-marker {
-    background-color: #28a745 !important;
-}
-
-.timeline-item.current .timeline-marker {
-    background-color: #ffc107 !important;
-    animation: pulse 2s infinite;
-}
-
-.timeline-content {
-    margin-left: 1rem;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
-    }
-}
-</style>
 {% endblock %}

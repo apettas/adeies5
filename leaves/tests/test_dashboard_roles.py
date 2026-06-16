@@ -95,6 +95,6 @@ class DashboardRedirectViewTests(TestDataMixin, TestCase):
         self.dept_manager.roles.add(self.leave_handler_role)
         self.client.force_login(self.dept_manager)
         response = self.client.get(reverse('leaves:manager_dashboard'))
-        self.assertContains(response, 'Ρόλος:')
+        self.assertContains(response, 'role-switcher-bar')
         self.assertContains(response, 'Προϊστάμενος')
         self.assertContains(response, 'Χειριστής Αδειών')

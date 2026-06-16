@@ -1,0 +1,47 @@
+{% comment %}Mobile bottom navigation — Apple-style tab bar{% endcomment %}
+<nav class="mobile-tab-bar d-lg-none" aria-label="Κύρια πλοήγηση">
+    <div class="tab-items">
+        <a href="{% url 'accounts:dashboard' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dashboard_redirect' %}active{% endif %}">
+            <i class="bi bi-house"></i>
+            <span>Αρχική</span>
+        </a>
+        <a href="{% url 'leaves:employee_dashboard' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'employee_dashboard' %}active{% endif %}">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Αιτήσεις</span>
+        </a>
+        <a href="{% url 'notifications:notification_list' %}"
+           class="tab-item {% if request.resolver_match.namespace == 'notifications' %}active{% endif %}"
+           id="mobile-notif-tab">
+            <i class="bi bi-bell"></i>
+            <span>Ειδοποιήσεις</span>
+            <span class="tab-badge d-none" id="mobile-notif-badge">0</span>
+        </a>
+        {% if user.is_department_manager %}
+        <a href="{% url 'leaves:manager_dashboard' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}">
+            <i class="bi bi-clipboard-check"></i>
+            <span>Εγκρίσεις</span>
+        </a>
+        {% elif user.is_leave_handler %}
+        <a href="{% url 'leaves:handler_dashboard' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'handler_dashboard' %}active{% endif %}">
+            <i class="bi bi-gear"></i>
+            <span>Επεξεργασία</span>
+        </a>
+        {% elif user.is_secretary %}
+        <a href="{% url 'leaves:secretary_dashboard' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'secretary_dashboard' %}active{% endif %}">
+            <i class="bi bi-archive"></i>
+            <span>Γραμματεία</span>
+        </a>
+        {% else %}
+        <a href="{% url 'leaves:create_leave_request' %}"
+           class="tab-item {% if request.resolver_match.url_name == 'create_leave_request' %}active{% endif %}">
+            <i class="bi bi-plus-circle"></i>
+            <span>Νέα</span>
+        </a>
+        {% endif %}
+    </div>
+</nav>

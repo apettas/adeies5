@@ -18,35 +18,9 @@
 
 <!-- Στατιστικά -->
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-light">
-            <div class="card-body">
-                <i class="bi bi-list-ul fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_notifications }}</h5>
-                <small class="text-muted">Συνολικές</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-exclamation-circle fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ unread_count }}</h5>
-                <small class="text-muted">Μη Διαβασμένες</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ read_count }}</h5>
-                <small class="text-muted">Διαβασμένες</small>
-            </div>
-        </div>
-    </div>
+    {% include 'includes/stat_card.html' with icon='list-ul' value=total_notifications label='Συνολικές' tone='neutral' %}
+    {% include 'includes/stat_card.html' with icon='exclamation-circle' value=unread_count label='Μη Διαβασμένες' tone='warning' %}
+    {% include 'includes/stat_card.html' with icon='check-circle' value=read_count label='Διαβασμένες' tone='success' %}
 </div>
 
 <!-- Λίστα Ειδοποιήσεων -->

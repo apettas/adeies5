@@ -67,45 +67,10 @@
 
 <!-- Στατιστικά -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-primary bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-calendar-plus fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_requests }}</h5>
-                <small class="text-muted">Συνολικές Αιτήσεις</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ completed_requests }}</h5>
-                <small class="text-muted">Ολοκληρωμένες</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-clock fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ pending_requests }}</h5>
-                <small class="text-muted">Εκκρεμείς</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-info bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-calendar-week fs-3 text-info"></i>
-                <h5 class="mt-2">{{ total_days_used }}</h5>
-                <small class="text-muted">Συνολικές Ημέρες</small>
-            </div>
-        </div>
-    </div>
+    {% include 'includes/stat_card.html' with icon='calendar-plus' value=total_requests label='Συνολικές Αιτήσεις' tone='primary' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='check-circle' value=completed_requests label='Ολοκληρωμένες' tone='success' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='clock' value=pending_requests label='Εκκρεμείς' tone='warning' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='calendar-week' value=total_days_used label='Συνολικές Ημέρες' tone='info' col='md-3' %}
 </div>
 
 <!-- Ιστορικό Αιτήσεων -->

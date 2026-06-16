@@ -1,8 +1,12 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="el">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
+    <link rel="icon" href="{% static 'Alkinoos-icon.svg' %}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{% static 'Alkinoos.png' %}">
     <title>{% block title %}Αλκίνοος - Σύστημα αδειών{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
@@ -17,62 +21,29 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
-    <!-- Custom CSS -->
-    <style>
-        .navbar-brand {
-            font-weight: bold;
-        }
-        
-        .sidebar {
-            min-height: calc(100vh - 56px);
-            background-color: #f8f9fa;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #dc3545;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 0.75rem;
-            min-width: 18px;
-            text-align: center;
-        }
-        
-        .status-badge {
-            font-size: 0.875rem;
-        }
-        
-        .card-hover:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
-            transition: all 0.2s;
-        }
-        
-        .date-greek {
-            font-family: monospace;
-        }
-    </style>
+    <!-- Αλκίνοος theme -->
+    <link href="{% static 'css/alkinoos-theme.css' %}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="{% if user.is_authenticated %}has-mobile-nav{% endif %}">
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg alkinoos-navbar sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'accounts:dashboard' %}">
-                <i class="bi bi-calendar-check"></i> Αλκίνοος - Σύστημα αδειών
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accounts:dashboard' %}">
+                <img src="{% static 'Alkinoos-icon.svg' %}" alt="" class="brand-icon" aria-hidden="true">
+                <img src="{% static 'Alkinoos.png' %}" alt="Αλκίνοος" class="brand-logo brand-logo-full">
+                <span class="d-none d-sm-inline text-brand">Αλκίνοος</span>
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Μενού">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 {% if user.is_authenticated %}
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto d-none d-lg-flex">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'accounts:dashboard' %}">
                             <i class="bi bi-house"></i> Αρχική
@@ -117,15 +88,13 @@
                     {% endif %}
                 </ul>
                 
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <span class="navbar-text text-white me-3" id="current-date-greek" style="font-size: 0.9rem;">
-                            <!-- Date will be populated by JavaScript -->
-                        </span>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item d-none d-lg-block">
+                        <span class="navbar-text me-3" id="current-date-greek"></span>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" 
-                           role="button" data-bs-toggle="dropdown">
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-bell"></i>
                             <span id="notification-count" class="notification-badge d-none">0</span>
                         </a>
@@ -147,12 +116,14 @@
                     </li>
                     
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ user.full_name }}
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i>
+                            <span class="d-none d-md-inline">{{ user.full_name }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text">{{ user.get_role_names }}</span></li>
-                            <li><span class="dropdown-item-text text-muted">{{ user.department.name|default:"Χωρίς τμήμα" }}</span></li>
+                            <li><span class="dropdown-item-text fw-semibold">{{ user.full_name }}</span></li>
+                            <li><span class="dropdown-item-text text-muted small">{{ user.get_role_names }}</span></li>
+                            <li><span class="dropdown-item-text text-muted small">{{ user.department.name|default:"Χωρίς τμήμα" }}</span></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'accounts:logout' %}">
                                 <i class="bi bi-box-arrow-right"></i> Αποσύνδεση
@@ -170,10 +141,10 @@
     {% endif %}
 
     <!-- Main Content -->
-    <div class="container-fluid">
+    <main class="container-fluid page-main">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show mt-3 border-start border-5 {% if 'Ανεπαρκές' in message.message %}border-danger bg-danger bg-opacity-10 fw-bold fs-5{% endif %}" role="alert">
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show border-start border-4 {% if 'Ανεπαρκές' in message.message %}border-danger{% endif %}" role="alert">
                     {% if 'Ανεπαρκές' in message.message %}
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
                     {% elif message.tags == 'error' %}
@@ -182,59 +153,59 @@
                         <i class="bi bi-check-circle-fill me-2"></i>
                     {% endif %}
                     {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Κλείσιμο"></button>
                 </div>
             {% endfor %}
         {% endif %}
 
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <!-- Footer -->
-    <footer class="text-white mt-5 py-4" style="background-color: #87CEEB;">
+    <footer class="alkinoos-footer">
         <div class="container">
             <div class="row">
                 <div class="col-md-4 mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <img src="/static/images/logo.png" alt="Λογότυπο ΠΔΕΔΕ" height="40" class="me-2" onerror="this.style.display='none'">
-                        <h5 class="mb-0 text-white">ΠΔΕΔΕ</h5>
+                    <div class="d-flex align-items-center mb-2 gap-2">
+                        <img src="{% static 'images/logo.png' %}" alt="Λογότυπο ΠΔΕΔΕ" height="40" class="footer-brand-logo" onerror="this.style.display='none'">
+                        <h5 class="mb-0">ΠΔΕΔΕ</h5>
                     </div>
-                    <p class="text-white mb-0">Περιφερειακή Διεύθυνση Εκπαίδευσης</p>
-                    <p class="text-white">Δυτικής Ελλάδας</p>
+                    <p class="mb-0 small">Περιφερειακή Διεύθυνση Εκπαίδευσης</p>
+                    <p class="small">Δυτικής Ελλάδας</p>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <h6 class="text-white">Αλκίνοος - Σύστημα Αδειών</h6>
-                    <p class="text-white mb-1">
-                        <i class="bi bi-calendar-check me-2"></i>
-                        Αλκίνοος - Σύστημα αδειών
-                    </p>
-                    <p class="text-white mb-0">
-                        <i class="bi bi-gear me-2"></i>
-                        Διαχείριση αιτήσεων άδειας προσωπικού
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <img src="{% static 'Alkinoos.png' %}" alt="Αλκίνοος" height="32" class="footer-brand-logo">
+                        <h6 class="mb-0">Αλκίνοος</h6>
+                    </div>
+                    <p class="mb-1 small">
+                        Σύστημα διαχείρισης αιτήσεων άδειας προσωπικού
                     </p>
                 </div>
                 <div class="col-md-4 mb-3">
-                    <h6 class="text-white">Πληροφορίες</h6>
-                    <p class="text-white mb-1">
-                        <i class="bi bi-code-square me-2"></i>
+                    <h6>Πληροφορίες</h6>
+                    <p class="mb-1 small">
                         Δημιουργός: <strong>Ανδρέας Πέττας</strong>
                     </p>
-                    <p class="text-white mb-0">
-                        <i class="bi bi-c-circle me-2"></i>
-                        © 2025 ΠΔΕΔΕ - Όλα τα δικαιώματα διατηρούνται
+                    <p class="mb-0 small opacity-75">
+                        © {% now "Y" %} ΠΔΕΔΕ — Όλα τα δικαιώματα διατηρούνται
                     </p>
                 </div>
             </div>
-            <hr class="border-light">
+            <hr>
             <div class="row">
                 <div class="col-12 text-center">
-                    <small class="text-white">
-                        Αυτό το σύστημα αναπτύχθηκε για τις ανάγκες της Περιφερειακής Διεύθυνσης Εκπαίδευσης Δυτικής Ελλάδας
+                    <small class="opacity-75">
+                        Αναπτύχθηκε για τις ανάγκες της Περιφερειακής Διεύθυνσης Εκπαίδευσης Δυτικής Ελλάδας
                     </small>
                 </div>
             </div>
         </div>
     </footer>
+
+    {% if user.is_authenticated %}
+    {% include 'includes/mobile_tab_bar.html' %}
+    {% endif %}
 
     <!-- jQuery and jQuery UI JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -247,7 +218,17 @@
     
     <!-- Custom JavaScript -->
     <script>
-        // Φόρτωση ειδοποιήσεων
+        function syncMobileNotifBadge(count) {
+            const mobileBadge = document.getElementById('mobile-notif-badge');
+            if (!mobileBadge) return;
+            if (count > 0) {
+                mobileBadge.textContent = count > 9 ? '9+' : count;
+                mobileBadge.classList.remove('d-none');
+            } else {
+                mobileBadge.classList.add('d-none');
+            }
+        }
+
         function loadNotifications() {
             fetch('{% url "notifications:api_recent_notifications" %}')
                 .then(response => response.json())
@@ -261,6 +242,7 @@
                     } else {
                         notificationCount.classList.add('d-none');
                     }
+                    syncMobileNotifBadge(data.unread_count);
                     
                     if (data.notifications.length > 0) {
                         notificationList.innerHTML = data.notifications.map(notification => `
@@ -296,7 +278,6 @@
             });
         }
         
-        // Greek Date formatting function
         function formatGreekDate(date) {
             const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
             const months = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου',
@@ -304,15 +285,12 @@
             return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
         }
         
-        // Φόρτωση ειδοποιήσεων κατά την αρχικοποίηση
         document.addEventListener('DOMContentLoaded', function() {
             {% if user.is_authenticated %}
             loadNotifications();
-            // Ανανέωση κάθε 30 δευτερόλεπτα
             setInterval(loadNotifications, 30000);
             {% endif %}
             
-            // Display current date in Greek format
             const dateElement = document.getElementById('current-date-greek');
             if (dateElement) {
                 dateElement.textContent = formatGreekDate(new Date());
@@ -323,7 +301,6 @@
     <!-- Greek Datepicker Configuration -->
     <script>
         $(document).ready(function() {
-            // Greek localization for jQuery UI Datepicker
             $.datepicker.regional['el'] = {
                 closeText: 'Κλείσιμο',
                 prevText: '&#x3C;Προηγ',
@@ -344,34 +321,28 @@
                 yearSuffix: ''
             };
             
-            // Set Greek as default
             $.datepicker.setDefaults($.datepicker.regional['el']);
             
-            // Initialize date inputs with Greek datepicker
             $('.greek-datepicker').datepicker({
                 dateFormat: 'dd/mm/yy',
-                minDate: 0, // Disable past dates
+                minDate: 0,
                 changeMonth: true,
                 changeYear: true,
                 showButtonPanel: true,
                 yearRange: 'c-1:c+2',
                 onSelect: function(dateText, inst) {
-                    // Trigger change event when date is selected via datepicker
                     $(this).trigger('change');
                 }
             });
         });
     </script>
 
-    <!-- Bootstrap Dropdown Initialization -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
                 document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
                     new bootstrap.Dropdown(toggle);
                 });
-            } else {
-                console.warn('Bootstrap JS not loaded - dropdowns will not work');
             }
         });
     </script>

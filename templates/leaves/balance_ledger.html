@@ -23,12 +23,10 @@
 
 <!-- Τρέχον Υπόλοιπο + Αναλυτική Ανάλυση -->
 <div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-center bg-primary bg-opacity-10">
-            <div class="card-body">
-                <h1 class="display-4 fw-bold text-primary">{{ current_balance }}</h1>
-                <small class="text-muted">Τρέχον Υπόλοιπο Κανονικών Αδειών</small>
-            </div>
+    <div class="col-md-4 mb-3">
+        <div class="stat-card stat-card-primary flex-column text-center py-4">
+            <div class="stat-card-value display-4">{{ current_balance }}</div>
+            <div class="stat-card-label">Τρέχον Υπόλοιπο Κανονικών Αδειών</div>
         </div>
     </div>
     <div class="col-md-8">

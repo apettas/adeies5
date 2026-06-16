@@ -51,45 +51,10 @@
 
 <!-- Στατιστικά -->
 <div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-primary bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-people fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_users }}</h5>
-                <small class="text-muted">Σύνολο Χρηστών</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-person-check fs-3 text-success"></i>
-                <h5 class="mt-2">{{ active_users }}</h5>
-                <small class="text-muted">Ενεργοί Χρήστες</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-info bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-person-badge fs-3 text-info"></i>
-                <h5 class="mt-2">{{ employees }}</h5>
-                <small class="text-muted">Υπάλληλοι</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-person-gear fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ managers }}</h5>
-                <small class="text-muted">Προϊστάμενοι</small>
-            </div>
-        </div>
-    </div>
+    {% include 'includes/stat_card.html' with icon='people' value=total_users label='Σύνολο Χρηστών' tone='primary' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='person-check' value=active_users label='Ενεργοί Χρήστες' tone='success' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='person-badge' value=employees label='Υπάλληλοι' tone='info' col='md-3' %}
+    {% include 'includes/stat_card.html' with icon='person-gear' value=managers label='Προϊστάμενοι' tone='warning' col='md-3' %}
 </div>
 
 <!-- Λίστα Χρηστών -->

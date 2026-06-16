@@ -28,35 +28,9 @@
 
 <!-- Στατιστικά -->
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-clock fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ pending_approvals }}</h5>
-                <small class="text-muted">Προς Έγκριση</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-light">
-            <div class="card-body">
-                <i class="bi bi-people fs-3 text-primary"></i>
-                <h5 class="mt-2">{{ total_subordinates }}</h5>
-                <small class="text-muted">Υφιστάμενοι</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ approved_this_month }}</h5>
-                <small class="text-muted">Εγκρίθηκαν Μήνα</small>
-            </div>
-        </div>
-    </div>
+    {% include 'includes/stat_card.html' with icon='clock' value=pending_approvals label='Προς Έγκριση' tone='warning' %}
+    {% include 'includes/stat_card.html' with icon='people' value=total_subordinates label='Υφιστάμενοι' tone='neutral' %}
+    {% include 'includes/stat_card.html' with icon='check-circle' value=approved_this_month label='Εγκρίθηκαν Μήνα' tone='success' %}
 </div>
 
 {% if sick_days_alert_users %}
@@ -86,35 +60,9 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-warning bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-clock fs-3 text-warning"></i>
-                <h5 class="mt-2">{{ kedasy_kepea_pending_protocol_count }}</h5>
-                <small class="text-muted">Προς Πρωτοκόλληση</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-success bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-check-circle fs-3 text-success"></i>
-                <h5 class="mt-2">{{ kedasy_kepea_completed_this_month }}</h5>
-                <small class="text-muted">Πρωτοκολλήθηκαν Μήνα</small>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-4 mb-3">
-        <div class="card text-center bg-info bg-opacity-10">
-            <div class="card-body">
-                <i class="bi bi-archive fs-3 text-info"></i>
-                <h5 class="mt-2">{{ kedasy_kepea_total_processed }}</h5>
-                <small class="text-muted">Συνολικά Επεξεργασμένες</small>
-            </div>
-        </div>
-    </div>
+    {% include 'includes/stat_card.html' with icon='clock' value=kedasy_kepea_pending_protocol_count label='Προς Πρωτοκόλληση' tone='warning' %}
+    {% include 'includes/stat_card.html' with icon='check-circle' value=kedasy_kepea_completed_this_month label='Πρωτοκολλήθηκαν Μήνα' tone='success' %}
+    {% include 'includes/stat_card.html' with icon='archive' value=kedasy_kepea_total_processed label='Συνολικά Επεξεργασμένες' tone='info' %}
 </div>
 {% endif %}
 

@@ -1,0 +1,15 @@
+{% comment %}
+Usage: {% include 'includes/stat_card.html' with icon='clock' value=pending_count label='Προς Έγκριση' tone='warning' col='md-4' %}
+Tones: primary, warning, success, info, neutral
+{% endcomment %}
+<div class="col-{{ col|default:'md-4' }} mb-3">
+    <div class="stat-card stat-card-{{ tone|default:'primary' }}">
+        <div class="stat-card-icon">
+            <i class="bi bi-{{ icon }}"></i>
+        </div>
+        <div class="stat-card-content">
+            <div class="stat-card-value">{{ value }}</div>
+            <div class="stat-card-label">{{ label }}</div>
+        </div>
+    </div>
+</div>
