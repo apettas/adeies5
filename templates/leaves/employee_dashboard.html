@@ -156,7 +156,11 @@
                                         <span class="badge bg-{{ request.get_status_display_class }}">{{ request.get_status_display }}</span>
                                     </td>
                                     <td>
-                                        <span class="date-greek">{{ request.submitted_at|date:"d/m/Y H:i"|default:request.created_at|date:"d/m/Y H:i" }}</span>
+                                        {% if request.submission_datetime %}
+                                        <span class="date-greek">{{ request.submission_datetime|date:"d/m/Y H:i" }}</span>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         {% include 'leaves/includes/action_buttons.html' with actions=request.actions leave_request=request %}

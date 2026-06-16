@@ -17,7 +17,7 @@ from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
 from .attachment_helpers import save_leave_request_attachments_from_request
-from .dashboard_utils import DashboardFilterMixin, RoleDashboardMixin, get_available_actions
+from .dashboard_utils import DashboardFilterMixin, RoleDashboardMixin, apply_sort, get_available_actions
 from leaves.role_context import resolve_default_dashboard_name
 from notifications.utils import create_notification
 from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES, is_sdey_department
@@ -41,10 +41,7 @@ class EmployeeDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFil
     def get_queryset(self):
         queryset = LeaveRequest.objects.filter(user=self.request.user).select_related('leave_type')
         queryset = self.apply_filters(queryset)
-        sort_param = self.get_sort_params()
-        if sort_param:
-            queryset = queryset.order_by(sort_param)
-        return queryset
+        return apply_sort(queryset, self.get_sort_params())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -550,10 +547,7 @@ class ManagerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
     def get_queryset(self):
         queryset = self._build_manager_queryset()
         queryset = self.apply_filters(queryset)
-        sort_param = self.get_sort_params()
-        if sort_param:
-            queryset = queryset.order_by(sort_param)
-        return queryset
+        return apply_sort(queryset, self.get_sort_params())
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -863,9 +857,7 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
             ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
         
         queryset = self.apply_filters(queryset)
-        sort_param = self.get_sort_params()
-        if sort_param:
-            queryset = queryset.order_by(sort_param)
+        queryset = apply_sort(queryset, self.get_sort_params())
         
         # Clean up expired locks
         cutoff_time = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
@@ -1983,10 +1975,7 @@ class SecretaryDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFi
     def get_queryset(self):
         queryset = self._build_secretary_queryset()
         queryset = self.apply_filters(queryset)
-        sort_param = self.get_sort_params()
-        if sort_param:
-            queryset = queryset.order_by(sort_param)
-        return queryset
+        return apply_sort(queryset, self.get_sort_params())
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

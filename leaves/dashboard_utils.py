@@ -1,10 +1,28 @@
 """
 Dashboard utilities - sorting, filtering, action resolver
 """
-from django.db.models import Q
+from django.db.models import DateTimeField, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from leaves.models import LeaveRequest
+
+
+def apply_sort(queryset, sort_param):
+    """Εφαρμόζει ταξινόμηση, με Coalesce για submitted_at (fallback σε created_at)."""
+    if not sort_param:
+        return queryset
+
+    field = sort_param.lstrip('-')
+    if field == 'submitted_at':
+        queryset = queryset.annotate(
+            _submission_sort=Coalesce('submitted_at', 'created_at', output_field=DateTimeField())
+        )
+        if sort_param.startswith('-'):
+            return queryset.order_by('-_submission_sort')
+        return queryset.order_by('_submission_sort')
+
+    return queryset.order_by(sort_param)
 
 
 class RoleDashboardMixin:
@@ -71,9 +89,7 @@ class DashboardFilterMixin:
         queryset = super().get_queryset()
         queryset = self.apply_filters(queryset)
         sort_param = self.get_sort_params()
-        if sort_param:
-            queryset = queryset.order_by(sort_param)
-        return queryset
+        return apply_sort(queryset, sort_param)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

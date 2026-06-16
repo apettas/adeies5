@@ -308,6 +308,15 @@ class LeaveRequest(models.Model):
         if periods:
             return periods.first().end_date
         return None
+
+    @property
+    def submission_datetime(self):
+        """Ημερομηνία/ώρα υποβολής (με fallback σε created_at για παλιές εγγραφές)."""
+        if self.submitted_at:
+            return self.submitted_at
+        if self.status != 'DRAFT':
+            return self.created_at
+        return None
     
     @property
     def can_be_edited(self):
