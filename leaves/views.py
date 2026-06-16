@@ -1323,18 +1323,6 @@ def send_to_protocol_pdede(request, pk):
             # Έλεγχος υπέρβασης ορίου αναρρωτικών — notification σε χειριστές
             leave_request._notify_sick_leave_threshold_exceeded()
             
-            # Δημιουργία ιστορικού
-            try:
-                from .models import LeaveRequestHistory
-                LeaveRequestHistory.objects.create(
-                    leave_request=leave_request,
-                    action='PDEDE_PROTOCOL_SUBMITTED',
-                    user=request.user,
-                    notes=f'Αποστολή για ΠΔΕΔΕ πρωτόκολλο. Αρ. Πρωτ: {protocol_number}'
-                )
-            except Exception:
-                pass
-            
             # Ειδοποίηση στον υπάλληλο
             try:
                 create_notification(
@@ -1548,9 +1536,6 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
 
         # Attachments
         context['attachments'] = leave_request.attachments.all()
-
-        # Audit trail
-        context['action_logs'] = leave_request.action_logs.all().order_by('-timestamp')
 
         # Locking status
         context['is_locked'] = leave_request.locking_user is not None

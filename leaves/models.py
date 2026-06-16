@@ -451,14 +451,6 @@ class LeaveRequest(models.Model):
         self.save()
         return True
     
-    def move_to_protocol(self):
-        """Μεταφορά για πρωτόκολλο ΠΔΕΔΕ"""
-        if self.status == 'PENDING_PROTOCOL':
-            self.status = 'PENDING_PROTOCOL'
-            self.save()
-            return True
-        return False
-    
     def start_processing(self, handler, protocol_number='', comments=''):
         """Έναρξη επεξεργασίας από χειριστή"""
         if self.can_be_processed:
@@ -981,19 +973,7 @@ class LeaveRequest(models.Model):
         
         self.save()
         
-        # Δημιουργία ιστορικού (αν υπάρχει το model)
-        try:
-            from .models import LeaveRequestHistory
-            LeaveRequestHistory.objects.create(
-                leave_request=self,
-                action='KEDASY_KEPEA_PROTOCOL_ADDED',
-                user=user,
-                old_status='PENDING_KEDASY_PROTOCOL',
-                new_status=self.status,
-                comments=f"Προστέθηκε πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ: {protocol_number}"
-            )
-        except ImportError:
-            pass  # Το LeaveRequestHistory δεν υπάρχει ακόμα
+        return True
 
 
 class Logo(models.Model):
