@@ -31,8 +31,7 @@ class Command(BaseCommand):
                 # Έλεγχος αν όλα τα απαιτούμενα πεδία υπάρχουν
                 required_fields = [
                     'annual_leave_entitlement',
-                    'carryover_leave_days', 
-                    'current_year_leave_balance',
+                    'current_regular_leave_balance',
                     'sick_leave_with_declaration',
                     'total_sick_leave_last_5_years'
                 ]

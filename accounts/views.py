@@ -141,7 +141,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         
         # Υπολογισμός υπολοίπων αδειών
         try:
-            user.update_leave_balance()
             leave_balance = user.get_leave_balance_breakdown()
             context['leave_balance'] = leave_balance
             

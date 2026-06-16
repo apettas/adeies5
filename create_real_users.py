@@ -236,6 +236,10 @@ for user_data in users_data:
             continue
 
         # Δημιουργία χρήστη
+        from accounts.models import EmployeeType
+        EmployeeType.create_defaults()
+        emp_type = EmployeeType.objects.filter(code=user_data['category']).first()
+
         user = User.objects.create_user(
             email=user_data['email'],
             password='123',
@@ -243,15 +247,13 @@ for user_data in users_data:
             last_name=user_data['last_name'],
             department=department,
             specialty=specialty,
-            user_category=user_data['category'],
+            employee_type=emp_type,
             phone1=user_data.get('phone1', ''),
             can_request_leave=user_data.get('can_request_leave', True),
             is_active=True,
             registration_status='APPROVED',
             annual_leave_entitlement=25,
-            carryover_leave_days=0,
-            current_year_leave_balance=25,
-            leave_balance=25,
+            current_regular_leave_balance=25,
             sick_leave_with_declaration=2,
             sick_days_current_year=0,
         )

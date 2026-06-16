@@ -219,13 +219,6 @@ class Specialty(models.Model):
 class User(AbstractUser):
     """Επεκτεταμένο μοντέλο χρήστη"""
     
-    USER_CATEGORIES = [
-        ('ADMINISTRATIVE', 'Διοικητικοί'),
-        ('EDUCATIONAL', 'Εκπαιδευτικοί'),
-        ('SUBSTITUTE', 'Αναπληρωτές'),
-        ('OTHER', 'Άλλο'),
-    ]
-    
     REGISTRATION_STATUS_CHOICES = [
         ('PENDING', 'Εκκρεμεί Έγκριση'),
         ('APPROVED', 'Εγκεκριμένος'),
@@ -260,10 +253,8 @@ class User(AbstractUser):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='Τμήμα', related_name='users')
     roles = models.ManyToManyField(Role, verbose_name='Ρόλοι', blank=True, related_name='users')
-    user_category = models.CharField('Κατηγορία Χρήστη', max_length=20, choices=USER_CATEGORIES,
-                                   default='OTHER', blank=True)
     employee_type = models.ForeignKey('EmployeeType', on_delete=models.SET_NULL, null=True, blank=True,
-                                     verbose_name='Τύπος Υπαλλήλου', related_name='users')
+                                     verbose_name='Κατηγορία Υπαλλήλου', related_name='users')
     specialty = models.ForeignKey(Specialty, on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Ειδικότητα', related_name='users')
     
@@ -294,14 +285,8 @@ class User(AbstractUser):
     # Κατάσταση Αδειών
     annual_leave_entitlement = models.IntegerField('Δικαιούμενες Ημέρες Κανονικής Άδειας', default=25,
                                                  help_text='Οι ημέρες κανονικής άδειας που δικαιούται κάθε χρόνο')
-    carryover_leave_days = models.IntegerField('Υπόλοιπο Κανονικών Αδειών Προηγούμενου Έτους', default=0,
-                                             help_text='Μη εξαντλημένες κανονικές άδειες από το προηγούμενο έτος')
-    current_year_leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών Τρέχοντος Έτους', default=0,
-                                                   help_text='Διαθέσιμες κανονικές άδειες για το τρέχον έτος')
-    leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών', default=0,
-                                       help_text='Συνολικό υπόλοιπο κανονικών αδειών (προηγούμενο + τρέχον έτος)')
-    current_regular_leave_balance = models.IntegerField('Τρέχον Υπόλοιπο Κανονικών (Ledger)', default=0,
-                                                        help_text='Denormalized cache του τελευταίου balance_after από το ledger')
+    current_regular_leave_balance = models.IntegerField('Υπόλοιπο Κανονικών Αδειών', default=0,
+                                                        help_text='Cache του τελευταίου balance_after από το ledger')
     sick_leave_with_declaration = models.IntegerField('Αναρρωτικές Άδειες με Υπεύθυνη Δήλωση', default=2,
                                                     help_text='Διαθέσιμες αναρρωτικές άδειες με υπεύθυνη δήλωση')
     sick_days_current_year = models.IntegerField('Αναρρωτικές Τρέχοντος Έτους', default=0,
@@ -511,9 +496,25 @@ class User(AbstractUser):
         return self.roles.filter(code=role_code).exists()
 
     def get_user_category_display(self):
-        """Επιστρέφει την ελληνική ονομασία της κατηγορίας χρήστη"""
-        return dict(self.USER_CATEGORIES).get(self.user_category, self.user_category)
+        """Εμφανιζόμενη κατηγορία υπαλλήλου (από employee_type)."""
+        if self.employee_type:
+            return self.employee_type.name
+        return 'Άλλο'
     
+    @property
+    def leave_balance(self):
+        """Συμβατότητα με παλιό API — το υπόλοιπο προέρχεται από το ledger."""
+        return self.current_regular_leave_balance
+    
+    def can_request_leave_days(self, requested_days):
+        """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί συγκεκριμένο αριθμό ημερών"""
+        return self.current_regular_leave_balance >= requested_days
+    
+    def get_leave_balance_breakdown(self):
+        """Επιστρέφει αναλυτικά τα υπόλοιπα αδειών από το ledger."""
+        from leaves.utils.balance_ledger import get_leave_balance_breakdown
+        return get_leave_balance_breakdown(self)
+
     def get_registration_status_display(self):
         """Επιστρέφει την ελληνική ονομασία της κατάστασης εγγραφής"""
         return dict(self.REGISTRATION_STATUS_CHOICES).get(self.registration_status, self.registration_status)
@@ -540,10 +541,9 @@ class User(AbstractUser):
         self.approved_by = approved_by_user
         self.approval_date = timezone.now()
         self.approval_notes = notes
-        self.is_active = True  # Ενεργοποίηση του χρήστη
+        self.is_active = True
         self.save()
         
-        # Αποστολή email ειδοποίησης
         try:
             from pdede_leaves.email_utils import (
                 send_registration_approved_email,
@@ -563,88 +563,17 @@ class User(AbstractUser):
         self.approved_by = rejected_by_user
         self.approval_date = timezone.now()
         self.approval_notes = notes
-        self.is_active = False  # Απενεργοποίηση του χρήστη
+        self.is_active = False
         self.save()
     
     def can_access_system(self):
         """Ελέγχει αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα"""
         return self.is_superuser or (self.is_approved and self.is_active)
-    
-    # Μέθοδοι διαχείρισης κανονικών αδειών
-    def calculate_total_leave_balance(self):
-        """Υπολογίζει το συνολικό υπόλοιπο κανονικών αδειών"""
-        return self.carryover_leave_days + self.current_year_leave_balance
-    
-    def update_leave_balance(self):
-        """Ενημερώνει το πεδίο leave_balance με βάση τα υπόλοιπα"""
-        self.leave_balance = self.calculate_total_leave_balance()
-        self.save()
-    
-    def can_request_leave_days(self, requested_days):
-        """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί συγκεκριμένο αριθμό ημερών"""
-        return self.leave_balance >= requested_days
-    
-    def use_leave_days(self, days_used):
-        """
-        Χρησιμοποιεί ημέρες κανονικής άδειας
-        Πρώτα εξαντλούνται οι άδειες προηγούμενου έτους, μετά του τρέχοντος
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        if days_used <= 0:
-            return False
-
-        if not self.can_request_leave_days(days_used):
-            return False
-
-        remaining_days = days_used
-
-        # Πρώτα αφαιρούμε από το υπόλοιπο προηγούμενου έτους
-        if self.carryover_leave_days > 0:
-            days_from_carryover = min(remaining_days, self.carryover_leave_days)
-            self.carryover_leave_days -= days_from_carryover
-            remaining_days -= days_from_carryover
-
-        # Μετά αφαιρούμε από το τρέχον έτος
-        if remaining_days > 0:
-            self.current_year_leave_balance -= remaining_days
-
-        # Ενημερώνουμε το συνολικό υπόλοιπο
-        self.leave_balance = self.calculate_total_leave_balance()
-        self.save()
-
-        logger.info(f"Used {days_used} leave days for user {self.email}")
-
-        return True
-    
-    def reset_yearly_leave_balance(self):
-        """
-        Μηδενίζει τα υπόλοιπα στην αρχή του έτους
-        Μεταφέρει το τρέχον υπόλοιπο στο προηγούμενο έτος
-        """
-        # Μεταφορά υπολοίπου τρέχοντος έτους στο προηγούμενο
-        self.carryover_leave_days = self.current_year_leave_balance
-        
-        # Νέες άδειες για το τρέχον έτος
-        self.current_year_leave_balance = self.annual_leave_entitlement
-        
-        # Ενημέρωση συνολικού υπολοίπου
-        self.leave_balance = self.calculate_total_leave_balance()
-        self.save()
-    
-    def get_leave_balance_breakdown(self):
-        """Επιστρέφει αναλυτικά τα υπόλοιπα αδειών"""
-        return {
-            'carryover_days': self.carryover_leave_days,
-            'current_year_days': self.current_year_leave_balance,
-            'total_days': self.calculate_total_leave_balance(),
-            'annual_entitlement': self.annual_leave_entitlement
-        }
 
 
 class EmployeeType(models.Model):
-    """Τύποι υπαλλήλων (αντικαθιστά το hardcoded USER_CATEGORIES)"""
+    """Κατηγορίες υπαλλήλων (αντικαθιστούν το παλιό user_category)."""
+    code = models.CharField('Κωδικός', max_length=30, unique=True)
     name = models.CharField('Όνομα Τύπου', max_length=100, unique=True)
     description = models.TextField('Περιγραφή', blank=True)
     is_active = models.BooleanField('Ενεργός', default=True)
@@ -662,12 +591,18 @@ class EmployeeType(models.Model):
     def create_defaults(cls):
         """Δημιουργεί τους default τύπους αν δεν υπάρχουν"""
         defaults = [
-            {'name': 'Διοικητικοί', 'description': 'Μόνιμο διοικητικό προσωπικό'},
-            {'name': 'Εκπαιδευτικοί', 'description': 'Μόνιμο εκπαιδευτικό προσωπικό'},
-            {'name': 'Αναπληρωτές', 'description': 'Αναπληρωτές εκπαιδευτικοί'},
-            {'name': 'Κέντρο Στήριξης ΣΔΕΥ', 'description': 'Υπεύθυνοι Κέντρου Στήριξης ΣΔΕΥ'},
-            {'name': 'Δ/ντες Εκπαίδευσης', 'description': 'Περιφερειακός Διευθυντής'},
-            {'name': 'Άλλο', 'description': 'Άλλες κατηγορίες'},
+            {'code': 'ADMINISTRATIVE', 'name': 'Διοικητικοί', 'description': 'Μόνιμο διοικητικό προσωπικό'},
+            {'code': 'EDUCATIONAL', 'name': 'Εκπαιδευτικοί', 'description': 'Μόνιμο εκπαιδευτικό προσωπικό'},
+            {'code': 'SUBSTITUTE', 'name': 'Αναπληρωτές', 'description': 'Αναπληρωτές εκπαιδευτικοί'},
+            {'code': 'SDEU_SUPPORT', 'name': 'Κέντρο Στήριξης ΣΔΕΥ', 'description': 'Υπεύθυνοι Κέντρου Στήριξης ΣΔΕΥ'},
+            {'code': 'EDUCATION_DIRECTOR', 'name': 'Δ/ντες Εκπαίδευσης', 'description': 'Περιφερειακός Διευθυντής'},
+            {'code': 'OTHER', 'name': 'Άλλο', 'description': 'Άλλες κατηγορίες'},
         ]
-        for d in defaults:
-            cls.objects.get_or_create(name=d['name'], defaults={'description': d['description']})
+        for item in defaults:
+            cls.objects.update_or_create(
+                code=item['code'],
+                defaults={
+                    'name': item['name'],
+                    'description': item['description'],
+                },
+            )

@@ -59,10 +59,11 @@ class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             lr.actions = get_available_actions(lr, user)
         
         # Leave balance information
-        context['leave_balance'] = user.leave_balance
-        context['carryover_days'] = user.carryover_leave_days
-        context['current_year_days'] = user.current_year_leave_balance
-        context['annual_entitlement'] = user.annual_leave_entitlement
+        balance = user.get_leave_balance_breakdown()
+        context['leave_balance'] = balance['total_days']
+        context['carryover_days'] = balance['carryover_days']
+        context['current_year_days'] = balance['current_year_days']
+        context['annual_entitlement'] = balance['annual_entitlement']
         context['current_regular_balance'] = user.current_regular_leave_balance
         
         # Ledger entries (last 5)
@@ -577,10 +578,11 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
         ).select_related('leave_type').order_by('-created_at')[:10]
 
         # Υπόλοιπο αδειών του manager
-        context['my_leave_balance'] = self.request.user.leave_balance
-        context['my_current_year_days'] = self.request.user.current_year_leave_balance
-        context['my_carryover_days'] = self.request.user.carryover_leave_days
-        context['my_annual_entitlement'] = self.request.user.annual_leave_entitlement
+        my_balance = self.request.user.get_leave_balance_breakdown()
+        context['my_leave_balance'] = my_balance['total_days']
+        context['my_current_year_days'] = my_balance['current_year_days']
+        context['my_carryover_days'] = my_balance['carryover_days']
+        context['my_annual_entitlement'] = my_balance['annual_entitlement']
         
         # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα
         if (self.request.user.department and
@@ -913,10 +915,11 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         
         # Υπόλοιπο Κανονικών Αδειών του χειριστή
         handler_user = self.request.user
-        context['handler_leave_balance'] = handler_user.leave_balance
-        context['handler_carryover_days'] = handler_user.carryover_leave_days
-        context['handler_current_year_days'] = handler_user.current_year_leave_balance
-        context['handler_annual_entitlement'] = handler_user.annual_leave_entitlement
+        handler_balance = handler_user.get_leave_balance_breakdown()
+        context['handler_leave_balance'] = handler_balance['total_days']
+        context['handler_carryover_days'] = handler_balance['carryover_days']
+        context['handler_current_year_days'] = handler_balance['current_year_days']
+        context['handler_annual_entitlement'] = handler_balance['annual_entitlement']
         context['handler_regular_balance'] = handler_user.current_regular_leave_balance
         
         # Αιτήσεις για Πρωτόκολλο ΠΔΕΔΕ (όλες, για τα modals)

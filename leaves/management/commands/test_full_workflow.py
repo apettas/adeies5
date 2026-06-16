@@ -34,8 +34,7 @@ class Command(BaseCommand):
         p = os.path.join(private_root, 'leave_requests')
         if os.path.exists(p): shutil.rmtree(p)
         User.objects.exclude(email='pdede@sch.gr').update(
-            leave_balance=25, annual_leave_entitlement=25,
-            carryover_leave_days=0, current_year_leave_balance=25,
+            annual_leave_entitlement=25,
             sick_leave_with_declaration=2, sick_days_current_year=0,
             total_sick_leave_last_5_years=0, current_regular_leave_balance=25)
         self.stdout.write('  Balances reset')

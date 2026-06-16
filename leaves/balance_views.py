@@ -44,15 +44,16 @@ def balance_ledger_view(request, user_id):
         employee=target_user
     ).dates('entry_date', 'year', order='DESC')
     
+    breakdown = target_user.get_leave_balance_breakdown()
     return render(request, 'leaves/balance_ledger.html', {
         'target_user': target_user,
         'entries': entries,
         'current_balance': current_balance,
         'current_year': year,
         'available_years': available_years,
-        'carryover_days': target_user.carryover_leave_days,
-        'current_year_days': target_user.current_year_leave_balance,
-        'annual_entitlement': target_user.annual_leave_entitlement,
+        'carryover_days': breakdown['carryover_days'],
+        'current_year_days': breakdown['current_year_days'],
+        'annual_entitlement': breakdown['annual_entitlement'],
         'is_handler': request.user.is_leave_handler or request.user.is_administrator,
     })
 

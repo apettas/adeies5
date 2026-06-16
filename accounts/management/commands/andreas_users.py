@@ -163,6 +163,11 @@ class Command(BaseCommand):
                     continue
                 
                 # Δημιουργία χρήστη
+                from accounts.models import EmployeeType
+                EmployeeType.create_defaults()
+                emp_type = EmployeeType.objects.filter(
+                    code=random.choice(['ADMINISTRATIVE', 'EDUCATIONAL'])
+                ).first()
                 user = User.objects.create_user(
                     email=user_data['email'],
                     first_name=user_data['first_name'],
@@ -170,9 +175,8 @@ class Command(BaseCommand):
                     password=user_data['password'],
                     department=user_data['department'],
                     gender=user_data['gender'],
-                    # Τυχαίες τιμές για τα υπόλοιπα πεδία
                     phone1=self.generate_random_phone(),
-                    user_category=random.choice(['ADMINISTRATIVE', 'EDUCATIONAL']),
+                    employee_type=emp_type,
                     specialty=random.choice(specialties) if specialties else None,
                     hire_date=self.generate_random_hire_date(),
                     notification_recipients=f'Κοινοποίηση στο {user_data["department"].name}',

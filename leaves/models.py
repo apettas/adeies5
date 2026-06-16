@@ -527,8 +527,6 @@ class LeaveRequest(models.Model):
                         notes=f'Ημερομηνίες: {self.start_date} - {self.end_date}',
                         created_by=created_by,
                     )
-                    self.user.leave_balance = balance_after
-                    self.user.save(update_fields=['leave_balance'])
                     logger.info(
                         f"Deducted {days_used} leave days for user {self.user} "
                         f"on completion of request {self.id} (balance_after={balance_after})"

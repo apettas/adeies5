@@ -248,8 +248,7 @@ class UserHierarchicalTests(TestDataMixin, TestCase):
         
         # Έλεγχος default τιμών
         self.assertEqual(user.annual_leave_entitlement, 25)
-        self.assertEqual(user.carryover_leave_days, 0)
-        self.assertEqual(user.current_year_leave_balance, 0)
+        self.assertEqual(user.current_regular_leave_balance, 0)
         self.assertEqual(user.sick_leave_with_declaration, 2)
         self.assertEqual(user.total_sick_leave_last_5_years, 0)
         
@@ -266,15 +265,13 @@ class UserHierarchicalTests(TestDataMixin, TestCase):
             registration_status='APPROVED',
             is_active=True,
             annual_leave_entitlement=30,
-            carryover_leave_days=5,
-            current_year_leave_balance=20,
+            current_regular_leave_balance=25,
             sick_leave_with_declaration=1,
             total_sick_leave_last_5_years=10
         )
         
         # Έλεγχος custom τιμών
         self.assertEqual(user.annual_leave_entitlement, 30)
-        self.assertEqual(user.carryover_leave_days, 5)
-        self.assertEqual(user.current_year_leave_balance, 20)
+        self.assertEqual(user.current_regular_leave_balance, 25)
         self.assertEqual(user.sick_leave_with_declaration, 1)
         self.assertEqual(user.total_sick_leave_last_5_years, 10)

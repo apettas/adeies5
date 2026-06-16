@@ -63,7 +63,7 @@ class SpecialtyAdmin(admin.ModelAdmin):
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     list_display = ('email', 'last_name', 'first_name', 'department', 'specialty', 'get_role_names', 'get_category_display', 'get_registration_status_display', 'is_active')
-    list_filter = ('roles', 'department', 'specialty', 'user_category', 'registration_status', 'is_active', 'is_staff')
+    list_filter = ('roles', 'department', 'specialty', 'employee_type', 'registration_status', 'is_active', 'is_staff')
     search_fields = ('first_name', 'last_name', 'email')
     ordering = ('last_name', 'first_name')
     filter_horizontal = ('roles',)
@@ -123,9 +123,9 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'name_accusative', 'father_name', 'gender', 'phone1', 'hire_date')}),
-        ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'employee_type', 'roles', 'user_category')}),
+        ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'employee_type', 'roles')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('role_description', 'notification_recipients')}),
-        ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
+        ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'current_regular_leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
         ('Δικαιώματα Άδειας', {'fields': ('can_request_leave',)}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
         ('Δικαιώματα', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
@@ -145,18 +145,18 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('department', 'specialty', 'employee_type', 'roles', 'user_category')
+            'fields': ('department', 'specialty', 'employee_type', 'roles')
         }),
         ('Κατάσταση Αδειών', {
             'classes': ('wide',),
-            'fields': ('annual_leave_entitlement', 'carryover_leave_days', 'current_year_leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')
+            'fields': ('annual_leave_entitlement', 'current_regular_leave_balance', 'sick_leave_with_declaration', 'total_sick_leave_last_5_years')
         }),
     )
 
 
 @admin.register(EmployeeType)
 class EmployeeTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'description', 'is_active', 'created_at')
+    list_display = ('code', 'name', 'description', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('name', 'description')
     ordering = ('name',)

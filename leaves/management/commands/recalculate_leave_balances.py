@@ -1,15 +1,14 @@
 """
-Management command για επαναϋπολογισμό υπολοίπων αδειών
-Διορθώνει χρήστες των οποίων τα υπόλοιπα δεν ενημερώθηκαν σωστά
+Management command για επαναϋπολογισμό υπολοίπων αδειών από το ledger.
+Διορθώνει το cache current_regular_leave_balance όταν αποκλίνει από τις εγγραφές.
 """
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from accounts.models import User
-from leaves.models import LeaveRequest
+from leaves.utils.balance_ledger import create_balance_entry, get_last_balance
 
 
 class Command(BaseCommand):
-    help = 'Επαναϋπολογισμός υπολοίπων αδειών για όλους τους χρήστες'
+    help = 'Επαναϋπολογισμός cached υπολοίπων αδειών από το ledger'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -29,10 +28,9 @@ class Command(BaseCommand):
         email = options['email']
 
         self.stdout.write(self.style.SUCCESS(
-            f'=== Επαναϋπολογισμός Υπολοίπων Αδειών {"(DRY RUN)" if dry_run else ""} ==='
+            f'=== Επαναϋπολογισμός Υπολοίπων (Ledger) {"(DRY RUN)" if dry_run else ""} ==='
         ))
 
-        # Βρες όλους τους χρήστες
         users = User.objects.filter(is_active=True)
         if email:
             users = users.filter(email=email)
@@ -40,39 +38,23 @@ class Command(BaseCommand):
         fixed_count = 0
 
         for user in users:
-            # Βρες όλες τις ολοκληρωμένες αιτήσεις που μετράνε στο υπόλοιπο
-            completed_leaves = LeaveRequest.objects.filter(
-                user=user,
-                status='COMPLETED',
-                leave_type__affects_regular_leave_balance=True
-            )
+            ledger_balance = get_last_balance(user)
+            if ledger_balance is None:
+                ledger_balance = user.current_regular_leave_balance
 
-            total_used = sum(lr.total_days for lr in completed_leaves)
-
-            # Υπολόγισε το σωστό υπόλοιπο
-            correct_balance = user.annual_leave_entitlement - total_used
-
-            # Προσθήκη carryover αν υπάρχει
-            correct_total = correct_balance + user.carryover_leave_days
-
-            # Έλεγχος αν χρειάζεται διόρθωση
-            if user.leave_balance != correct_total or user.current_year_leave_balance != correct_balance:
-                old_balance = user.leave_balance
-                old_current = user.current_year_leave_balance
-
+            if user.current_regular_leave_balance != ledger_balance:
+                old_balance = user.current_regular_leave_balance
                 if not dry_run:
-                    user.current_year_leave_balance = correct_balance
-                    user.leave_balance = correct_total
-                    user.save()
-
+                    user.current_regular_leave_balance = ledger_balance
+                    user.save(update_fields=['current_regular_leave_balance'])
                 self.stdout.write(
                     f'  {user.get_full_name()} ({user.email}): '
-                    f'{old_balance}→{correct_total} (χρησιμοποίησε {total_used} ημέρες)'
+                    f'cache {old_balance}→{ledger_balance}'
                 )
                 fixed_count += 1
             else:
                 self.stdout.write(
-                    f'  {user.get_full_name()} ({user.email}): OK (υπόλοιπο={user.leave_balance})'
+                    f'  {user.get_full_name()} ({user.email}): OK (υπόλοιπο={ledger_balance})'
                 )
 
         self.stdout.write(self.style.SUCCESS(

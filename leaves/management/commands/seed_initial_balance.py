@@ -42,10 +42,8 @@ class Command(BaseCommand):
                 continue
 
             user.annual_leave_entitlement = annual
-            user.current_year_leave_balance = annual
             user.current_regular_leave_balance = annual
-            user.leave_balance = annual
-            user.save()
+            user.save(update_fields=['annual_leave_entitlement', 'current_regular_leave_balance'])
 
             create_balance_entry(
                 employee=user,

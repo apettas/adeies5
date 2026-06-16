@@ -75,3 +75,26 @@ def get_balance_entries(employee, year=None):
     if year:
         qs = qs.filter(entry_date__year=year)
     return qs.order_by('-entry_date', '-created_at')
+
+
+def get_carryover_days(employee):
+    """Υπόλοιπο προηγούμενου έτους από εγγραφές CARRYOVER_IMPORT στο ledger."""
+    from django.db.models import Sum
+
+    result = RegularLeaveBalanceEntry.objects.filter(
+        employee=employee,
+        entry_type='CARRYOVER_IMPORT',
+    ).aggregate(total=Sum('balance_after'))
+    return result['total'] or 0
+
+
+def get_leave_balance_breakdown(user):
+    """Αναλυτικό υπόλοιπο από ledger cache και ετήσιο δικαίωμα."""
+    total = user.current_regular_leave_balance
+    carryover = get_carryover_days(user)
+    return {
+        'carryover_days': carryover,
+        'current_year_days': max(0, total - carryover),
+        'total_days': total,
+        'annual_entitlement': user.annual_leave_entitlement,
+    }

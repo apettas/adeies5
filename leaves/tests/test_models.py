@@ -29,7 +29,6 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         )
         
         # Ρύθμιση leave balance στον χρήστη
-        self.employee.leave_balance = 25
         self.employee.current_regular_leave_balance = 25
         self.employee.save()
         

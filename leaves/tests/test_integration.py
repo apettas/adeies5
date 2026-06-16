@@ -26,7 +26,6 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
             max_days=25,
         )
         for user in [self.employee, self.dept_manager, self.kizilou, self.delegkos]:
-            user.leave_balance = 25
             user.current_regular_leave_balance = 25
             user.save()
 
@@ -275,13 +274,11 @@ class LeaveBalanceIntegrationTests(TestDataMixin, TestCase):
             max_days=25,
             affects_regular_leave_balance=True,
         )
-        self.employee.leave_balance = 25
         self.employee.current_regular_leave_balance = 25
         self.employee.save()
 
     def test_leave_balance_validation_workflow(self):
-        self.employee.leave_balance = 2
-        self.employee.current_year_leave_balance = 2
+        self.employee.current_regular_leave_balance = 2
         self.employee.save()
 
         leave_request = LeaveRequest(
