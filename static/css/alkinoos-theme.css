@@ -41,15 +41,21 @@
     --radius-pill: 999px;
     --radius-input: 10px;
 
-    /* Liquid glass surfaces */
+    /* Liquid glass surfaces (κοινό chrome header/footer) */
     --glass-blur: blur(14px) saturate(150%);
-    --glass-bg-nav: rgba(255, 255, 255, 0.68);
-    --glass-bg-nav-end: rgba(245, 247, 250, 0.58);
-    --glass-bg-footer: rgba(26, 61, 102, 0.62);
-    --glass-bg-footer-end: rgba(37, 99, 168, 0.52);
-    --glass-edge-light: rgba(255, 255, 255, 0.55);
-    --glass-edge-footer: rgba(255, 255, 255, 0.16);
-    --glass-shadow: 0 4px 24px rgba(26, 61, 102, 0.06);
+    --glass-chrome-deep: rgba(20, 48, 78, 0.68);
+    --glass-chrome-mid: rgba(26, 61, 102, 0.62);
+    --glass-chrome-light: rgba(37, 99, 168, 0.52);
+    --glass-edge-chrome: rgba(255, 255, 255, 0.16);
+    --glass-edge-highlight: rgba(255, 255, 255, 0.1);
+    --glass-text-chrome: rgba(255, 255, 255, 0.88);
+    --glass-text-chrome-muted: rgba(255, 255, 255, 0.65);
+    --glass-shadow: 0 4px 24px rgba(26, 61, 102, 0.12);
+    /* Legacy aliases */
+    --glass-bg-footer: var(--glass-chrome-mid);
+    --glass-bg-footer-end: var(--glass-chrome-light);
+    --glass-edge-footer: var(--glass-edge-chrome);
+    --glass-edge-light: var(--glass-edge-chrome);
 
     /* Bootstrap overrides */
     --bs-primary: #1a6fd4;
@@ -107,14 +113,16 @@ h1, h2, h3, h4, h5, h6,
     position: relative;
     isolation: isolate;
     background: linear-gradient(
-        180deg,
-        var(--glass-bg-nav) 0%,
-        var(--glass-bg-nav-end) 100%
+        195deg,
+        var(--glass-chrome-deep) 0%,
+        var(--glass-chrome-mid) 48%,
+        var(--glass-chrome-light) 100%
     ) !important;
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border-bottom: 1px solid var(--glass-edge-light);
-    box-shadow: var(--glass-shadow);
+    border-bottom: 1px solid var(--glass-edge-chrome);
+    box-shadow: var(--glass-shadow), inset 0 -1px 0 var(--glass-edge-highlight);
+    color: var(--glass-text-chrome);
     min-height: 56px;
     padding-top: 8px;
     padding-bottom: 8px;
@@ -126,8 +134,8 @@ h1, h2, h3, h4, h5, h6,
     inset: 0;
     background: linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.28) 0%,
-        rgba(255, 255, 255, 0) 42%
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(255, 255, 255, 0) 40%
     );
     pointer-events: none;
     z-index: 0;
@@ -140,19 +148,25 @@ h1, h2, h3, h4, h5, h6,
 
 .alkinoos-navbar .navbar-brand {
     font-weight: 600;
-    color: var(--brand-navy) !important;
+    color: #fff !important;
     font-size: 1.05rem;
     letter-spacing: -0.01em;
 }
 
-.alkinoos-navbar .brand-logo {
+.alkinoos-navbar .brand-logo,
+.alkinoos-navbar .brand-logo-full {
     height: 36px;
     width: auto;
     object-fit: contain;
+    filter: brightness(1.12);
+}
+
+.alkinoos-navbar .text-brand {
+    color: #fff !important;
 }
 
 .alkinoos-navbar .nav-link {
-    color: var(--text-secondary) !important;
+    color: var(--glass-text-chrome-muted) !important;
     font-size: 0.9rem;
     font-weight: 500;
     border-radius: var(--radius-pill);
@@ -161,23 +175,28 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .alkinoos-navbar .nav-link:hover,
-.alkinoos-navbar .nav-link:focus {
-    color: var(--primary-600) !important;
-    background: var(--bg-subtle);
+.alkinoos-navbar .nav-link:focus,
+.alkinoos-navbar .nav-link.show {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .alkinoos-navbar .navbar-text {
-    color: var(--text-muted) !important;
+    color: var(--glass-text-chrome-muted) !important;
     font-size: 0.8rem;
 }
 
 .alkinoos-navbar .navbar-toggler {
-    border-color: var(--border-color);
+    border-color: rgba(255, 255, 255, 0.35);
     padding: 4px 8px;
 }
 
 .alkinoos-navbar .navbar-toggler-icon {
-    filter: invert(30%) sepia(20%) saturate(800%) hue-rotate(175deg);
+    filter: brightness(0) invert(1);
+}
+
+.alkinoos-navbar .notification-badge {
+    border-color: var(--glass-chrome-mid);
 }
 
 /* ── Role switcher ────────────────────────────────────── */
@@ -560,17 +579,17 @@ h1, h2, h3, h4, h5, h6,
     isolation: isolate;
     background: linear-gradient(
         165deg,
-        var(--glass-bg-footer-end) 0%,
-        var(--glass-bg-footer) 55%,
-        rgba(20, 48, 78, 0.68) 100%
+        var(--glass-chrome-light) 0%,
+        var(--glass-chrome-mid) 55%,
+        var(--glass-chrome-deep) 100%
     );
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--glass-text-chrome);
     margin-top: 48px;
     padding: 40px 0 24px;
-    border-top: 1px solid var(--glass-edge-footer);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--glass-edge-chrome);
+    box-shadow: inset 0 1px 0 var(--glass-edge-highlight);
 }
 
 .alkinoos-footer::before {
@@ -621,15 +640,16 @@ h1, h2, h3, h4, h5, h6,
     right: 0;
     z-index: 1030;
     background: linear-gradient(
-        0deg,
-        rgba(255, 255, 255, 0.72) 0%,
-        rgba(245, 247, 250, 0.62) 100%
+        15deg,
+        var(--glass-chrome-deep) 0%,
+        var(--glass-chrome-mid) 52%,
+        var(--glass-chrome-light) 100%
     );
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--glass-edge-light);
+    border-top: 1px solid var(--glass-edge-chrome);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -4px 20px rgba(26, 61, 102, 0.05);
+    box-shadow: 0 -4px 24px rgba(26, 61, 102, 0.14), inset 0 1px 0 var(--glass-edge-highlight);
 }
 
 .mobile-tab-bar .tab-items {
@@ -649,11 +669,11 @@ h1, h2, h3, h4, h5, h6,
     gap: 2px;
     padding: 6px 4px;
     text-decoration: none;
-    color: var(--text-muted);
+    color: var(--glass-text-chrome-muted);
     font-size: 0.65rem;
     font-weight: 500;
     border-radius: 12px;
-    transition: color 0.15s ease;
+    transition: color 0.15s ease, background 0.15s ease;
     position: relative;
     min-width: 0;
 }
@@ -664,7 +684,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .mobile-tab-bar .tab-item.active {
-    color: var(--primary-600);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .mobile-tab-bar .tab-item .tab-badge {
@@ -1076,15 +1097,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .alkinoos-navbar {
-        background: rgba(255, 255, 255, 0.94) !important;
-    }
-
-    .alkinoos-footer {
-        background: var(--brand-navy);
-    }
-
+    .alkinoos-navbar,
+    .alkinoos-footer,
     .mobile-tab-bar {
-        background: rgba(255, 255, 255, 0.94);
+        background: var(--brand-navy) !important;
     }
 }
