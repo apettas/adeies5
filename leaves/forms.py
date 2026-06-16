@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import LeaveRequest, LeaveType, LeavePeriod, SecureFile
+from .utils.leave_type_ordering import get_ordered_active_leave_types
 from .widgets import GreekDateInput
 from .crypto_utils import SecureFileHandler
 from datetime import datetime
@@ -91,8 +92,7 @@ class LeaveRequestForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Μόνο ενεργοί τύποι αδειών
-        self.fields['leave_type'].queryset = LeaveType.objects.filter(is_active=True)
+        self.fields['leave_type'].queryset = get_ordered_active_leave_types()
     
     def clean_periods_data(self):
         """Επικύρωση των διαστημάτων άδειας"""
@@ -272,6 +272,6 @@ class AtypicalLeaveForm(LeaveRequestForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['leave_type'].queryset = self.fields['leave_type'].queryset.filter(
-            is_simple=True, is_active=True
+        self.fields['leave_type'].queryset = get_ordered_active_leave_types(
+            LeaveType.objects.filter(is_simple=True, is_active=True)
         )
