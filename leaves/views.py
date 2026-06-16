@@ -685,7 +685,7 @@ def approve_leave_request(request, pk):
             leave_request.approve_by_manager(request.user, comments)
             
             # Αν η αίτηση είναι από ΚΕΔΑΣΥ/ΚΕΠΕΑ, χωρίς ήδη καταχωρημένο πρωτόκολλο, και δόθηκε νέο πρωτόκολλο
-            if (leave_request.is_kedasy_kepea_department()
+            if (leave_request.requires_kedasy_kepea_protocol()
                     and kedasy_protocol_number
                     and not leave_request.kedasy_kepea_protocol_number):
                 # Μετατροπή ημερομηνίας αν δόθηκε
@@ -1158,11 +1158,18 @@ def complete_leave_request(request, pk):
                 messages.error(request, 'Το υπόλοιπο πρέπει να είναι ακέραιος αριθμός.')
                 return redirect('leaves:leave_request_detail', pk=pk)
         
-        leave_request.complete_by_handler(
+        if not leave_request.complete_by_handler(
             request.user,
             comments,
             balance_after=balance_after if leave_request.leave_type.affects_regular_leave_balance else None,
-        )
+        ):
+            messages.error(
+                request,
+                'Η αίτηση δεν μπορεί να ολοκληρωθεί. Απαιτείται πρώτα καταχώρηση πρωτοκόλλου ΠΔΕΔΕ.',
+            )
+            return redirect('leaves:leave_request_detail', pk=pk)
+
+        leave_request.refresh_from_db()
         leave_request.user.refresh_from_db()
 
         from notifications.utils import create_notification
@@ -1761,7 +1768,7 @@ def submit_final_request(request):
             
             # Ειδοποιήσεις ανάλογα με τον τύπο άδειας και τμήμα
             if leave_request.leave_type.requires_approval:
-                if leave_request.is_kedasy_kepea_department():
+                if leave_request.requires_kedasy_kepea_protocol():
                     # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ: ειδοποίηση γραμματέα/προϊσταμένου για πρωτόκολλο
                     target_department = leave_request.user.department
                     if (is_sdey_department(leave_request.user.department) and
@@ -1803,7 +1810,7 @@ def submit_final_request(request):
                         )
             else:
                 # Έλεγχος αν ο χρήστης ανήκει σε τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ ή ΣΔΕΥ με parent ΚΕΔΑΣΥ
-                if leave_request.is_kedasy_kepea_department():
+                if leave_request.requires_kedasy_kepea_protocol():
                     # Για ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ, ειδοποίηση γραμματέα και προϊσταμένου για πρωτόκολλο
                     # Για ΣΔΕΥ, βρίσκουμε τους γραμματείς του parent ΚΕΔΑΣΥ
                     target_department = leave_request.user.department
@@ -2166,7 +2173,7 @@ def add_kedasy_kepea_protocol(request, pk):
             return redirect('leaves:manager_dashboard')
     
     # Έλεγχος αν η αίτηση ανήκει σε ΚΕΔΑΣΥ/ΚΕΠΕΑ τμήμα
-    if not leave_request.is_kedasy_kepea_department():
+    if not leave_request.requires_kedasy_kepea_protocol():
         messages.error(request, 'Η αίτηση δεν ανήκει σε τμήμα ΚΕΔΑΣΥ ή ΚΕΠΕΑ.')
         if request.user.is_secretary:
             return redirect('leaves:secretary_dashboard')

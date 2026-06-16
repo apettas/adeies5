@@ -201,6 +201,8 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         """
         # Πρώτα έγκριση από manager
         self.leave_request.approve_by_manager(self.dept_manager)
+        self.leave_request.status = 'IN_REVIEW'
+        self.leave_request.save()
         
         # Μετά processing από leave handler
         result = self.leave_request.complete_by_handler(self.leave_handler)
@@ -388,6 +390,8 @@ class LeaveRequestModelTests(TestDataMixin, TestCase):
         self.assertIsNotNone(self.leave_request.manager_approved_at)
         
         # Processing
+        self.leave_request.status = 'IN_REVIEW'
+        self.leave_request.save()
         self.leave_request.complete_by_handler(self.leave_handler)
         
         # Έλεγχος ότι καταγράφηκε ο processor

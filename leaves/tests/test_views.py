@@ -289,6 +289,8 @@ class LeaveRequestViewTests(TestDataMixin, TestCase):
         """
         # Πρώτα approval από manager
         self.leave_request.approve_by_manager(self.dept_manager)
+        self.leave_request.status = 'IN_REVIEW'
+        self.leave_request.save()
         
         self.client.force_login(self.leave_handler)
         

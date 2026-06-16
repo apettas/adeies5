@@ -13,6 +13,7 @@ from accounts.tests.test_data import TestDataMixin
 from leaves.models import LeaveRequest, LeaveType, RegularLeaveBalanceEntry, YearlySickLeaveTotal
 from leaves.tests.helpers import (
     add_kedasy_protocol,
+    advance_leave_to_in_review,
     approve_leave_as_manager,
     complete_leave_as_handler,
     create_draft_leave_request,
@@ -145,6 +146,7 @@ class KedasyWorkflowTests(KedasyWorkflowMixin, WorkflowLeaveTypesMixin, TestCase
         self.assertEqual(req.status, 'PENDING_PROTOCOL')
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, req)
         response = complete_leave_as_handler(self.client, req, balance_after=20)
         self.assertEqual(response.status_code, 302)
         req.refresh_from_db()
@@ -185,6 +187,7 @@ class KedasyWorkflowTests(KedasyWorkflowMixin, WorkflowLeaveTypesMixin, TestCase
         self.assertIsNone(req.manager_approved_by)
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, req)
         complete_leave_as_handler(self.client, req, balance_after=25)
         req.refresh_from_db()
         self.assertEqual(req.status, 'COMPLETED')
@@ -417,6 +420,7 @@ class BalanceIntegrityTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
         req.refresh_from_db()
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, req)
         complete_leave_as_handler(self.client, req, balance_after=20)
         req.refresh_from_db()
 
@@ -553,6 +557,7 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         req.save()
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, req)
         complete_leave_as_handler(self.client, req, balance_after=25)
 
         yearly = YearlySickLeaveTotal.objects.get(
@@ -562,3 +567,138 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         self.employee.refresh_from_db()
         self.assertEqual(yearly.total_days, req.total_days)
         self.assertEqual(self.employee.sick_days_current_year, req.total_days)
+
+
+class WorkflowVariantRoutingTests(KedasyWorkflowMixin, WorkflowLeaveTypesMixin, TestCase):
+    """Έλεγχος ότι το workflow_variant επηρεάζει τη δρομολόγηση."""
+
+    def setUp(self):
+        super().setUp()
+        self._create_leave_types()
+        self._set_balances(self.employee, self.kedasy_employee, self.sdey_employee)
+        self.kedasy_leave_type = LeaveType.objects.create(
+            name='Άδεια KEDASY variant',
+            code='WF_KEDASY_VAR',
+            workflow_variant='KEDASY',
+            requires_approval=True,
+            affects_regular_leave_balance=True,
+        )
+        self.sdey_leave_type = LeaveType.objects.create(
+            name='Άδεια SDEY variant',
+            code='WF_SDEY_VAR',
+            workflow_variant='SDEY',
+            requires_approval=True,
+        )
+
+    def test_kedasy_variant_on_pedagogical_department_submits_to_manager(self):
+        req = create_draft_leave_request(
+            self.employee, self.kedasy_leave_type, 'std dept', START, END,
+        )
+        submit_leave_request(req)
+        self.assertEqual(req.status, 'SUBMITTED')
+
+    def test_kedasy_variant_on_kedasy_department_needs_protocol(self):
+        req = create_draft_leave_request(
+            self.kedasy_employee, self.kedasy_leave_type, 'kedasy dept', START, END,
+        )
+        submit_leave_request(req)
+        self.assertEqual(req.status, 'PENDING_KEDASY_PROTOCOL')
+
+    def test_sdey_variant_on_sdey_department_needs_protocol(self):
+        req = create_draft_leave_request(
+            self.sdey_employee, self.sdey_leave_type, 'sdey dept', START, END,
+        )
+        submit_leave_request(req)
+        self.assertEqual(req.status, 'PENDING_KEDASY_PROTOCOL')
+
+    def test_sdey_variant_on_pedagogical_department_uses_standard_path(self):
+        req = create_draft_leave_request(
+            self.employee, self.sdey_leave_type, 'wrong dept', START, END,
+        )
+        submit_leave_request(req)
+        self.assertEqual(req.status, 'SUBMITTED')
+
+
+class HandlerCompletionGuardTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
+    """Δεν επιτρέπεται ολοκλήρωση χωρίς IN_REVIEW."""
+
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self._create_leave_types()
+        self._set_balances(self.employee)
+
+    @patch('weasyprint.HTML')
+    def test_cannot_complete_directly_from_pending_protocol(self, _mock_html):
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'no shortcut', START, END,
+        )
+        req.status = 'PENDING_PROTOCOL'
+        req.save()
+
+        self.client.force_login(self.leave_handler)
+        response = complete_leave_as_handler(self.client, req, balance_after=20)
+        self.assertEqual(response.status_code, 302)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'PENDING_PROTOCOL')
+
+    def test_model_rejects_complete_from_pending_protocol(self):
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'model guard', START, END,
+        )
+        req.status = 'PENDING_PROTOCOL'
+        req.save()
+        self.assertFalse(req.complete_by_handler(self.leave_handler))
+
+
+class SidEHttpFlowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
+    """Πλήρης HTTP ροή ΣΗΔΕ: πρωτόκολλο → απόφαση → υπογραφές → ακριβές αντίγραφο."""
+
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self._create_leave_types()
+        self._set_balances(self.employee)
+
+    @patch('weasyprint.HTML')
+    @patch('leaves.decision_views.SecureFileHandler')
+    def test_full_side_flow_completes_via_exact_copy(self, mock_handler_cls, _mock_html):
+        mock_handler = mock_handler_cls.return_value
+        mock_handler.save_encrypted_bytes.return_value = ('media/test/exact.pdf', 'abc123')
+
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'side flow', START, END,
+        )
+        self.client.force_login(self.dept_manager)
+        approve_leave_as_manager(self.client, req)
+        req.refresh_from_db()
+
+        self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, req)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'IN_REVIEW')
+
+        req.decision_pdf_path = 'media/test/decision.pdf'
+        req.decision_pdf_encryption_key = 'def456'
+        req.start_decision_preparation(self.leave_handler)
+        req.send_to_signatures(self.leave_handler)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'PENDING_SIGNATURES')
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        pdf_file = SimpleUploadedFile('exact.pdf', b'%PDF-1.4 test', content_type='application/pdf')
+        response = self.client.post(
+            reverse('leaves:upload_exact_copy_pdf', kwargs={'pk': req.pk}),
+            {'exact_copy_pdf': pdf_file},
+        )
+        self.assertEqual(response.status_code, 302)
+        req.refresh_from_db()
+        self.assertTrue(req.has_exact_copy_pdf())
+
+        response = self.client.post(
+            reverse('leaves:complete_leave_request_final', kwargs={'pk': req.pk}),
+        )
+        self.assertEqual(response.status_code, 302)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'COMPLETED')
+        self.assertEqual(req.processed_by, self.leave_handler)

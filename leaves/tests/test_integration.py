@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from accounts.tests.test_data import TestDataMixin
 from leaves.models import LeaveRequest, LeaveType
-from leaves.tests.helpers import create_submitted_leave_request, complete_leave_as_handler
+from leaves.tests.helpers import create_submitted_leave_request, complete_leave_as_handler, advance_leave_to_in_review
 
 User = get_user_model()
 
@@ -55,6 +55,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         response = self.client.get(reverse('leaves:handler_dashboard'))
         self.assertContains(response, 'Υπάλληλος Τεστ')
 
+        advance_leave_to_in_review(self.client, leave_request)
         response = complete_leave_as_handler(self.client, leave_request, balance_after=19)
         self.assertEqual(response.status_code, 302)
 
@@ -82,6 +83,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(leave_request.manager_approved_by, self.kizilou)
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, leave_request)
         response = complete_leave_as_handler(self.client, leave_request, balance_after=19)
         self.assertEqual(response.status_code, 302)
         leave_request.refresh_from_db()
@@ -106,6 +108,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(leave_request.status, 'PENDING_PROTOCOL')
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, leave_request)
         response = complete_leave_as_handler(self.client, leave_request, balance_after=19)
         self.assertEqual(response.status_code, 302)
         leave_request.refresh_from_db()
@@ -127,6 +130,7 @@ class CompleteLeaveApprovalWorkflowTests(TestDataMixin, TestCase):
         response = self.client.get(reverse('leaves:handler_dashboard'))
         self.assertContains(response, 'Δελέγκος Τεστ')
 
+        advance_leave_to_in_review(self.client, leave_request)
         response = complete_leave_as_handler(self.client, leave_request, balance_after=19)
         self.assertEqual(response.status_code, 302)
         leave_request.refresh_from_db()
@@ -309,6 +313,7 @@ class LeaveBalanceIntegrationTests(TestDataMixin, TestCase):
         leave_request.approve_by_manager(self.dept_manager)
 
         self.client.force_login(self.leave_handler)
+        advance_leave_to_in_review(self.client, leave_request)
         complete_leave_as_handler(self.client, leave_request, balance_after=19)
 
         self.employee.refresh_from_db()

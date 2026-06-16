@@ -77,6 +77,13 @@ def send_pdede_protocol(client, leave_request, protocol_number='PDEDE-001', prot
     )
 
 
+def advance_leave_to_in_review(client, leave_request, protocol_number='PDEDE-001', protocol_date='2025-01-12'):
+    """Μεταφορά αίτησης από PENDING_PROTOCOL σε IN_REVIEW."""
+    response = send_pdede_protocol(client, leave_request, protocol_number, protocol_date)
+    leave_request.refresh_from_db()
+    return response
+
+
 def reject_leave_as_handler(client, leave_request, reason='Απόρριψη test'):
     """Απόρριψη από χειριστή μέσω view."""
     return client.post(
@@ -86,7 +93,7 @@ def reject_leave_as_handler(client, leave_request, reason='Απόρριψη test
 
 
 def complete_leave_as_handler(client, leave_request, balance_after=19, comments='Test completion'):
-    """Ολοκληρώνει αίτηση μέσω handler view."""
+    """Ολοκληρώνει αίτηση σε IN_REVIEW μέσω handler view."""
     return client.post(
         reverse('leaves:complete_leave_request', kwargs={'pk': leave_request.pk}),
         {

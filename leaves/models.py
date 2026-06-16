@@ -401,7 +401,7 @@ class LeaveRequest(models.Model):
                         f"Αιτούμενες: {self.total_days}"
                     )
 
-            if self.is_kedasy_kepea_department():
+            if self.requires_kedasy_kepea_protocol():
                 self.status = 'PENDING_KEDASY_PROTOCOL'
             elif self.leave_type.requires_approval:
                 self.status = 'SUBMITTED'
@@ -478,23 +478,23 @@ class LeaveRequest(models.Model):
         """Ολοκλήρωση αίτησης από χειριστή"""
         if not handler.is_leave_handler:
             return False
-        if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
-            self.status = 'COMPLETED'
-            self.completed_at = timezone.now()
-            # Ενημερώνουμε τα πεδία επεξεργασίας μόνο κατά την τελική ολοκλήρωση
-            if not self.processed_by:
-                self.processed_by = handler
-            if not self.processed_at:
-                self.processed_at = timezone.now()
-            if comments:
-                self.processing_comments = comments
-            self.save()
-            self._update_leave_balance_on_completion(
-                created_by=handler,
-                balance_after=balance_after,
-            )
-            return True
-        return False
+        if self.status != 'IN_REVIEW':
+            return False
+        self.status = 'COMPLETED'
+        self.completed_at = timezone.now()
+        # Ενημερώνουμε τα πεδία επεξεργασίας μόνο κατά την τελική ολοκλήρωση
+        if not self.processed_by:
+            self.processed_by = handler
+        if not self.processed_at:
+            self.processed_at = timezone.now()
+        if comments:
+            self.processing_comments = comments
+        self.save()
+        self._update_leave_balance_on_completion(
+            created_by=handler,
+            balance_after=balance_after,
+        )
+        return True
     
     def _update_leave_balance_on_completion(self, created_by=None, balance_after=None):
         """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται"""
@@ -891,8 +891,13 @@ class LeaveRequest(models.Model):
 
         return actions
     
+    def requires_kedasy_kepea_protocol(self):
+        """Αν η αίτηση ακολουθεί ροή πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ (variant + τμήμα)."""
+        from leaves.workflow_routing import leave_request_requires_kedasy_protocol
+        return leave_request_requires_kedasy_protocol(self)
+
     def is_kedasy_kepea_department(self):
-        """Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ, ΚΕΠΕΑ ή ΣΔΕΥ"""
+        """Έλεγχος αν το τμήμα είναι ΚΕΔΑΣΥ, ΚΕΠΕΑ ή ΣΔΕΥ (μόνο department)."""
         try:
             department = self.user.department
             if department and department.department_type:
@@ -912,7 +917,7 @@ class LeaveRequest(models.Model):
             return False
         
         # Έλεγχος αν είναι τμήμα ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ
-        if not self.is_kedasy_kepea_department():
+        if not self.requires_kedasy_kepea_protocol():
             return False
         
         # Έλεγχος αν το status είναι PENDING_KEDASY_PROTOCOL
