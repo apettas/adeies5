@@ -21,14 +21,14 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     
-    <!-- Αλκίνοος theme -->
-    <link href="{% static 'css/alkinoos-theme.css' %}" rel="stylesheet">
+    <!-- Αλκίνοος theme (?v= busts nginx 1y immutable cache on deploy) -->
+    <link href="{% static 'css/alkinoos-theme.css' %}?v={{ theme_static_version }}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
 </head>
 <body class="{% if user.is_authenticated %}has-mobile-nav{% endif %}">
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg alkinoos-navbar sticky-top">
+    <nav class="navbar navbar-expand-lg navbar-dark alkinoos-navbar sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'accounts:dashboard' %}">
                 <img src="{% static 'Alkinoos-icon.svg' %}" alt="" class="brand-icon" aria-hidden="true">

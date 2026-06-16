@@ -4,27 +4,27 @@
  */
 
 :root {
-    /* Brand (από logo) */
-    --brand-navy: #1a3d66;
-    --brand-blue: #2563a8;
-    --brand-silver: #b8c4ce;
+    /* Brand — ζεστά μπλε-πετρόλ (λιγότερο cyan) */
+    --brand-navy: #2c4558;
+    --brand-blue: #3a6f8f;
+    --brand-silver: #c4bcb4;
 
     /* Primary / interactive */
-    --primary-600: #1a6fd4;
-    --primary-500: #2b84e8;
-    --primary-400: #4a9aef;
+    --primary-600: #3d7fa6;
+    --primary-500: #4f93b8;
+    --primary-400: #6aa9c8;
 
     /* Surfaces */
-    --bg-page: #f5f7fa;
+    --bg-page: #f7f5f1;
     --bg-card: #ffffff;
-    --bg-subtle: #e8f2ff;
-    --border-color: #e2e8f0;
-    --border-focus: #2b84e8;
+    --bg-subtle: #ebe6df;
+    --border-color: #e4ddd4;
+    --border-focus: #4f93b8;
 
     /* Text */
-    --text-primary: #1c2b3a;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
+    --text-primary: #2a3238;
+    --text-secondary: #5c6670;
+    --text-muted: #8a939c;
 
     /* Semantic */
     --success-bg: #ecfdf5;
@@ -35,22 +35,23 @@
     --danger-text: #b91c1c;
 
     /* Elevation & shape */
-    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-soft: 0 4px 20px rgba(44, 69, 88, 0.1);
+    --shadow-card: 0 1px 3px rgba(44, 69, 88, 0.06);
     --radius-card: 16px;
     --radius-pill: 999px;
     --radius-input: 10px;
 
-    /* Liquid glass surfaces (κοινό chrome header/footer) */
-    --glass-blur: blur(14px) saturate(150%);
-    --glass-chrome-deep: rgba(20, 48, 78, 0.68);
-    --glass-chrome-mid: rgba(26, 61, 102, 0.62);
-    --glass-chrome-light: rgba(37, 99, 168, 0.52);
-    --glass-edge-chrome: rgba(255, 255, 255, 0.16);
-    --glass-edge-highlight: rgba(255, 255, 255, 0.1);
-    --glass-text-chrome: rgba(255, 255, 255, 0.88);
-    --glass-text-chrome-muted: rgba(255, 255, 255, 0.65);
-    --glass-shadow: 0 4px 24px rgba(26, 61, 102, 0.12);
+    /* Liquid glass chrome — αδιαφανές βάση + ελαφρύ blur */
+    --glass-blur: blur(12px) saturate(140%);
+    --glass-chrome-deep: #243d4f;
+    --glass-chrome-mid: #2f556c;
+    --glass-chrome-light: #3f7089;
+    --glass-chrome-overlay: rgba(47, 85, 108, 0.92);
+    --glass-edge-chrome: rgba(255, 248, 240, 0.18);
+    --glass-edge-highlight: rgba(255, 248, 240, 0.12);
+    --glass-text-chrome: rgba(255, 252, 248, 0.94);
+    --glass-text-chrome-muted: rgba(255, 248, 240, 0.72);
+    --glass-shadow: 0 4px 24px rgba(36, 61, 79, 0.18);
     /* Legacy aliases */
     --glass-bg-footer: var(--glass-chrome-mid);
     --glass-bg-footer-end: var(--glass-chrome-light);
@@ -58,22 +59,22 @@
     --glass-edge-light: var(--glass-edge-chrome);
 
     /* Bootstrap overrides */
-    --bs-primary: #1a6fd4;
-    --bs-primary-rgb: 26, 111, 212;
-    --bs-secondary: #64748b;
-    --bs-secondary-rgb: 100, 116, 139;
+    --bs-primary: #3d7fa6;
+    --bs-primary-rgb: 61, 127, 166;
+    --bs-secondary: #5c6670;
+    --bs-secondary-rgb: 92, 102, 112;
     --bs-success: #047857;
-    --bs-info: #2563a8;
+    --bs-info: #3a6f8f;
     --bs-warning: #b45309;
     --bs-danger: #b91c1c;
-    --bs-body-bg: #f5f7fa;
-    --bs-body-color: #1c2b3a;
-    --bs-border-color: #e2e8f0;
+    --bs-body-bg: #f7f5f1;
+    --bs-body-color: #2a3238;
+    --bs-border-color: #e4ddd4;
     --bs-border-radius: 10px;
     --bs-border-radius-lg: 16px;
     --bs-border-radius-pill: 999px;
-    --bs-link-color: #1a6fd4;
-    --bs-link-hover-color: #1558a8;
+    --bs-link-color: #3d7fa6;
+    --bs-link-hover-color: #2f6685;
     --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -110,9 +111,16 @@ h1, h2, h3, h4, h5, h6,
 /* ── Navbar ───────────────────────────────────────────── */
 
 .alkinoos-navbar {
+    --bs-navbar-color: var(--glass-text-chrome-muted);
+    --bs-navbar-hover-color: #fff;
+    --bs-navbar-active-color: #fff;
+    --bs-navbar-brand-color: #fff;
+    --bs-navbar-brand-hover-color: #fff;
+    --bs-navbar-toggler-border-color: rgba(255, 248, 240, 0.35);
     position: relative;
     isolation: isolate;
-    background: linear-gradient(
+    background-color: var(--glass-chrome-mid) !important;
+    background-image: linear-gradient(
         195deg,
         var(--glass-chrome-deep) 0%,
         var(--glass-chrome-mid) 48%,
@@ -577,7 +585,8 @@ h1, h2, h3, h4, h5, h6,
 .alkinoos-footer {
     position: relative;
     isolation: isolate;
-    background: linear-gradient(
+    background-color: var(--glass-chrome-mid);
+    background-image: linear-gradient(
         165deg,
         var(--glass-chrome-light) 0%,
         var(--glass-chrome-mid) 55%,
@@ -639,7 +648,8 @@ h1, h2, h3, h4, h5, h6,
     left: 0;
     right: 0;
     z-index: 1030;
-    background: linear-gradient(
+    background-color: var(--glass-chrome-mid);
+    background-image: linear-gradient(
         15deg,
         var(--glass-chrome-deep) 0%,
         var(--glass-chrome-mid) 52%,
@@ -649,7 +659,7 @@ h1, h2, h3, h4, h5, h6,
     -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--glass-edge-chrome);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -4px 24px rgba(26, 61, 102, 0.14), inset 0 1px 0 var(--glass-edge-highlight);
+    box-shadow: 0 -4px 24px rgba(36, 61, 79, 0.18), inset 0 1px 0 var(--glass-edge-highlight);
 }
 
 .mobile-tab-bar .tab-items {
