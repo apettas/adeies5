@@ -5,7 +5,7 @@ from django.utils import timezone
 from .models import (
     User, Department, DepartmentType, Role, Specialty,
     Headquarters, Prefecture,
-    EmployeeType, EmployeeHistory, GDPRConsent
+    EmployeeType,
 )
 
 
@@ -161,31 +161,3 @@ class EmployeeTypeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     ordering = ('name',)
     readonly_fields = ('created_at',)
-
-
-@admin.register(EmployeeHistory)
-class EmployeeHistoryAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'field_name', 'old_value', 'new_value', 'changed_by', 'change_date')
-    list_filter = ('field_name', 'change_date')
-    search_fields = ('employee__email', 'employee__first_name', 'employee__last_name', 'notes')
-    readonly_fields = ('employee', 'changed_by', 'change_date', 'field_name', 'old_value', 'new_value', 'notes')
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-@admin.register(GDPRConsent)
-class GDPRConsentAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'version', 'consented_at', 'ip_address')
-    list_filter = ('version', 'consented_at')
-    search_fields = ('employee__email', 'employee__first_name', 'employee__last_name')
-    readonly_fields = ('employee', 'consent_text', 'consented_at', 'ip_address', 'version')
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False

@@ -5,7 +5,6 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from leaves.models import LeaveRequest, LeaveAccessLog, LeaveActionLog
-from accounts.models import EmployeeHistory
 
 
 class Command(BaseCommand):
@@ -55,13 +54,6 @@ class Command(BaseCommand):
         if not dry_run:
             old_action_logs.delete()
         self.stdout.write(f'Action Logs: {action_count} διαγραφές')
-
-        # Καθαρισμός παλαιών employee history
-        old_history = EmployeeHistory.objects.filter(change_date__lt=logs_cutoff)
-        history_count = old_history.count()
-        if not dry_run:
-            old_history.delete()
-        self.stdout.write(f'Employee History: {history_count} διαγραφές')
 
         # Σημείωση: Οι αιτήσεις ΔΕΝ διαγράφονται αυτόματα,
         # μόνο αν είναι σε terminal state (COMPLETED, REJECTED, WITHDRAWN)
