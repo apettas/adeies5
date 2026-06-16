@@ -41,6 +41,16 @@
     --radius-pill: 999px;
     --radius-input: 10px;
 
+    /* Liquid glass surfaces */
+    --glass-blur: blur(14px) saturate(150%);
+    --glass-bg-nav: rgba(255, 255, 255, 0.68);
+    --glass-bg-nav-end: rgba(245, 247, 250, 0.58);
+    --glass-bg-footer: rgba(26, 61, 102, 0.62);
+    --glass-bg-footer-end: rgba(37, 99, 168, 0.52);
+    --glass-edge-light: rgba(255, 255, 255, 0.55);
+    --glass-edge-footer: rgba(255, 255, 255, 0.16);
+    --glass-shadow: 0 4px 24px rgba(26, 61, 102, 0.06);
+
     /* Bootstrap overrides */
     --bs-primary: #1a6fd4;
     --bs-primary-rgb: 26, 111, 212;
@@ -94,14 +104,38 @@ h1, h2, h3, h4, h5, h6,
 /* ── Navbar ───────────────────────────────────────────── */
 
 .alkinoos-navbar {
-    background: rgba(255, 255, 255, 0.92) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: var(--shadow-card);
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(
+        180deg,
+        var(--glass-bg-nav) 0%,
+        var(--glass-bg-nav-end) 100%
+    ) !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-edge-light);
+    box-shadow: var(--glass-shadow);
     min-height: 56px;
     padding-top: 8px;
     padding-bottom: 8px;
+}
+
+.alkinoos-navbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0) 42%
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+
+.alkinoos-navbar > .container-fluid {
+    position: relative;
+    z-index: 1;
 }
 
 .alkinoos-navbar .navbar-brand {
@@ -522,10 +556,38 @@ h1, h2, h3, h4, h5, h6,
 /* ── Footer ───────────────────────────────────────────── */
 
 .alkinoos-footer {
-    background: var(--brand-navy);
-    color: rgba(255, 255, 255, 0.85);
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(
+        165deg,
+        var(--glass-bg-footer-end) 0%,
+        var(--glass-bg-footer) 55%,
+        rgba(20, 48, 78, 0.68) 100%
+    );
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: rgba(255, 255, 255, 0.88);
     margin-top: 48px;
     padding: 40px 0 24px;
+    border-top: 1px solid var(--glass-edge-footer);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.alkinoos-footer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0) 38%
+    );
+    pointer-events: none;
+}
+
+.alkinoos-footer > .container {
+    position: relative;
+    z-index: 1;
 }
 
 .alkinoos-footer h5,
@@ -558,12 +620,16 @@ h1, h2, h3, h4, h5, h6,
     left: 0;
     right: 0;
     z-index: 1030;
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--border-color);
+    background: linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.72) 0%,
+        rgba(245, 247, 250, 0.62) 100%
+    );
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-top: 1px solid var(--glass-edge-light);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -4px 20px rgba(26, 61, 102, 0.05);
 }
 
 .mobile-tab-bar .tab-items {
@@ -1009,3 +1075,16 @@ h1, h2, h3, h4, h5, h6,
     }
 }
 
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .alkinoos-navbar {
+        background: rgba(255, 255, 255, 0.94) !important;
+    }
+
+    .alkinoos-footer {
+        background: var(--brand-navy);
+    }
+
+    .mobile-tab-bar {
+        background: rgba(255, 255, 255, 0.94);
+    }
+}
