@@ -74,44 +74,6 @@
     </li>
 </ul>
 
-<!-- Υπόλοιπο Κανονικών Αδειών (Χειριστή) -->
-{% if handler_leave_balance is not None and handler_regular_balance is not None %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-primary">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Υπόλοιπο Κανονικών Αδειών (Χειριστής)</h5>
-                <div class="d-flex gap-2">
-                    <a href="{% url 'leaves:balance_ledger' user.pk %}" class="btn btn-sm btn-light">
-                        <i class="bi bi-clock-history"></i> Ιστορικό Μου
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-3">
-                        <h2 class="text-primary">{{ handler_regular_balance|default:0 }}</h2>
-                        <small class="text-muted">Τρέχον Υπόλοιπο</small>
-                    </div>
-                    <div class="col-md-3">
-                        <h2 class="text-success">{{ handler_current_year_days|default:0 }}</h2>
-                        <small class="text-muted">Τρέχον Έτος</small>
-                    </div>
-                    <div class="col-md-3">
-                        <h2 class="text-info">{{ handler_carryover_days|default:0 }}</h2>
-                        <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
-                    </div>
-                    <div class="col-md-3">
-                        <h2 class="text-secondary">{{ handler_annual_entitlement|default:0 }}</h2>
-                        <small class="text-muted">Ετήσιο Δικαίωμα</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
 <!-- Alert για Υγειονομική Επιτροπή -->
 {% if sick_alert_count > 0 %}
 <div class="row mb-4">
@@ -153,12 +115,12 @@
             <table class="table table-hover">
                 <thead class="table-light">
                     <tr>
-                        <th>Υπάλληλος</th>
-                        <th>Είδος Άδειας</th>
+                        {% include 'leaves/includes/sortable_header.html' with field="user__last_name" label="Υπάλληλος" query_params=query_params current_sort=current_sort current_dir=current_dir %}
+                        {% include 'leaves/includes/sortable_header.html' with field="leave_type__name" label="Είδος Άδειας" query_params=query_params current_sort=current_sort current_dir=current_dir %}
                         <th>Ημερομηνίες</th>
                         <th>Ημέρες</th>
-                        <th>Αρ. Πρωτοκόλλου ΠΔΕΔΕ</th>
-                        <th>Κατάσταση</th>
+                        {% include 'leaves/includes/sortable_header.html' with field="protocol_number" label="Αρ. Πρωτοκόλλου ΠΔΕΔΕ" query_params=query_params current_sort=current_sort current_dir=current_dir %}
+                        {% include 'leaves/includes/sortable_header.html' with field="status" label="Κατάσταση" query_params=query_params current_sort=current_sort current_dir=current_dir %}
                         <th>Ενέργειες</th>
                     </tr>
                 </thead>

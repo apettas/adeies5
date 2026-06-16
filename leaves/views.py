@@ -17,7 +17,8 @@ from .models import LeaveRequest, LeavePeriod, LeaveType, SecureFile
 from .forms import LeaveRequestForm
 from .crypto_utils import SecureFileHandler, FileAccessController
 from .attachment_helpers import save_leave_request_attachments_from_request
-from .dashboard_utils import DashboardFilterMixin, get_available_actions
+from .dashboard_utils import DashboardFilterMixin, RoleDashboardMixin, get_available_actions
+from leaves.role_context import resolve_default_dashboard_name
 from notifications.utils import create_notification
 from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES, is_sdey_department
 from django.contrib.auth import get_user_model
@@ -27,12 +28,13 @@ User = get_user_model()
 LOCK_TIMEOUT_MINUTES = 30
 
 
-class EmployeeDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
+class EmployeeDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilterMixin, ListView):
     """Dashboard αιτήσεων για τον υπάλληλο - όλες οι προσωπικές του αιτήσεις"""
     model = LeaveRequest
     template_name = 'leaves/employee_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 20
+    dashboard_role_key = 'employee'
     sortable_fields = ['leave_type__name', 'status', 'submitted_at', 'id', 'protocol_number']
     default_sort = '-submitted_at'
 
@@ -477,19 +479,22 @@ def create_leave_for_user(request, user_id):
     })
 
 
-class ManagerDashboardView(LoginRequiredMixin, ListView):
+class ManagerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilterMixin, ListView):
     """Dashboard για Προϊστάμενο - Αιτήσεις προς έγκριση"""
     model = LeaveRequest
     template_name = 'leaves/manager_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 10
+    dashboard_role_key = 'manager'
+    sortable_fields = ['user__last_name', 'leave_type__name', 'submitted_at', 'created_at']
+    default_sort = '-submitted_at'
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_department_manager:
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
         return super().dispatch(request, *args, **kwargs)
     
-    def get_queryset(self):
+    def _build_manager_queryset(self):
         # Αιτήσεις των υφισταμένων που περιμένουν έγκριση
         subordinates = self.request.user.get_subordinates()
         employees_to_include = list(subordinates)
@@ -547,7 +552,15 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
         
         return LeaveRequest.objects.filter(query_conditions).select_related(
             'user', 'leave_type', 'kedasy_kepea_protocol_by'
-        ).order_by('-created_at')
+        )
+
+    def get_queryset(self):
+        queryset = self._build_manager_queryset()
+        queryset = self.apply_filters(queryset)
+        sort_param = self.get_sort_params()
+        if sort_param:
+            queryset = queryset.order_by(sort_param)
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -572,18 +585,6 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
             sick_days_current_year__gt=8
         ).select_related('department').prefetch_related('roles')
 
-        # Οικιακές αιτήσεις του manager
-        context['my_leave_requests'] = LeaveRequest.objects.filter(
-            user=self.request.user
-        ).select_related('leave_type').order_by('-created_at')[:10]
-
-        # Υπόλοιπο αδειών του manager
-        my_balance = self.request.user.get_leave_balance_breakdown()
-        context['my_leave_balance'] = my_balance['total_days']
-        context['my_current_year_days'] = my_balance['current_year_days']
-        context['my_carryover_days'] = my_balance['carryover_days']
-        context['my_annual_entitlement'] = my_balance['annual_entitlement']
-        
         # Στατιστικά για ΚΕΔΑΣΥ/ΚΕΠΕΑ αν ο προϊστάμενος ανήκει σε τέτοιο τμήμα
         if (self.request.user.department and
             self.request.user.department.department_type and
@@ -837,13 +838,14 @@ def reject_leave_request(request, pk):
     return redirect('leaves:leave_request_detail', pk=pk)
 
 
-class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
+class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilterMixin, ListView):
     """Dashboard για Χειριστή Αδειών - Επεξεργασία αιτήσεων"""
     model = LeaveRequest
     template_name = 'leaves/handler_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 20
-    sortable_fields = ['leave_type__name', 'protocol_number', 'status', 'submitted_at', 'id']
+    dashboard_role_key = 'handler'
+    sortable_fields = ['user__last_name', 'leave_type__name', 'protocol_number', 'status', 'submitted_at', 'id']
     default_sort = '-submitted_at'
     
     def dispatch(self, request, *args, **kwargs):
@@ -857,7 +859,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         ).select_related('user', 'leave_type', 'manager_approved_by', 'locking_user')
         
         # Filter by active tab
-        tab = self.request.GET.get('tab', 'all')
+        tab = self.request.GET.get('tab', 'protocol')
         tab_filters = {
             'all': ['PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED', 'REJECTED_BY_LEAVES_DEPT'],
             'protocol': ['PENDING_PROTOCOL'],
@@ -893,7 +895,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             lr.actions = get_available_actions(lr, self.request.user)
         
         # Active tab
-        context['active_tab'] = self.request.GET.get('tab', 'all')
+        context['active_tab'] = self.request.GET.get('tab', 'protocol')
         
         # Tab counts
         all_active = LeaveRequest.objects.filter(
@@ -910,17 +912,6 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
             'rejected': LeaveRequest.objects.filter(status='REJECTED_BY_LEAVES_DEPT').count(),
             'yc_committee': LeaveRequest.objects.filter(status='PENDING_YC_COMMITTEE').count(),
         }
-        
-
-        
-        # Υπόλοιπο Κανονικών Αδειών του χειριστή
-        handler_user = self.request.user
-        handler_balance = handler_user.get_leave_balance_breakdown()
-        context['handler_leave_balance'] = handler_balance['total_days']
-        context['handler_carryover_days'] = handler_balance['carryover_days']
-        context['handler_current_year_days'] = handler_balance['current_year_days']
-        context['handler_annual_entitlement'] = handler_balance['annual_entitlement']
-        context['handler_regular_balance'] = handler_user.current_regular_leave_balance
         
         # Αιτήσεις για Πρωτόκολλο ΠΔΕΔΕ (όλες, για τα modals)
         context['pdede_pending_requests'] = LeaveRequest.objects.filter(
@@ -1614,17 +1605,9 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
 # Redirect views για εύκολη πλοήγηση
 @login_required
 def dashboard_redirect(request):
-    """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο"""
-    user = request.user
-    
-    if user.is_leave_handler:
-        return redirect('leaves:handler_dashboard')
-    elif user.is_department_manager:
-        return redirect('leaves:manager_dashboard')
-    elif user.is_secretary:
-        return redirect('leaves:secretary_dashboard')
-    else:
-        return redirect('leaves:employee_dashboard')
+    """Ανακατεύθυνση στο κατάλληλο dashboard ανάλογα με τον ρόλο και τις εκκρεμότητες"""
+    url_name = resolve_default_dashboard_name(request.user, request.session)
+    return redirect(url_name)
 
 
 @login_required
@@ -2027,19 +2010,22 @@ def download_leave_pdf(request, request_id):
     except Exception:
         raise Http404("Σφάλμα κατά τη λήψη του PDF")
 
-class SecretaryDashboardView(LoginRequiredMixin, ListView):
+class SecretaryDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilterMixin, ListView):
     """Dashboard για Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ - Αιτήσεις προς πρωτοκόλληση"""
     model = LeaveRequest
     template_name = 'leaves/secretary_dashboard.html'
     context_object_name = 'leave_requests'
     paginate_by = 10
+    dashboard_role_key = 'secretary'
+    sortable_fields = ['user__last_name', 'leave_type__name', 'submitted_at', 'total_days']
+    default_sort = '-submitted_at'
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_secretary:
             raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης σε αυτή τη σελίδα.")
         return super().dispatch(request, *args, **kwargs)
     
-    def get_queryset(self):
+    def _build_secretary_queryset(self):
         # Αιτήσεις ΚΕΔΑΣΥ/ΚΕΠΕΑ που περιμένουν πρωτόκολλο
         if self.request.user.department:
             department_filter = Q(
@@ -2058,8 +2044,16 @@ class SecretaryDashboardView(LoginRequiredMixin, ListView):
             
             return LeaveRequest.objects.filter(department_filter).select_related(
                 'user', 'user__department', 'user__department__department_type', 'leave_type'
-            ).order_by('-submitted_at')
+            )
         return LeaveRequest.objects.none()
+
+    def get_queryset(self):
+        queryset = self._build_secretary_queryset()
+        queryset = self.apply_filters(queryset)
+        sort_param = self.get_sort_params()
+        if sort_param:
+            queryset = queryset.order_by(sort_param)
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

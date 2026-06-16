@@ -6,6 +6,17 @@ from django.utils import timezone
 from leaves.models import LeaveRequest
 
 
+class RoleDashboardMixin:
+    """Θυμάται τον τελευταίο ενεργό ρόλο dashboard στο session."""
+
+    dashboard_role_key = None
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.dashboard_role_key:
+            request.session['active_dashboard_role'] = self.dashboard_role_key
+        return super().dispatch(request, *args, **kwargs)
+
+
 class DashboardFilterMixin:
     """Mixin for dashboard views with sorting and filtering support."""
 

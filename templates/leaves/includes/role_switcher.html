@@ -1,0 +1,20 @@
+{% if role_nav_items|length > 1 %}
+<div class="bg-light border-bottom py-2">
+    <div class="container-fluid">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted small me-1"><i class="bi bi-grid-3x3-gap"></i> Ρόλος:</span>
+            {% for item in role_nav_items %}
+            <a href="{{ item.url }}"
+               class="btn btn-sm {% if item.is_active %}btn-primary{% else %}btn-outline-secondary{% endif %} position-relative">
+                <i class="bi {{ item.icon }}"></i> {{ item.label }}
+                {% if item.badge %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ item.badge }}
+                </span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}

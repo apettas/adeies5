@@ -79,10 +79,18 @@
                         </a>
                     </li>
                     
-                    {% if user.role == 'employee' %}
+                    {% if user.is_employee or user.has_leave_request_permission %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'leaves:create_leave_request' %}">
                             <i class="bi bi-plus-circle"></i> Νέα Αίτηση
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if user.is_secretary %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:secretary_dashboard' %}">
+                            <i class="bi bi-archive"></i> Γραμματεία
                         </a>
                     </li>
                     {% endif %}
@@ -156,6 +164,10 @@
             </div>
         </div>
     </nav>
+
+    {% if user.is_authenticated %}
+    {% include 'leaves/includes/role_switcher.html' %}
+    {% endif %}
 
     <!-- Main Content -->
     <div class="container-fluid">
