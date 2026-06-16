@@ -18,7 +18,6 @@ class Command(BaseCommand):
     FIELD_DEFAULTS = {
         'subject_text': None,
         'decision_text': None,
-        'folder': 'Γενικός Φάκελος/',
         'instructions': '',
         'max_days': None,
         'requires_approval': True,
@@ -148,7 +147,6 @@ class Command(BaseCommand):
             'name': name,
             'subject_text': self._clean(row.get('subject_text')) or name,
             'decision_text': self._clean(row.get('decision_text')) or name,
-            'folder': self._clean(row.get('folder')) or self.FIELD_DEFAULTS['folder'],
             'instructions': self._clean(row.get('instructions')) or self.FIELD_DEFAULTS['instructions'],
             'max_days': self._parse_positive_integer(row.get('max_days'), row_number, code),
             'requires_approval': self._parse_bool(

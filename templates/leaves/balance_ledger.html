@@ -115,7 +115,6 @@
                                 <th class="text-end">Υπόλοιπο Μετά</th>
                                 <th>Σχόλια</th>
                                 <th>Χειριστής</th>
-                                <th>Κατάσταση</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -161,15 +160,6 @@
                                         <small>{{ entry.created_by.get_full_name|default:entry.created_by.email|default:"—" }}</small>
                                     {% else %}
                                         <small class="text-muted">Σύστημα</small>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if entry.is_finalized %}
-                                        <span class="badge bg-success" title="Επαληθεύτηκε{% if entry.verified_by %} από {{ entry.verified_by.get_full_name }}{% endif %}">
-                                            <i class="bi bi-check-circle"></i>
-                                        </span>
-                                    {% else %}
-                                        <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i></span>
                                     {% endif %}
                                 </td>
                             </tr>

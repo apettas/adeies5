@@ -22,7 +22,6 @@ class LeaveType(models.Model):
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     subject_text = models.TextField('Κείμενο Θέματος', blank=True)
     decision_text = models.TextField('Κείμενο Απόφασης', blank=True)
-    folder = models.CharField('Φ Φάκελος', max_length=255, blank=True)
     affects_regular_leave_balance = models.BooleanField('Επηρεάζει Υπόλοιπο Κανονικών', default=True,
         help_text='Αν είναι ενεργό, η ολοκλήρωση αυτής της άδειας δημιουργεί εγγραφή στο ιστορικό υπολοίπου')
     is_simple = models.BooleanField('Απλή Άδεια', default=False,
@@ -1167,12 +1166,6 @@ class RegularLeaveBalanceEntry(models.Model):
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
     is_locked = models.BooleanField('Κλειδωμένο', default=True,
                                     help_text='Append-only — οι διορθώσεις είναι νέες εγγραφές')
-    is_finalized = models.BooleanField('Οριστικοποιημένο', default=False,
-                                       help_text='Οριστικοποιημένες εγγραφές δεν τροποποιούνται')
-    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name='verified_balance_entries',
-                                    verbose_name='Επαληθεύτηκε από')
-    verified_at = models.DateTimeField('Ημερομηνία Επαλήθευσης', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Εγγραφή Υπολοίπου Κανονικών Αδειών'

@@ -137,8 +137,6 @@ class Department(models.Model):
                                    verbose_name='Έδρα', related_name='departments')
     manager = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
                                 verbose_name='Προϊστάμενος Τμήματος', related_name='managed_departments')
-    is_virtual = models.BooleanField('Εικονικό Τμήμα', default=False,
-                                     help_text='True για ΣΔΕΥ - κληρονομούν προϊστάμενο από το γονικό ΚΕΔΑΣΥ')
     is_active = models.BooleanField('Ενεργό', default=True)
     has_atypical_leaves = models.BooleanField('Άτυπες Άδειες', default=False,
         help_text='Τα τμήματα που χειρίζονται άτυπες άδειες (π.χ. εκπαιδευτικοί)')

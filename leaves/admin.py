@@ -12,7 +12,7 @@ from .models import (
 class LeaveTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'code', 'max_days', 'requires_approval', 'workflow_variant', 'is_revocation', 'is_active', 'has_instructions')
     list_filter = ('is_active', 'requires_approval', 'is_revocation', 'workflow_variant', 'is_sick_leave_yd', 'is_sick_leave_total')
-    search_fields = ('name', 'code', 'subject_text', 'decision_text', 'folder')
+    search_fields = ('name', 'code', 'subject_text', 'decision_text')
     readonly_fields = ('id', 'created_at')
     fieldsets = (
         ('Βασικά Στοιχεία', {
@@ -22,7 +22,7 @@ class LeaveTypeAdmin(admin.ModelAdmin):
             'fields': ('subject_text', 'decision_text', 'instructions')
         }),
         ('Ταξινόμηση', {
-            'fields': ('workflow_variant', 'folder')
+            'fields': ('workflow_variant',)
         }),
         ('Υπόλοιπο', {
             'fields': ('affects_regular_leave_balance',)

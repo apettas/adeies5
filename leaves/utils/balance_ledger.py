@@ -75,15 +75,3 @@ def get_balance_entries(employee, year=None):
     if year:
         qs = qs.filter(entry_date__year=year)
     return qs.order_by('-entry_date', '-created_at')
-
-
-def finalize_entry(entry, verified_by):
-    """
-    Mark a ledger entry as finalized (cannot be modified).
-    """
-    from django.utils import timezone
-    entry.is_finalized = True
-    entry.verified_by = verified_by
-    entry.verified_at = timezone.now()
-    entry.save(update_fields=['is_finalized', 'verified_by', 'verified_at'])
-    return entry
