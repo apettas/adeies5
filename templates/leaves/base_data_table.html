@@ -4,6 +4,36 @@
 
 {% block title %}{{ display_name }} - Βασικά Στοιχεία Βάσης{% endblock %}
 
+{% block extra_css %}
+<style>
+    .base-data-modal .modal-content {
+        max-height: calc(100vh - 2rem);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .base-data-modal .modal-content > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .base-data-modal .modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: min(70vh, calc(100vh - 12rem));
+    }
+
+    .base-data-modal .modal-dialog {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <nav aria-label="breadcrumb">
@@ -102,19 +132,19 @@
     </div>
 
     {% if can_add %}
-    <div class="modal fade" id="addRecordModal" tabindex="-1">
+    <div class="modal fade base-data-modal" id="addRecordModal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <form method="post" action="{% url 'leaves:base_data_table' table_key %}">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle"></i>
+                        Προσθήκη {{ display_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="{% url 'leaves:base_data_table' table_key %}" id="addRecordForm">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="bi bi-plus-circle"></i>
-                            Προσθήκη {{ display_name }}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
                     <div class="modal-body">
                         <div class="row g-3">
                             {% for spec in form_field_specs %}
@@ -136,20 +166,20 @@
     </div>
     {% endif %}
 
-    <div class="modal fade" id="editRecordModal" tabindex="-1">
+    <div class="modal fade base-data-modal" id="editRecordModal" tabindex="-1">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil"></i>
+                        Επεξεργασία {{ display_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
                 <form method="post" action="{% url 'leaves:base_data_table' table_key %}" id="editForm">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="record_id" id="edit_record_id" value="">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            <i class="bi bi-pencil"></i>
-                            Επεξεργασία {{ display_name }}
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
                     <div class="modal-body">
                         <div id="editFormLoading" class="text-center py-4">
                             <div class="spinner-border text-primary" role="status">
