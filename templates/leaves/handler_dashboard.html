@@ -117,6 +117,7 @@
                     <tr>
                         {% include 'leaves/includes/sortable_header.html' with field="user__last_name" label="Υπάλληλος" query_params=query_params current_sort=current_sort current_dir=current_dir %}
                         {% include 'leaves/includes/sortable_header.html' with field="leave_type__name" label="Είδος Άδειας" query_params=query_params current_sort=current_sort current_dir=current_dir %}
+                        {% include 'leaves/includes/sortable_header.html' with field="submitted_at" label="Ημνία Αίτησης" query_params=query_params current_sort=current_sort current_dir=current_dir %}
                         <th>Ημερομηνίες</th>
                         <th>Ημέρες</th>
                         {% include 'leaves/includes/sortable_header.html' with field="protocol_number" label="Αρ. Πρωτοκόλλου ΠΔΕΔΕ" query_params=query_params current_sort=current_sort current_dir=current_dir %}
@@ -132,6 +133,13 @@
                             <small class="text-muted">{{ lr.user.department.name|default:"-" }}</small>
                         </td>
                         <td><span class="badge bg-secondary">{{ lr.leave_type.name }}</span></td>
+                        <td>
+                            {% if lr.submitted_at %}
+                                <span class="date-greek">{{ lr.submitted_at|date:"d/m/Y H:i" }}</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if lr.start_date %}
                                 {{ lr.start_date|date:"d/m/Y" }}

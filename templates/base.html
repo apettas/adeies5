@@ -100,6 +100,11 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;">
                             <li><h6 class="dropdown-header">Ειδοποιήσεις</h6></li>
+                            <li>
+                                <a class="dropdown-item text-center" href="#" id="mark-all-notifications-read">
+                                    <i class="bi bi-check2-all"></i> Σημείωση όλων ως διαβασμένες
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <ul id="notification-list" class="list-unstyled mb-0">
@@ -165,16 +170,16 @@
     <footer class="alkinoos-footer">
         <div class="container">
             <div class="row">
-                <div class="col-md-4 mb-3">
-                    <div class="d-flex align-items-center mb-2 gap-2">
+                <div class="col-md-4 mb-3 text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-2 gap-2">
                         <img src="{% static 'images/logo.png' %}" alt="Λογότυπο ΠΔΕΔΕ" height="40" class="footer-brand-logo" onerror="this.style.display='none'">
                         <h5 class="mb-0">ΠΔΕΔΕ</h5>
                     </div>
                     <p class="mb-0 small">Περιφερειακή Διεύθυνση Εκπαίδευσης</p>
                     <p class="small">Δυτικής Ελλάδας</p>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="col-md-4 mb-3 text-center">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                         <img src="{% static 'Alkinoos.png' %}" alt="Αλκίνοος" height="32" class="footer-brand-logo">
                         <h6 class="mb-0">Αλκίνοος</h6>
                     </div>
@@ -182,7 +187,7 @@
                         Σύστημα διαχείρισης αιτήσεων άδειας προσωπικού
                     </p>
                 </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-4 mb-3 text-center">
                     <h6>Πληροφορίες</h6>
                     <p class="mb-1 small">
                         Δημιουργός: <strong>Ανδρέας Πέττας</strong>
@@ -269,6 +274,18 @@
                 loadNotifications();
             });
         }
+
+        function markAllAsRead() {
+            fetch('{% url "notifications:mark_all_as_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(() => {
+                loadNotifications();
+            });
+        }
         
         function formatGreekDate(date) {
             const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
@@ -281,6 +298,14 @@
             {% if user.is_authenticated %}
             loadNotifications();
             setInterval(loadNotifications, 30000);
+
+            const markAllBtn = document.getElementById('mark-all-notifications-read');
+            if (markAllBtn) {
+                markAllBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    markAllAsRead();
+                });
+            }
             {% endif %}
             
             const dateElement = document.getElementById('current-date-greek');
