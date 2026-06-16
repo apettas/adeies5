@@ -1,4 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from urllib.parse import quote
+
 from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -236,9 +238,10 @@ def logout_view(request):
     auth_logout(request)
 
     if cas_enabled and cas_server:
-        service_url = 'https://sadeies.pdede.gov.gr'
+        # Μετά το SSO logout, ο χρήστης επιστρέφει απευθείας στη σελίδα σύνδεσης
+        service_url = request.build_absolute_uri(reverse('accounts:login'))
         cas_server_clean = cas_server.rstrip('/')
-        return redirect(f'{cas_server_clean}/logout?service={service_url}')
+        return redirect(f'{cas_server_clean}/logout?service={quote(service_url, safe="")}')
 
     messages.info(request, 'Αποσυνδεθήκατε επιτυχώς.')
     return redirect('accounts:login')
