@@ -409,6 +409,8 @@ class LeaveRequest(models.Model):
                 self.status = 'PENDING_PROTOCOL'
             self.submitted_at = timezone.now()
             self.save()
+            from leaves.utils.sick_leave_alerts import handle_sick_threshold_on_submit
+            handle_sick_threshold_on_submit(self)
             return True
         return False
     
@@ -636,16 +638,8 @@ class LeaveRequest(models.Model):
         """Ελέγχει αν μπορεί να σταλεί σε Υγειονομική Επιτροπή"""
         if self.status != 'IN_REVIEW':
             return False
-        total = sum(
-            lr.total_days for lr in LeaveRequest.objects.filter(
-                user=self.user,
-                leave_type__is_sick_leave_total=True,
-                submitted_at__year=timezone.now().year
-            ).exclude(
-                status__in=['DRAFT', 'SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT', 'CANCELLED_BY_APPLICANT']
-            ).prefetch_related('periods')
-        )
-        return total > 8
+        from leaves.utils.sick_leave_alerts import user_exceeds_sick_threshold
+        return user_exceeds_sick_threshold(self.user)
 
     def send_to_yc_committee(self, handler, notes=''):
         """Αποστολή σε Υγειονομική Επιτροπή"""
@@ -715,44 +709,60 @@ class LeaveRequest(models.Model):
         """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
         return self.status in ['IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES']
 
-    def _notify_sick_leave_threshold_exceeded(self):
+    def notify_sick_leave_threshold_exceeded(self):
         """
-        Υπολογίζει το ΣΥΝΟΛΟ αναρρωτικών ημερών (συμπεριλαμβανομένων 
-        και των ενεργών/μη ολοκληρωμένων αιτήσεων) και αν ξεπερνά τις 8,
-        δημιουργεί notifications σε ΟΛΟΥΣ τους χειριστές και τον υπάλληλο.
+        Ειδοποιήσεις όταν το σύνολο αναρρωτικών (ενεργές + ολοκληρωμένες αιτήσεις)
+        ξεπερνά τις 8 ημέρες — σε χειριστές, προϊστάμενο και υπάλληλο.
         """
         if not self.leave_type.is_sick_leave_total:
             return
-        
+
         from notifications.utils import create_notification as _create_notification
-        
         from leaves.utils.sick_leave_alerts import calculate_yearly_sick_total
-        
+
         current_year = timezone.now().year
         sick_total = calculate_yearly_sick_total(self.user, year=current_year)
-        
-        if sick_total > 8:
-            from accounts.models import User
-            handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
-            for handler in handlers:
-                _create_notification(
-                    user=handler,
-                    title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
-                    message=(
-                        f"Ο/Η {self.user.full_name} έχει συνολικά {sick_total} αναρρωτικές ημέρες "
-                        f"στο τρέχον έτος (όριο: 8). Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
-                    ),
-                    related_object=self
-                )
+
+        if sick_total <= 8:
+            return
+
+        from accounts.models import User
+        message_base = (
+            f"Ο/Η {self.user.full_name} έχει συνολικά {sick_total} αναρρωτικές ημέρες "
+            f"στο τρέχον έτος (όριο: 8). Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
+        )
+
+        handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
+        for handler in handlers:
             _create_notification(
-                user=self.user,
+                user=handler,
                 title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
-                message=(
-                    f"Το σύνολο των αναρρωτικών σας αδειών ανέρχεται σε {sick_total} ημέρες "
-                    f"(όριο: 8). Θα παραπεμφθείτε στην Υγειονομική Επιτροπή."
-                ),
-                related_object=self
+                message=message_base,
+                related_object=self,
             )
+
+        manager = self.user.get_approving_manager()
+        if manager:
+            _create_notification(
+                user=manager,
+                title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
+                message=message_base,
+                related_object=self,
+            )
+
+        _create_notification(
+            user=self.user,
+            title="Υπέρβαση Αναρρωτικών — Απαιτείται Υγειονομική Επιτροπή",
+            message=(
+                f"Το σύνολο των αναρρωτικών σας αδειών ανέρχεται σε {sick_total} ημέρες "
+                f"(όριο: 8). Θα παραπεμφθείτε στην Υγειονομική Επιτροπή."
+            ),
+            related_object=self,
+        )
+
+    def _notify_sick_leave_threshold_exceeded(self):
+        """Backward-compatible alias."""
+        self.notify_sick_leave_threshold_exceeded()
 
     def start_decision_preparation(self, user):
         """Μεταφορά σε κατάσταση ετοιμασίας απόφασης"""

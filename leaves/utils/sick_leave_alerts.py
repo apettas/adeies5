@@ -111,3 +111,20 @@ def can_acknowledge_sick_alert(viewer, employee):
     if viewer.is_department_manager:
         return employee.id in viewer.get_subordinates().values_list('id', flat=True)
     return False
+
+
+def handle_sick_threshold_on_submit(leave_request):
+    """
+    Μετά την υποβολή αναρρωτικής: ειδοποιήσεις + επανεμφάνιση dashboard alert.
+
+    Επαναφέρει τις γνώσεις «Έλαβα γνώση» ώστε χειριστής, προϊστάμενος και
+    υπάλληλος να βλέπουν ξανά το alert όταν μια νέα αίτηση ξεπερνά το όριο.
+    """
+    if not leave_request.leave_type.is_sick_leave_total:
+        return False
+    if not user_exceeds_sick_threshold(leave_request.user):
+        return False
+
+    YCCommitteeAcknowledgment.objects.filter(employee=leave_request.user).delete()
+    leave_request.notify_sick_leave_threshold_exceeded()
+    return True

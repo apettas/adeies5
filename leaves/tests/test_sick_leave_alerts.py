@@ -5,7 +5,8 @@ from django.utils import timezone
 
 from accounts.tests.test_data import TestDataMixin
 from leaves.models import LeaveType, YCCommitteeAcknowledgment
-from leaves.tests.helpers import create_submitted_leave_request
+from leaves.tests.helpers import create_submitted_leave_request, create_draft_leave_request
+from notifications.models import Notification
 from leaves.utils.sick_leave_alerts import (
     calculate_yearly_sick_total,
     can_acknowledge_sick_alert,
@@ -84,3 +85,52 @@ class SickLeaveAlertTests(TestDataMixin, TestCase):
 
         response = self.client.get(reverse('leaves:employee_dashboard'))
         self.assertNotContains(response, 'Έλαβα Γνώση')
+
+    def test_submit_resets_acknowledgments_and_notifies_all_roles(self):
+        """Νέα υποβολή >8 ημερών επαναφέρει το alert και στέλνει ειδοποιήσεις."""
+        prior = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'prior', '2026-02-03', '2026-02-12',
+        )
+        prior.status = 'COMPLETED'
+        prior.save()
+
+        YCCommitteeAcknowledgment.objects.create(
+            handler=self.leave_handler, employee=self.employee,
+        )
+        YCCommitteeAcknowledgment.objects.create(
+            handler=self.dept_manager, employee=self.employee,
+        )
+        YCCommitteeAcknowledgment.objects.create(
+            handler=self.employee, employee=self.employee,
+        )
+
+        new_req = create_draft_leave_request(
+            self.employee, self.sick_total_type, 'new sick', '2026-06-21', '2026-06-23',
+        )
+        new_req.submit()
+
+        self.assertFalse(
+            YCCommitteeAcknowledgment.objects.filter(employee=self.employee).exists()
+        )
+        alerts = get_sick_alert_users(self.leave_handler)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0].sick_alert_days, 13)
+
+        self.assertTrue(
+            Notification.objects.filter(
+                user=self.leave_handler,
+                title__contains='Υπέρβαση Αναρρωτικών',
+            ).exists()
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                user=self.dept_manager,
+                title__contains='Υπέρβαση Αναρρωτικών',
+            ).exists()
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                user=self.employee,
+                title__contains='Υπέρβαση Αναρρωτικών',
+            ).exists()
+        )

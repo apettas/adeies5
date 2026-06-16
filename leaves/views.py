@@ -1152,32 +1152,6 @@ def complete_leave_request(request, pk):
             message=f"Η αίτησή σας για {leave_request.leave_type.name} ολοκληρώθηκε επιτυχώς",
             related_object=leave_request
         )
-
-        # Alert για Υγειονομική Επιτροπή (μετά την ενημέρωση υπολοίπου από το model)
-        from leaves.utils.sick_leave_alerts import calculate_yearly_sick_total
-        sick_total = calculate_yearly_sick_total(leave_request.user)
-        if leave_request.leave_type.is_sick_leave_total and sick_total > 8:
-            from accounts.models import User
-            handlers = User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True)
-            for handler in handlers:
-                create_notification(
-                    user=handler,
-                    title="Υγειονομική Επιτροπή",
-                    message=(
-                        f"Ο/Η {leave_request.user.full_name} έχει ξεπεράσει τις 8 αναρρωτικές ημέρες "
-                        f"({sick_total} ημέρες). Απαιτείται παραπομπή."
-                    ),
-                    related_object=leave_request
-                )
-            create_notification(
-                user=leave_request.user,
-                title="Υγειονομική Επιτροπή",
-                message=(
-                    f"Το σύνολο των αναρρωτικών σας αδειών ({sick_total} ημέρες) "
-                    f"ξεπερνά το όριο των 8 ημερών. Απαιτείται παραπομπή στην Υγειονομική Επιτροπή."
-                ),
-                related_object=leave_request
-            )
         
         messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
         
@@ -1283,9 +1257,6 @@ def send_to_protocol_pdede(request, pk):
             # Αλλαγή status σε IN_REVIEW για να προχωρήσει στην επεξεργασία
             leave_request.status = 'IN_REVIEW'
             leave_request.save()
-            
-            # Έλεγχος υπέρβασης ορίου αναρρωτικών — notification σε χειριστές
-            leave_request._notify_sick_leave_threshold_exceeded()
             
             # Ειδοποίηση στον υπάλληλο
             try:
@@ -2343,9 +2314,6 @@ def provide_documents(request, pk):
                 handler=request.user,
                 notes=notes
             )
-            
-            # Έλεγχος υπέρβασης ορίου αναρρωτικών — notification σε χειριστές
-            leave_request._notify_sick_leave_threshold_exceeded()
 
             create_notification(
                 user=leave_request.user,
@@ -2430,6 +2398,15 @@ def send_to_yc_committee(request, pk):
 
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
 
+    from leaves.utils.sick_leave_alerts import calculate_yearly_sick_total
+
+    def yc_referral_context(**extra):
+        return {
+            'leave_request': leave_request,
+            'sick_total_days': calculate_yearly_sick_total(leave_request.user),
+            **extra,
+        }
+
     if not leave_request.can_send_to_yc:
         messages.error(request, 'Η αίτηση δεν μπορεί να σταλεί σε Υγειονομική Επιτροπή.')
         return redirect('leaves:leave_request_detail', pk=pk)
@@ -2438,10 +2415,7 @@ def send_to_yc_committee(request, pk):
         notes = request.POST.get('notes', '').strip()
         if not notes:
             messages.error(request, 'Απαιτούνται υποχρεωτικά σχόλια/αιτιολογία για την παραπομπή.')
-            return render(request, 'leaves/yc_referral_form.html', {
-                'leave_request': leave_request,
-                'notes': notes,
-            })
+            return render(request, 'leaves/yc_referral_form.html', yc_referral_context(notes=notes))
 
         from leaves.attachment_helpers import save_leave_request_attachments_from_request
         saved_count, upload_errors = save_leave_request_attachments_from_request(
@@ -2450,16 +2424,10 @@ def send_to_yc_committee(request, pk):
         if upload_errors:
             for err in upload_errors:
                 messages.error(request, err)
-            return render(request, 'leaves/yc_referral_form.html', {
-                'leave_request': leave_request,
-                'notes': notes,
-            })
+            return render(request, 'leaves/yc_referral_form.html', yc_referral_context(notes=notes))
         if saved_count == 0:
             messages.error(request, 'Απαιτείται η επισύναψη του διαβιβαστικού για την Υγειονομική Επιτροπή.')
-            return render(request, 'leaves/yc_referral_form.html', {
-                'leave_request': leave_request,
-                'notes': notes,
-            })
+            return render(request, 'leaves/yc_referral_form.html', yc_referral_context(notes=notes))
 
         try:
             leave_request.send_to_yc_committee(handler=request.user, notes=notes)
@@ -2477,9 +2445,7 @@ def send_to_yc_committee(request, pk):
         except Exception as e:
             messages.error(request, f'Σφάλμα: {str(e)}')
 
-    return render(request, 'leaves/yc_referral_form.html', {
-        'leave_request': leave_request,
-    })
+    return render(request, 'leaves/yc_referral_form.html', yc_referral_context())
 
 
 @login_required
