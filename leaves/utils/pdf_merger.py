@@ -62,6 +62,7 @@ def build_leave_request_pdf(leave_request):
         'leave_request': leave_request,
         'user': leave_request.user,
         'periods': periods,
+        'request_text': leave_request.description or '',
         'attachments': list(leave_request.attachments.all()),
     }
     html = render_to_string('leaves/pdf_template.html', context)

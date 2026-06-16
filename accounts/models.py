@@ -347,6 +347,18 @@ class User(AbstractUser):
     def is_assigned_department_manager(self):
         """Είναι ο επίσημα ορισμένος προϊστάμενος του τμήματός του (FK)."""
         return bool(self.department_id and self.department.manager_id == self.id)
+
+    @property
+    def is_effective_department_manager(self):
+        """
+        Είναι ο ενεργός προϊστάμενος του τμήματός του.
+
+        Authoritative: Department.manager FK· αν λείπει, fallback όπως στο
+        get_department_manager() (ρόλος MANAGER στο ίδιο τμήμα).
+        """
+        if not self.department_id:
+            return False
+        return self.department.get_department_manager() == self
     
     @property
     def is_leave_handler(self):
@@ -467,8 +479,8 @@ class User(AbstractUser):
         return self._has_role_code(ROLE_MANAGER) or self._has_role_code(ROLE_LEAVE_HANDLER)
     
     def get_subordinates(self):
-        """Επιστρέφει τους υφισταμένους — μόνο αν είναι FK manager του τμήματός του."""
-        if not self.department or not self.is_assigned_department_manager:
+        """Επιστρέφει τους υφισταμένους — μόνο αν είναι ενεργός προϊστάμενος του τμήματος."""
+        if not self.department or not self.is_effective_department_manager:
             return User.objects.none()
 
         from django.db.models import Q

@@ -59,6 +59,15 @@ class ManagerAuthorityTests(TestDataMixin, TestCase):
         self.assertFalse(orphan.is_manager_of_department(self.child_department))
         self.assertEqual(orphan.get_subordinates().count(), 0)
 
+    def test_role_only_manager_gets_subordinates_when_fk_missing(self):
+        """Όταν λείπει Department.manager FK, ο ενεργός manager (ρόλος) βλέπει υφισταμένους."""
+        self.child_department.manager = None
+        self.child_department.save()
+
+        self.assertTrue(self.dept_manager.is_effective_department_manager)
+        self.assertEqual(self.dept_manager.get_subordinates().count(), 1)
+        self.assertIn(self.employee, self.dept_manager.get_subordinates())
+
     def test_department_manager_save_adds_manager_role(self):
         employee = User.objects.create_user(
             email='newmgr@test.com',
