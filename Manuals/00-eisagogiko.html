@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>00 eisagogiko</title>
+<style>
+@page { size: A4; margin: 2cm; }
+body { font-family: 'DejaVu Sans', sans-serif; line-height: 1.55; font-size: 11pt; color: #1a1a1a; }
+h1, h2, h3 { color: #0f3d5c; margin-top: 1.4em; page-break-after: avoid; }
+h1 { font-size: 20pt; border-bottom: 2px solid #0f3d5c; padding-bottom: 0.25em; }
+h2 { font-size: 15pt; }
+h3 { font-size: 12.5pt; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 10pt; page-break-inside: avoid; }
+th, td { border: 1px solid #bbb; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
+th { background: #e8f0f5; }
+code { font-family: 'DejaVu Sans Mono', monospace; background: #f0f0f0; padding: 0.1em 0.3em; font-size: 0.9em; }
+pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.8em; overflow-wrap: anywhere; white-space: pre-wrap; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 4px solid #0f3d5c; margin: 1em 0; padding: 0.4em 0.9em; background: #f7fafc; }
+a { color: #1565c0; text-decoration: none; }
+hr { border: none; border-top: 1px solid #ccc; margin: 1.5em 0; }
+ul, ol { padding-left: 1.4em; }
+p { margin: 0.6em 0; }
+</style>
+</head>
+<body>
+<h1>Αλκίνοος — Γενικό εισαγωγικό εγχειρίδιο</h1>
+<h2>1. Τι είναι το σύστημα</h2>
+<p>Το <strong>Αλκίνοος</strong> είναι το ηλεκτρονικό σύστημα διαχείρισης αδειών της ΠΔΕΔΕ. Μεταφέρει σε ψηφιακή μορφή τη ροή που γνωρίζετε από τα χαρτιά: υποβολή αίτησης → έγκριση προϊσταμένου → πρωτόκολλο → επεξεργασία από χειριστή → απόφαση/ΣΗΔΕ → ολοκλήρωση.</p>
+<p><strong>Περιβάλλον δοκιμής (staging):</strong> χρησιμοποιείτε δοκιμαστικούς λογαριασμούς και δοκιμαστικά δεδομένα. Οτιδήποτε κάνετε <strong>δεν</strong> επηρεάζει την παραγωγική λειτουργία.</p>
+<p><strong>Διεύθυνση πρόσβασης:</strong> https://sadeies.pdede.gov.gr/</p>
+<hr />
+<h2>2. Σύνδεση</h2>
+<ol>
+<li>Ανοίξτε τη διεύθυνση στον browser (προτείνεται <strong>Chrome</strong> ή <strong>Edge</strong>, τελευταία έκδοση).</li>
+<li>Συμπληρώστε <strong>email</strong> και <strong>κωδικό</strong> που σας δόθηκαν.</li>
+<li>Μετά τη σύνδεση μεταφέρεστε αυτόματα στο dashboard που ταιριάζει στον ρόλο σας (ή εκεί που υπάρχουν εκκρεμότητες).</li>
+</ol>
+<blockquote>
+<p><strong>Σημείωση:</strong> Η αυτοεγγραφή νέων χρηστών και η σύνδεση μέσω ενιαίου συστήματος (SSO) <strong>δεν</strong> είναι ακόμα ενεργές στο staging — θα προστεθούν αργότερα.</p>
+</blockquote>
+<hr />
+<h2>3. Ρόλοι στο σύστημα</h2>
+<table>
+<thead>
+<tr>
+<th>Ρόλος</th>
+<th>Τι κάνει</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Υπάλληλος</strong></td>
+<td>Υποβάλλει αίτηση, βλέπει υπόλοιπο, ανακαλεί αίτηση όπου επιτρέπεται</td>
+</tr>
+<tr>
+<td><strong>Προϊστάμενος</strong></td>
+<td>Εγκρίνει ή απορρίπτει αιτήσεις του τμήματός του</td>
+</tr>
+<tr>
+<td><strong>Χειριστής αδειών</strong></td>
+<td>Πρωτόκολλο ΠΔΕΔΕ, επεξεργασία, απόφαση, ΣΗΔΕ, υπόλοιπα</td>
+</tr>
+<tr>
+<td><strong>Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ</strong></td>
+<td>Πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ (όπου ισχύει)</td>
+</tr>
+<tr>
+<td><strong>Διαχειριστής</strong></td>
+<td>Ρυθμίσεις ρόλων (εκτός scope δοκιμής για τους χειριστές)</td>
+</tr>
+</tbody>
+</table>
+<h3>Αν έχετε πολλούς ρόλους</h3>
+<p>Πάνω στη σελίδα εμφανίζεται <strong>εναλλαγή ρόλου</strong> (π.χ. «Οι αιτήσεις μου» / «Προϊστάμενος» / «Χειριστής Αδειών»). Επιλέξτε τον ρόλο με τον οποίον θέλετε να εργαστείτε <strong>πριν</strong> κάνετε ενέργεια — ιδίως αν είστε ταυτόχρονα υπάλληλος και χειριστής.</p>
+<hr />
+<h2>4. Καταστάσεις αίτησης (απλή εικόνα)</h2>
+<pre><code>Πρόχειρη (DRAFT)
+    ↓ υποβολή
+Υποβλήθηκε (SUBMITTED)                    ← περιμένει προϊστάμενο
+    ↓ έγκριση προϊσταμένου
+Για Πρωτόκολλο ΠΔΕΔΕ (PENDING_PROTOCOL)    ← περιμένει χειριστή
+    ↓ καταχώρηση πρωτοκόλλου ΣΗΔΕ
+Σε Επεξεργασία (IN_REVIEW)                ← χειριστής
+    ↓ (προαιρετικά) αίτηση δικαιολογητικών
+Αναμονή Δικαιολογητικών (WAITING_FOR_DOCUMENTS)
+    ↓ επιστροφή / παροχή δικαιολογητικών
+Ετοιμασία Απόφασης → Προς Υπογραφές → Ολοκληρώθηκε (COMPLETED)
+</code></pre>
+<p><strong>Ειδικές περιπτώσεις:</strong><br />
+- <strong>ΚΕΔΑΣΥ/ΚΕΠΕΑ/ΣΔΕΥ:</strong> πριν τον προϊστάμενο, η αίτηση μπορεί να περάσει από <strong>Πρωτόκολλο ΚΕΔΑΣΥ</strong> (γραμματεία).<br />
+- <strong>Άτυπες άδειες:</strong> σύντομη ροή — μετά την έγκριση προϊσταμένου ολοκληρώνονται απευθείας (χωρίς ΣΗΔΕ).<br />
+- <strong>Αναρρωτικές &gt; 8 ημέρες/έτος:</strong> ειδοποίηση για Υγειονομική Επιτροπή.</p>
+<hr />
+<h2>5. Προτεινόμενη σειρά δοκιμής</h2>
+<p>Ξεκινήστε από τα <strong>απλά</strong> και προχωρήστε σταδιακά:</p>
+<table>
+<thead>
+<tr>
+<th>Βήμα</th>
+<th>Ρόλος</th>
+<th>Τι δοκιμάζετε</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Υπάλληλος</td>
+<td>Κανονική άδεια — υποβολή, προβολή υπολοίπου</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Προϊστάμενος</td>
+<td>Έγκριση της αίτησης</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Χειριστής</td>
+<td>Πρωτόκολλο ΠΔΕΔΕ → επεξεργασία → ολοκλήρωση</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Υπάλληλος</td>
+<td>Έλεγχος υπολοίπου μετά την ολοκλήρωση (ledger)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Υπάλληλος + Προϊστάμενος</td>
+<td>Άτυπη άδεια (αν το τμήμα το υποστηρίζει)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Όλοι</td>
+<td>Αναρρωτική με ΥΔ ή με γνωμάτευση</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Χειριστής</td>
+<td>Πλήρης ροή ΣΗΔΕ (απόφαση → ακριβές αντίγραφο)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>(Προαιρετικό)</td>
+<td>Γραμματεία ΚΕΔΑΣΥ — αν έχετε σχετικό λογαριασμό</td>
+</tr>
+</tbody>
+</table>
+<p>Αναλυτικές οδηγίες ανά ρόλο: βλ. <code>01-ypallilos.md</code>, <code>02-proistamenos.md</code>, <code>03-xeiristis.md</code>.</p>
+<hr />
+<h2>6. Τι να ελέγχετε γενικά</h2>
+<ul>
+<li>Εμφανίζονται σωστά τα στοιχεία αίτησης (όνομα, τμήμα, ημερομηνίες, ημέρες);</li>
+<li>Οι <strong>ενέργειες</strong> (κουμπιά) ταιριάζουν με την κατάσταση της αίτησης;</li>
+<li>Οι <strong>ειδοποιήσεις</strong> (καμπανάκι) ενημερώνουν τους σωστούς χρήστες;</li>
+<li>Το <strong>υπόλοιπο</strong> ενημερώνεται σωστά μετά την ολοκλήρωση κανονικής άδειας;</li>
+<li>Η πλοήγηση είναι κατανοητή; Βρίσκετε εύκολα τι ψάχνετε;</li>
+</ul>
+<hr />
+<h2>7. Βοήθεια</h2>
+<p>Για τεχνικά προβλήματα κατά τη δοκιμή, οι χειριστές αδειών συμπληρώνουν <strong>Word με παρατηρήσεις</strong> (βλ. <code>EMAIL-xeiristes-dokimi.md</code> και <code>03-xeiristis.md</code>, ενότητα «Αναφορά προβλημάτων»).</p>
+</body>
+</html>

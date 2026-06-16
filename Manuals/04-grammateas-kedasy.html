@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>04 grammateas kedasy</title>
+<style>
+@page { size: A4; margin: 2cm; }
+body { font-family: 'DejaVu Sans', sans-serif; line-height: 1.55; font-size: 11pt; color: #1a1a1a; }
+h1, h2, h3 { color: #0f3d5c; margin-top: 1.4em; page-break-after: avoid; }
+h1 { font-size: 20pt; border-bottom: 2px solid #0f3d5c; padding-bottom: 0.25em; }
+h2 { font-size: 15pt; }
+h3 { font-size: 12.5pt; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 10pt; page-break-inside: avoid; }
+th, td { border: 1px solid #bbb; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
+th { background: #e8f0f5; }
+code { font-family: 'DejaVu Sans Mono', monospace; background: #f0f0f0; padding: 0.1em 0.3em; font-size: 0.9em; }
+pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.8em; overflow-wrap: anywhere; white-space: pre-wrap; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 4px solid #0f3d5c; margin: 1em 0; padding: 0.4em 0.9em; background: #f7fafc; }
+a { color: #1565c0; text-decoration: none; }
+hr { border: none; border-top: 1px solid #ccc; margin: 1.5em 0; }
+ul, ol { padding-left: 1.4em; }
+p { margin: 0.6em 0; }
+</style>
+</head>
+<body>
+<h1>Εγχειρίδιο Γραμματείας ΚΕΔΑΣΥ / ΚΕΠΕΑ</h1>
+<p>Σύντομες οδηγίες για το πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ — <strong>μόνο</strong> όπου ισχύει στη ροή του τμήματος.</p>
+<hr />
+<h2>1. Πότε χρειάζεται αυτός ο ρόλος</h2>
+<p>Ορισμένες αιτήσεις (π.χ. από τμήματα <strong>ΚΕΔΑΣΥ</strong>, <strong>ΚΕΠΕΑ</strong>, <strong>ΣΔΕΥ</strong>) περνούν <strong>πριν</strong> τον προϊστάμενο από τη <strong>Γραμματεία</strong> για καταχώρηση <strong>πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ</strong>.</p>
+<p>Αν <strong>δεν</strong> έχετε λογαριασμό γραμματέα ή δεν ανήκετε σε σχετικό τμήμα, <strong>παραλείψτε</strong> αυτό το εγχειρίδιο στην trial — εστιάστε στην κανονική ροή (<code>01</code>–<code>03</code>).</p>
+<hr />
+<h2>2. Σύνδεση</h2>
+<ol>
+<li>Συνδεθείτε με λογαριασμό που έχει ρόλο <strong>Γραμματέας</strong> (ή «Γραμματεία ΚΕΔΑΣΥ/ΚΕΠΕΑ» στην εναλλαγή ρόλων).</li>
+<li>Ανοίγει dashboard με αιτήσεις προς πρωτόκολλο ΚΕΔΑΣΥ/ΚΕΠΕΑ.</li>
+</ol>
+<hr />
+<h2>3. Καταχώρηση πρωτοκόλλου</h2>
+<ol>
+<li>Ανοίξτε αίτηση σε κατάσταση αναμονής πρωτοκόλλου ΚΕΔΑΣΥ/ΚΕΠΕΑ.</li>
+<li>Συμπληρώστε <strong>αριθμό πρωτοκόλλου</strong> (δοκιμαστικός για staging).</li>
+<li>Αποθηκεύστε.</li>
+</ol>
+<p><strong>Αποτέλεσμα:</strong> Η αίτηση προχωρά στον <strong>προϊστάμενο</strong> (κατάσταση <code>Υποβλήθηκε</code> ή αντίστοιχη για έγκριση).</p>
+<hr />
+<h2>4. Σενάριο δοκιμής (αν διαθέσιμο)</h2>
+<table>
+<thead>
+<tr>
+<th>Βήμα</th>
+<th>Ρόλος</th>
+<th>Ενέργεια</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Υπάλληλος (ΚΕΔΑΣΥ/ΣΔΕΥ)</td>
+<td>Υποβολή αίτησης</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Γραμματέας</td>
+<td>Πρωτόκολλο ΚΕΔΑΣΥ</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Προϊστάμενος</td>
+<td>Έγκριση</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Χειριστής</td>
+<td>Συνέχεια κανονικής ροής ΠΔΕΔΕ</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. Τι να ελέγξετε</h2>
+<ul>
+<li>[ ] Η αίτηση εμφανίζεται μόνο στις σχετικές ομάδες/τμήματα</li>
+<li>[ ] Μετά το πρωτόκολλο, ειδοποιείται ο προϊστάμενος</li>
+<li>[ ] Το πρωτόκολλο εμφανίζεται στη λεπτομέρεια της αίτησης</li>
+<li>[ ] Δεν «κολλάει» η ροή πριν τον προϊστάμενο</li>
+</ul>
+<p>Προβλήματα καταγράφονται στο <strong>Word παρατηρήσεων</strong> όπως στο <code>03-xeiristis.md</code>.</p>
+</body>
+</html>

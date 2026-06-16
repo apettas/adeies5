@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<title>EMAIL xeiristes dokimi</title>
+<style>
+@page { size: A4; margin: 2cm; }
+body { font-family: 'DejaVu Sans', sans-serif; line-height: 1.55; font-size: 11pt; color: #1a1a1a; }
+h1, h2, h3 { color: #0f3d5c; margin-top: 1.4em; page-break-after: avoid; }
+h1 { font-size: 20pt; border-bottom: 2px solid #0f3d5c; padding-bottom: 0.25em; }
+h2 { font-size: 15pt; }
+h3 { font-size: 12.5pt; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 10pt; page-break-inside: avoid; }
+th, td { border: 1px solid #bbb; padding: 0.4em 0.6em; text-align: left; vertical-align: top; }
+th { background: #e8f0f5; }
+code { font-family: 'DejaVu Sans Mono', monospace; background: #f0f0f0; padding: 0.1em 0.3em; font-size: 0.9em; }
+pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.8em; overflow-wrap: anywhere; white-space: pre-wrap; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 4px solid #0f3d5c; margin: 1em 0; padding: 0.4em 0.9em; background: #f7fafc; }
+a { color: #1565c0; text-decoration: none; }
+hr { border: none; border-top: 1px solid #ccc; margin: 1.5em 0; }
+ul, ol { padding-left: 1.4em; }
+p { margin: 0.6em 0; }
+</style>
+</head>
+<body>
+<h1>Email προς χειριστές αδειών — Δοκιμαστική περίοδος (staging)</h1>
+<p><strong>Θέμα:</strong> Αλκίνοος — Οδηγίες δοκιμής στο staging (trial)</p>
+<hr />
+<p>Καλησπέρα σας,</p>
+<p>Σας στέλνω πρόσβαση στο <strong>δοκιμαστικό περιβάλλον (staging)</strong> του νέου συστήματος διαχείρισης αδειών <strong>Αλκίνοος</strong>, ώστε να το δοκιμάσετε πριν την παραγωγική του χρήση.</p>
+<h2>Σκοπός</h2>
+<p>Θέλουμε να <strong>ολοκληρώσετε ολόκληρη τη ροή</strong> μιας αίτησης — όπως θα γινόταν στην πράξη — αλλάζοντας ρόλους (υπάλληλος → προϊστάμενος → χειριστής). Η δοκιμή γίνεται με <strong>δοκιμαστικούς λογαριασμούς</strong>· τίποτα δεν επηρεάζει την παραγωγή.</p>
+<h2>Πρόσβαση</h2>
+<ul>
+<li><strong>Διεύθυνση:</strong> https://sadeies.pdede.gov.gr/</li>
+<li><strong>Λογαριασμοί:</strong> θα σας σταλούν ξεχωριστά (email + κωδικός)</li>
+<li><strong>Browser:</strong> προτείνεται Chrome ή Edge (τελευταία έκδοση)</li>
+</ul>
+<p>Συνημμένα / στο repository θα βρείτε φάκελο <strong>Manuals</strong> με αναλυτικά εγχειρίδια:<br />
+- <code>00-eisagogiko.md</code> — γενική εικόνα<br />
+- <code>01-ypallilos.md</code> — υπάλληλος, υπόλοιπο, <strong>ledger</strong>, <strong>άτυπες άδειες</strong><br />
+- <code>02-proistamenos.md</code> — προϊστάμενος<br />
+- <code>03-xeiristis.md</code> — χειριστής (κεντρικό για εσάς)<br />
+- <code>04-grammateas-kedasy.md</code> — μόνο αν σας αφορά ΚΕΔΑΣΥ/ΚΕΠΕΑ</p>
+<blockquote>
+<p><strong>Σημείωση:</strong> Η αυτοεγγραφή νέων χρηστών και η σύνδεση μέσω SSO <strong>δεν</strong> περιλαμβάνονται σε αυτή τη δοκιμή — θα προστεθούν αργότερα.</p>
+</blockquote>
+<hr />
+<h2>Πώς να προχωρήσετε (υποχρεωτική σειρά)</h2>
+<p>Ξεκινήστε από <strong>απλά</strong> σενάρια και προχωρήστε σε <strong>εξαιρέσεις</strong>.</p>
+<h3>Βήμα 1 — Υπάλληλος</h3>
+<p>Συνδεθείτε ως <strong>υπάλληλος</strong> (π.χ. <code>kotsonis@sch.gr</code>).<br />
+Υποβάλετε <strong>κανονική άδεια</strong> (2–3 εργάσιμες ημέρες αρκούν).<br />
+Δείτε το <strong>υπόλοιπο</strong> πριν την υποβολή.</p>
+<h3>Βήμα 2 — Προϊστάμενος</h3>
+<p>Αποσυνδεθείτε και συνδεθείτε ως <strong>προϊστάμενος</strong> του τμήματος του υπαλλήλου:<br />
+- Για <code>kotsonis@sch.gr</code> (Τμήμα Δευτεροβάθμιας): <strong><code>apettas@sch.gr</code></strong><br />
+- Για υπαλλήλους Τμήματος Πρωτοβάθμιας: <strong><code>tolia@sch.gr</code></strong><br />
+<strong>Εγκρίνετε</strong> την αίτηση.</p>
+<h3>Βήμα 3 — Χειριστής (εσείς)</h3>
+<p>Συνδεθείτε ως <strong>χειριστής</strong> (π.χ. <code>apettas@sch.gr</code> ή <code>tolia@sch.gr</code>).<br />
+Ολοκληρώστε:<br />
+1. <strong>Πρωτόκολλο ΠΔΕΔΕ</strong><br />
+2. <strong>Επεξεργασία</strong> (IN_REVIEW)<br />
+3. <strong>Ετοιμασία απόφασης</strong> (PDF)<br />
+4. <strong>Ανέβασμα ακριβούς αντιγράφου</strong> (δοκιμαστικό PDF) → <strong>Ολοκλήρωση</strong></p>
+<h3>Βήμα 4 — Έλεγχος υπολοίπου</h3>
+<p>Ξανά ως <strong>υπάλληλος</strong>: ελέγξτε ότι το υπόλοιπο μειώθηκε σωστά και ανοίξτε το <strong>ιστορικό υπολοίπου (ledger)</strong> — πρέπει να υπάρχει εγγραφή αφαίρεσης με αναφορά στην αίτηση.</p>
+<h3>Βήμα 5 — Επιπλέον σενάρια (μετά το βασικό)</h3>
+<ul>
+<li><strong>Άτυπη άδεια</strong> (υπάλληλος + προϊστάμενος — δεν περνά από χειριστή)</li>
+<li><strong>Αίτηση δικαιολογητικών</strong> και συνέχεια ροής</li>
+<li><strong>Αναρρωτική</strong> (ΥΔ ή γνωμάτευση)</li>
+<li>Φίλτρα και καρτέλες στο dashboard χειριστή</li>
+</ul>
+<p>Αναλυτικές οδηγίες ανά βήμα: βλ. <code>Manuals/03-xeiristis.md</code>.</p>
+<hr />
+<h2>Τι να ελέγξετε συγκεκριμένα</h2>
+<ul>
+<li>Σωστή <strong>κατάσταση</strong> αίτησης σε κάθε βήμα</li>
+<li><strong>Κουμπιά/ενέργειες</strong> που εμφανίζονται μόνο όπου πρέπει</li>
+<li><strong>Ειδοποιήσεις</strong> στον σωστό χρήστη</li>
+<li><strong>Πρωτόκολλα</strong> (ΠΔΕΔΕ, και ΚΕΔΑΣΥ αν δοκιμάσετε σχετική ροή)</li>
+<li><strong>PDF απόφασης</strong> — περιεχόμενο και εμφάνιση</li>
+<li><strong>Υπόλοιπο και ledger</strong> μετά την ολοκλήρωση</li>
+<li><strong>Κατανοητότητα</strong> οθονών και κειμένων για καθημερινή χρήση</li>
+</ul>
+<hr />
+<h2>Αναφορά προβλημάτων — πολύ σημαντικό</h2>
+<p><strong>Προθεσμία παράδοσης: Δευτέρα 22 Ιουνίου 2026 — αυστηρή.</strong><br />
+Το αρχείο Word με τις παρατηρήσεις σας πρέπει να μου έχει παραδοθεί <strong>μέχρι και την Δευτέρα 22/6/2026</strong> (όχι μετά).</p>
+<p>Αν δείτε <strong>οτιδήποτε</strong> λάθος, ασαφές ή ελλιπές:</p>
+<ol>
+<li><strong>Μην</strong> το αφήνετε γενικό («δεν δουλεύει»).</li>
+<li>Γράψτε <strong>αναλυτικά</strong>:<br />
+   - τι κάνατε (βήμα-βήμα),<br />
+   - <strong>με ποιον λογαριασμό/ρόλο</strong>,<br />
+   - <strong>ποια αίτηση</strong> (όνομα αιτούντος, ID ή πρωτόκολλο),<br />
+   - <strong>σε ποιο σημείο</strong> της οθόνης το είδατε,<br />
+   - τι <strong>περιμένατε</strong> vs τι <strong>έγινε</strong>,<br />
+   - browser / συσκευή.</li>
+<li>Για <strong>κρίσιμα</strong> θέματα (όσα εμποδίζουν τη δουλειά ή δείχνουν σαφές λάθος συμπεριφοράς): <strong>υποχρεωτικά</strong> επισυνάψτε <strong>screenshot</strong> μέσα στο Word, ακριβώς κάτω από την περιγραφή του προβλήματος. Χωρίς screenshot δεν μπορούμε να αναπαράγουμε εύκολα το θέμα.</li>
+<li>Συγκεντρώστε <strong>όλες</strong> τις παρατηρήσεις σε <strong>ένα αρχείο Word (.docx)</strong> και <strong>στείλετέ μου</strong> το έγγραφο <strong>μέχρι Δευτέρα 22 Ιουνίου 2026</strong>.</li>
+</ol>
+<p>Παράδειγμα καλής περιγραφής:<br />
+<em>«Ως apettas@sch.gr, στην καρτέλα „Για Πρωτόκολλο“, αίτηση Kotsonis, μετά την καταχώρηση πρωτοκόλλου 12345/2025, η αίτηση έμεινε στην ίδια καρτέλα αντί να πάει σε „Σε Επεξεργασία“. Chrome 125, Windows 11.»</em></p>
+<p>Οργανώστε το Word με <strong>ενότητες ανά σενάριο</strong>, ξεχωρίστε <strong>κρίσιμα</strong> (εμποδίζουν τη δουλειά) από <strong>μικρά</strong> (διατύπωση, εμφάνιση) και <strong>συνοδεύστε τα κρίσιμα με screenshot</strong>.</p>
+<hr />
+<h2>Επιπλέον που θα μας βοηθήσει</h2>
+<ul>
+<li>Σχόλια αν κάποιο βήμα είναι <strong>πιο αργό</strong> από το αναμενόμενο</li>
+<li>Σύγκριση με <strong>τρέχουσα χειρόγραφη/ηλεκτρονική διαδικασία</strong> («εδώ λείπει το Χ»)</li>
+<li>Προτάσεις για <strong>κείμενα/ετικέτες</strong> που μπερδεύουν</li>
+<li>Δοκιμή <strong>εναλλαγής ρόλου</strong> αν ο λογαριασμός έχει πολλούς ρόλους</li>
+</ul>
+<hr />
+<h2>Επικοινωνία</h2>
+<p>Για πρόσβαση, λογαριασμούς ή απορίες: <strong>apettas@pdede.gov.gr</strong> / <strong>2610362405</strong></p>
+<p>Σας ευχαριστώ πολύ για τον χρόνο σας — η αναλυτική σας ανατροφοδότηση είναι κρίσιμη για να βγει το σύστημα έτοιμο για παραγωγή.</p>
+<p>Με εκτίμηση,<br />
+<strong>Ανδρέας Πέττας</strong><br />
+<strong>ΠΔΕΔΕ</strong></p>
+</body>
+</html>
