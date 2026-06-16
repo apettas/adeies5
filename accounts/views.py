@@ -103,7 +103,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             # Εισαγωγή μοντέλων leaves μόνο αν είναι διαθέσιμα
             from leaves.models import LeaveRequest
             
-            if user.has_role('employee'):
+            if user.is_employee:
                 context['my_requests_count'] = LeaveRequest.objects.filter(user=user).count()
                 context['pending_requests_count'] = LeaveRequest.objects.filter(
                     user=user,

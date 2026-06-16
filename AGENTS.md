@@ -27,19 +27,44 @@ Greek Regional Directorate of Education (ΠΔΕΔΕ) leave management system. Ha
 ### Key Model: `accounts.User` (custom, email-as-username)
 
 - `USERNAME_FIELD = 'email'` — username is removed
-- Fields: `first_name`, `last_name`, `email`, `department` (FK), `roles` (M2M), `specialty`, `gender`, `father_name`, `phone1`, `phone2`, `personal_email`
-- Category: `user_category` (ADMINISTRATIVE / EDUCATIONAL / SUBSTITUTE / OTHER)
+- Fields: `first_name`, `last_name`, `email`, `department` (FK), `roles` (M2M), `employee_type` (FK), `specialty`, `gender`, `father_name`, `phone1`
+- Category: `employee_type` (ADMINISTRATIVE / EDUCATIONAL / SUBSTITUTE / SDEU_SUPPORT / EDUCATION_DIRECTOR / OTHER)
 - Registration: `registration_status` (PENDING / APPROVED / REJECTED), `approved_by`, `approval_date`
-- Leave balances: `annual_leave_entitlement`, `carryover_leave_days`, `current_year_leave_balance`, `leave_balance`, `current_regular_leave_balance`, `sick_leave_with_declaration`, `sick_days_current_year`, `total_sick_leave_last_5_years`
-- Permissions: `can_request_leave`, `can_approve_own_leave`
+- Leave balances: `annual_leave_entitlement`, `current_regular_leave_balance` (ledger cache), `sick_leave_with_declaration`, `sick_days_current_year`, `total_sick_leave_last_5_years`
+- Permissions: `can_request_leave`
+
+### Roles & Permissions (`accounts.Role` + M2M)
+
+Canonical role codes (see `accounts/role_constants.py`):
+
+| Code | Property | Σκοπός |
+|------|----------|--------|
+| `EMPLOYEE` | `is_employee` | Υποβολή αιτήσεων |
+| `MANAGER` | `is_department_manager` | UI/δικαιώματα προϊσταμένου |
+| `LEAVE_HANDLER` | `is_leave_handler` | Επεξεργασία αιτήσεων ΠΔΕΔΕ |
+| `SECRETARY` | `is_secretary` | Γραμματεία / πρωτόκολλο ΚΕΔΑΣΥ |
+| `ADMIN` | `is_administrator` | Διαχείριση εφαρμογής αδειών |
+| `HR_ADMIN`, `HR_OFFICER` | — | HR / βασικά δεδομένα |
+
+**Διαχωρισμός ρόλων vs Django auth:**
+
+- `is_superuser` → πλήρης πρόσβαση (συμπεριλαμβανομένου `is_administrator`)
+- `is_staff` → μόνο Django admin panel, όχι εφαρμογία αδειών
+- `ADMIN` role → διαχείριση ρόλων/χρηστών στην εφαρμογή (χωρίς υποχρεωτικά superuser)
+
+**Προϊστάμενος τμήματος — δύο έννοιες:**
+
+1. **`Department.manager` (FK)** — *authoritative* για ιεραρχία εγκρίσεων (`get_approving_manager`, `is_manager_of_department`, `get_subordinates`). Όταν οριστεί, signal προσθέτει αυτόματα ρόλο `MANAGER`.
+2. **Ρόλος `MANAGER`** — δικαίωμα χρήσης manager dashboard και έγκρισης (αν είναι και ο σωστός `get_approving_manager()`).
+
+`User._role_codes()` χρησιμοποιεί prefetched roles όταν το queryset έχει `.prefetch_related('roles')`.
 
 ### Key Model: `accounts.Department`
 
 - Hierarchical via `parent_department` (self-referential FK)
 - Typed via `DepartmentType` (code: AUTOTELOUS, PDEDE_MAIN, KEDASY, KEPEA, SDEY, PEDAGOGICAL, etc.)
 - Linked to `Prefecture` (νομός) and `Headquarters` (έδρα)
-- Optional `manager` FK to User (the department head)
-- `is_virtual` flag for SDEY departments (inherit manager from parent KEDASY)
+- **`manager` FK to User** — επίσημος προϊστάμενος τμήματος (authoritative για ιεραρχία)
 
 ### Key Model: `leaves.LeaveRequest` — 11-status state machine
 
@@ -69,10 +94,10 @@ Defined in `WorkflowVariant`, `ApprovalRule`, `RequiredAttachmentRule`, `Decisio
 
 ### Approval Hierarchy Logic (`User.get_approving_manager`)
 
-1. If user is manager of their own department → find manager in parent hierarchy or PDEDE
-2. If user is NOT manager → find manager of their department (walk up parent chain)
-3. SDEY departments inherit manager from parent KEDASY
-4. `_find_pdede_manager()` falls back to PDEDE_MAIN department manager
+1. Αν ο χρήστης είναι **FK manager** του τμήματός του (`is_manager_of_department`) → εγκρίνει ο γονικού ή PDEDE
+2. Αν όχι → εγκρίνει ο `Department.manager` (ανέβασμα ιεραρχίας)
+3. Fallback: χρήστης με ρόλο `MANAGER` στο τμήμα (μόνο αν λείπει FK)
+4. `_find_pdede_manager()` → PDEDE_MAIN manager
 
 ## Code Style
 
@@ -93,7 +118,7 @@ Defined in `WorkflowVariant`, `ApprovalRule`, `RequiredAttachmentRule`, `Decisio
 - Manager pattern: `UserManager(BaseUserManager)` with `create_user` / `create_superuser`
 - Form validation: `clean_<field>()` + `clean()` with `ValidationError`
 - Messages: `django.contrib.messages` with Greek strings
-- Querysets: favor `select_related` for FK relationships
+- Querysets: favor `select_related` for FK relationships; `prefetch_related('roles')` σε λίστες χρηστών
 - GenericRelation: `LeaveRequest.notifications = GenericRelation(Notification)`
 
 ### HTML Templates

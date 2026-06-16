@@ -29,7 +29,7 @@ def test_serve_decision_pdf():
     # Get a user who should have access
     user = User.objects.filter(roles__code='HR_OFFICER').first()
     if not user:
-        user = User.objects.filter(roles__code='administrator').first()
+        user = User.objects.filter(roles__code='ADMIN').first()
     if not user:
         user = User.objects.filter(is_superuser=True).first()
     if not user:

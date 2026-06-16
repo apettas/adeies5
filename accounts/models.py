@@ -3,6 +3,14 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from accounts.role_constants import (
+    ROLE_ADMIN,
+    ROLE_EMPLOYEE,
+    ROLE_LEAVE_HANDLER,
+    ROLE_MANAGER,
+    normalize_role_code,
+)
+
 
 def convert_first_name_to_accusative(name):
     if not name:
@@ -164,12 +172,15 @@ class Department(models.Model):
         return sub_departments
 
     def get_department_manager(self):
-        """Επιστρέφει τον προϊστάμενο του τμήματος"""
-        # Πρώτα ελέγχουμε αν υπάρχει ρητά ορισμένος προϊστάμενος
-        if self.manager:
+        """
+        Επιστρέφει τον προϊστάμενο του τμήματος.
+
+        Authoritative: Department.manager FK. Αν λείπει, fallback σε χρήστη
+        με ρόλο MANAGER στο ίδιο τμήμα (μόνο για μη συγχρονισμένα δεδομένα).
+        """
+        if self.manager_id:
             return self.manager
-        # Αν δεν υπάρχει, ψάχνουμε για χρήστη με ρόλο MANAGER στο τμήμα
-        return self.users.filter(roles__code='MANAGER').first()
+        return self.users.filter(roles__code=ROLE_MANAGER).first()
 
 
 class Role(models.Model):
@@ -314,26 +325,49 @@ class User(AbstractUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def _role_codes(self):
+        """Σύνολο κωδικών ρόλων — χρησιμοποιεί prefetch όταν υπάρχει."""
+        prefetched = getattr(self, '_prefetched_objects_cache', {})
+        if 'roles' in prefetched:
+            return {role.code for role in self.roles.all()}
+        return set(self.roles.values_list('code', flat=True))
+
+    def _has_role_code(self, role_code):
+        code = normalize_role_code(role_code)
+        codes = self._role_codes()
+        return code in codes or role_code in codes
     
     @property
     def is_department_manager(self):
-        return self.roles.filter(code='MANAGER').exists()
+        """Έχει ρόλο MANAGER (δικαίωμα ενεργειών προϊσταμένου στο UI)."""
+        return self._has_role_code(ROLE_MANAGER)
+
+    @property
+    def is_assigned_department_manager(self):
+        """Είναι ο επίσημα ορισμένος προϊστάμενος του τμήματός του (FK)."""
+        return bool(self.department_id and self.department.manager_id == self.id)
     
     @property
     def is_leave_handler(self):
-        return self.roles.filter(code='LEAVE_HANDLER').exists()
+        return self._has_role_code(ROLE_LEAVE_HANDLER)
     
     @property
     def is_administrator(self):
-        return self.roles.filter(code='administrator').exists()
+        """
+        Διαχειριστής εφαρμογής: Django superuser ή ρόλος ADMIN.
+
+        Το is_staff δίνει πρόσβαση στο Django admin, όχι στην εφαρμογή αδειών.
+        """
+        return self.is_superuser or self._has_role_code(ROLE_ADMIN)
     
     @property
     def is_secretary(self):
-        return self.roles.filter(code='SECRETARY').exists()
+        return self._has_role_code('SECRETARY')
     
     @property
     def is_employee(self):
-        return self.roles.filter(code='EMPLOYEE').exists()
+        return self._has_role_code(ROLE_EMPLOYEE)
     
     @property
     def manager(self):
@@ -343,14 +377,14 @@ class User(AbstractUser):
         return None
     
     def is_manager_of_department(self, department):
-        """Ελέγχει αν ο χρήστης είναι manager του συγκεκριμένου τμήματος"""
+        """
+        Ελέγχει αν ο χρήστης είναι ο επίσημος προϊστάμενος του τμήματος.
+
+        Authoritative: μόνο Department.manager FK — όχι απλά ρόλος MANAGER.
+        """
         if not department:
             return False
-        # Ελέγχουμε αν είναι ο ρητά ορισμένος manager του τμήματος
-        if department.manager and department.manager.id == self.id:
-            return True
-        # Ή έχει τον ρόλο MANAGER στο τμήμα
-        return self.roles.filter(code='MANAGER').exists() and self.department_id == department.id
+        return department.manager_id == self.id
     
     def get_approving_manager(self):
         """
@@ -384,7 +418,7 @@ class User(AbstractUser):
         if pdede:
             if pdede.manager and pdede.manager != self:
                 return pdede.manager
-            manager = pdede.users.filter(roles__code='MANAGER').exclude(pk=self.pk).first()
+            manager = pdede.users.filter(roles__code=ROLE_MANAGER).exclude(pk=self.pk).first()
             if manager:
                 return manager
         return None
@@ -399,7 +433,7 @@ class User(AbstractUser):
             if department.manager and department.manager != self:
                 return department.manager
             # Διαφορετικά ψάχνουμε για χρήστη με ρόλο MANAGER
-            manager = department.users.filter(roles__code='MANAGER').exclude(pk=self.pk).first()
+            manager = department.users.filter(roles__code=ROLE_MANAGER).exclude(pk=self.pk).first()
             if manager:
                 return manager
             # Αν δεν βρούμε, πάμε στο γονικό
@@ -428,46 +462,40 @@ class User(AbstractUser):
     
     def can_approve_leaves(self):
         """Μπορεί να εγκρίνει αιτήσεις αδειών"""
-        return self.roles.filter(code__in=['MANAGER', 'LEAVE_HANDLER', 'administrator']).exists()
+        if self.is_administrator:
+            return True
+        return self._has_role_code(ROLE_MANAGER) or self._has_role_code(ROLE_LEAVE_HANDLER)
     
     def get_subordinates(self):
-        """Επιστρέφει τους υφισταμένους του χρήστη"""
-        if self.is_department_manager and self.department:
-            from django.db.models import Q
-            
-            # Χρήστες από το ίδιο τμήμα που δεν είναι προϊστάμενοι
-            conditions = Q(
-                department=self.department,
-                is_active=True
-            ) & ~Q(roles__code='MANAGER')
-            
-            # Αν είναι προϊστάμενος ΚΕΔΑΣΥ, περιλαμβάνουμε και τους υπαλλήλους των ΣΔΕΥ
-            if (self.department.department_type and
+        """Επιστρέφει τους υφισταμένους — μόνο αν είναι FK manager του τμήματός του."""
+        if not self.department or not self.is_assigned_department_manager:
+            return User.objects.none()
+
+        from django.db.models import Q
+
+        conditions = Q(
+            department=self.department,
+            is_active=True,
+        ) & ~Q(roles__code=ROLE_MANAGER)
+
+        if (self.department.department_type and
                 self.department.department_type.code == 'KEDASY'):
-                # Προσθέτουμε condition για ΣΔΕΥ υπαλλήλους
-                from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES
-                sdei_condition = Q(
-                    department__parent_department=self.department,
-                    department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
-                    is_active=True
-                ) & ~Q(roles__code='MANAGER')
-                
-                # Ενώνουμε τα conditions με OR
-                conditions = conditions | sdei_condition
-            
-            # Αν είναι προϊστάμενος της Αυτοτελούς Διεύθυνσης, περιλαμβάνουμε χρήστες από τα child departments
-            if self.department.code == 'AUTOTELOUS_DN':
-                # Προσθέτουμε condition για χρήστες από child departments
-                child_dept_condition = Q(
-                    department__parent_department=self.department,
-                    is_active=True
-                )
-                
-                # Ενώνουμε τα conditions με OR
-                conditions = conditions | child_dept_condition
-            
-            return User.objects.filter(conditions).distinct()
-        return User.objects.none()
+            from accounts.department_utils import SDEY_DEPARTMENT_TYPE_CODES
+            sdei_condition = Q(
+                department__parent_department=self.department,
+                department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
+                is_active=True,
+            ) & ~Q(roles__code=ROLE_MANAGER)
+            conditions = conditions | sdei_condition
+
+        if self.department.code == 'AUTOTELOUS_DN':
+            child_dept_condition = Q(
+                department__parent_department=self.department,
+                is_active=True,
+            )
+            conditions = conditions | child_dept_condition
+
+        return User.objects.filter(conditions).distinct()
 
     def get_role_names(self):
         """Επιστρέφει τα ονόματα των ρόλων του χρήστη"""
@@ -475,8 +503,9 @@ class User(AbstractUser):
 
     def add_role(self, role_code):
         """Προσθέτει ρόλο στον χρήστη"""
+        code = normalize_role_code(role_code)
         try:
-            role = Role.objects.get(code=role_code)
+            role = Role.objects.get(code=code)
             self.roles.add(role)
             return True
         except Role.DoesNotExist:
@@ -484,8 +513,9 @@ class User(AbstractUser):
 
     def remove_role(self, role_code):
         """Αφαιρεί ρόλο από τον χρήστη"""
+        code = normalize_role_code(role_code)
         try:
-            role = Role.objects.get(code=role_code)
+            role = Role.objects.get(code=code)
             self.roles.remove(role)
             return True
         except Role.DoesNotExist:
@@ -493,7 +523,7 @@ class User(AbstractUser):
 
     def has_role(self, role_code):
         """Ελέγχει αν ο χρήστης έχει συγκεκριμένο ρόλο"""
-        return self.roles.filter(code=role_code).exists()
+        return self._has_role_code(role_code)
 
     def get_user_category_display(self):
         """Εμφανιζόμενη κατηγορία υπαλλήλου (από employee_type)."""
@@ -606,3 +636,10 @@ class EmployeeType(models.Model):
                     'description': item['description'],
                 },
             )
+
+
+@receiver(post_save, sender=Department)
+def sync_manager_role_on_department_save(sender, instance, **kwargs):
+    """Όταν ορίζεται Department.manager, εξασφαλίζουμε ρόλο MANAGER στον χρήστη."""
+    if instance.manager_id:
+        instance.manager.add_role(ROLE_MANAGER)

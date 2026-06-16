@@ -570,7 +570,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
         context['sick_days_alert_users'] = User.objects.filter(
             id__in=subordinates.values_list('id', flat=True),
             sick_days_current_year__gt=8
-        ).select_related('department')
+        ).select_related('department').prefetch_related('roles')
 
         # Οικιακές αιτήσεις του manager
         context['my_leave_requests'] = LeaveRequest.objects.filter(
@@ -635,7 +635,7 @@ class ManagerDashboardView(LoginRequiredMixin, ListView):
                     department__department_type__code__in=SDEY_DEPARTMENT_TYPE_CODES,
                     department__parent_department=self.request.user.department,
                     is_active=True
-                ).select_related('department').order_by('last_name', 'first_name')
+                ).select_related('department').prefetch_related('roles').order_by('last_name', 'first_name')
                 
                 context['sdeu_users'] = sdeu_users
                 context['sdeu_users_count'] = sdeu_users.count()
@@ -949,7 +949,7 @@ class HandlerDashboardView(LoginRequiredMixin, DashboardFilterMixin, ListView):
         context['sick_alert_users'] = User.objects.filter(
             id__in=alert_user_ids,
             is_active=True
-        ).select_related('department').order_by('last_name')
+        ).select_related('department').prefetch_related('roles').order_by('last_name')
         context['sick_alert_count'] = context['sick_alert_users'].count()
         
         # Add today's date for protocol forms
@@ -985,13 +985,21 @@ class UsersListView(LoginRequiredMixin, ListView):
             return qs
         
         if self.request.user.is_department_manager and view_mode == 'department':
-            qs = self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+            qs = self.request.user.get_subordinates().select_related(
+                'department'
+            ).prefetch_related('roles').order_by('last_name', 'first_name')
         elif self.request.user.is_leave_handler and view_mode == 'handler':
-            qs = User.objects.select_related('department').order_by('last_name', 'first_name')
+            qs = User.objects.select_related('department').prefetch_related(
+                'roles'
+            ).order_by('last_name', 'first_name')
         elif self.request.user.is_department_manager:
-            qs = self.request.user.get_subordinates().select_related('department').order_by('last_name', 'first_name')
+            qs = self.request.user.get_subordinates().select_related(
+                'department'
+            ).prefetch_related('roles').order_by('last_name', 'first_name')
         elif self.request.user.is_leave_handler:
-            qs = User.objects.select_related('department').order_by('last_name', 'first_name')
+            qs = User.objects.select_related('department').prefetch_related(
+                'roles'
+            ).order_by('last_name', 'first_name')
         else:
             return User.objects.none()
         
