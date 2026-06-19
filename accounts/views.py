@@ -28,13 +28,22 @@ class CompleteSSORegistrationView(FormView):
     def dispatch(self, request, *args, **kwargs):
         # Ο χρήστης μπορεί να είναι είτε anonymous (με email query param)
         # είτε logged in αλλά PENDING
-        self.target_email = request.GET.get('email', '')
+        self.target_email = (
+            request.GET.get('email')
+            or request.POST.get('email')
+            or ''
+        )
         if request.user.is_authenticated:
             self.target_email = request.user.email
         if not self.target_email:
             messages.error(request, 'Δεν βρέθηκε ο λογαριασμός σας. Παρακαλώ κάντε σύνδεση μέσω ΠΣΔ.')
             return redirect('accounts:login')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['target_email'] = self.target_email
+        return context
 
     def get_initial(self):
         initial = super().get_initial()

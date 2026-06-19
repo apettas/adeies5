@@ -147,11 +147,7 @@ class CompleteSSORegistrationForm(forms.Form):
     email = forms.EmailField(
         required=True,
         label='Email ΠΣΔ',
-        widget=forms.EmailInput(attrs={
-            'class': 'form-control',
-            'readonly': 'readonly',
-            'disabled': 'disabled',
-        })
+        widget=forms.HiddenInput(),
     )
     
     first_name = forms.CharField(
@@ -248,6 +244,13 @@ class CompleteSSORegistrationForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.target_email = kwargs.pop('target_email', None)
         super().__init__(*args, **kwargs)
+        if self.target_email:
+            self.fields['email'].initial = self.target_email
+
+    def clean_email(self):
+        if self.target_email:
+            return self.target_email
+        return self.cleaned_data.get('email')
     
     def clean_first_name(self):
         value = self.cleaned_data.get('first_name', '')
