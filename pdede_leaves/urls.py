@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from decouple import config
 from accounts.views import PdedeCASLoginView, logout_view
 from django_cas_ng import views as cas_views
+from django.views.generic import RedirectView
 
 
 def health_check(request):
@@ -34,9 +35,13 @@ urlpatterns = [
 
 # CAS URLs — only if CAS is configured
 if config('CAS_SERVER_URL', default=''):
+    # Το ΠΣΔ καταχωρεί ως service URL το /login/cas/callback/
     urlpatterns += [
-        path('login/cas/login/', PdedeCASLoginView.as_view(), name='cas_ng_login'),
-        path('login/cas/callback/', cas_views.CallbackView.as_view(), name='cas_ng_callback'),
+        path('login/cas/callback/', PdedeCASLoginView.as_view(), name='cas_ng_login'),
+        path(
+            'login/cas/login/',
+            RedirectView.as_view(url='/login/cas/callback/', permanent=False),
+        ),
         path('login/cas/logout/', cas_views.LogoutView.as_view(), name='cas_ng_logout'),
     ]
 

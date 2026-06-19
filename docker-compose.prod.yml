@@ -67,6 +67,8 @@ services:
       - CSRF_COOKIE_SAMESITE=${CSRF_COOKIE_SAMESITE:-Lax}
       - USE_X_FORWARDED_PROTO=${USE_X_FORWARDED_PROTO:-True}
       - CAS_SERVER_URL=${CAS_SERVER_URL}
+      - CAS_ROOT_PROXIED_AS=${CAS_ROOT_PROXIED_AS:-}
+      - CAS_FORCE_SSL_SERVICE_URL=${CAS_FORCE_SSL_SERVICE_URL:-True}
     networks:
       - pdede_network
     healthcheck:

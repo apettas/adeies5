@@ -212,7 +212,8 @@ from django_cas_ng.views import LoginView as CASLoginView
 class PdedeCASLoginView(CASLoginView):
     """CAS login — new CAS users go through registration workflow"""
 
-    def successful_login(self, request, user):
+    def successful_login(self, request, next_page):
+        user = request.user
         # Νέος χρήστης από CAS: χωρίς registration_status → PENDING
         if not user.registration_status or user.registration_status == 'PENDING':
             user.registration_status = 'PENDING'
@@ -231,7 +232,18 @@ class PdedeCASLoginView(CASLoginView):
             return redirect(complete_url)
 
         # Εγκεκριμένος χρήστης → κανονική σύνδεση
-        return super().successful_login(request, user)
+        return super().successful_login(request, next_page)
+
+
+def _cas_service_url(request, path):
+    """Δημόσιο HTTPS URL για CAS service parameter."""
+    root = getattr(settings, 'CAS_ROOT_PROXIED_AS', '').rstrip('/')
+    if root:
+        return f'{root}{path}'
+    service_url = request.build_absolute_uri(path)
+    if getattr(settings, 'CAS_FORCE_SSL_SERVICE_URL', False):
+        service_url = service_url.replace('http://', 'https://', 1)
+    return service_url
 
 
 def logout_view(request):
@@ -243,7 +255,7 @@ def logout_view(request):
 
     if cas_enabled and cas_server:
         # Μετά το SSO logout, ο χρήστης επιστρέφει απευθείας στη σελίδα σύνδεσης
-        service_url = request.build_absolute_uri(reverse('accounts:login'))
+        service_url = _cas_service_url(request, reverse('accounts:login'))
         cas_server_clean = cas_server.rstrip('/')
         return redirect(f'{cas_server_clean}/logout?service={quote(service_url, safe="")}')
 
