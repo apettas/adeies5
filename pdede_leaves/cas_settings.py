@@ -10,16 +10,25 @@ CAS_ENABLED = bool(CAS_SERVER_URL)
 if CAS_ENABLED:
     AUTHENTICATION_BACKENDS = (
         'django.contrib.auth.backends.ModelBackend',
-        'django_cas_ng.backends.CASBackend',
+        'accounts.cas_backend.PdedeCASBackend',
     )
 
     CAS_VERSION = '3'
     CAS_CREATE_USER = True
     CAS_LOGOUT_COMPLETELY = True
-    CAS_REDIRECT_URL = '/'
+    CAS_REDIRECT_URL = '/login/'
+    CAS_LOGIN_NEXT_PAGE = '/login/'
+    CAS_STORE_NEXT = True
     CAS_RETRY_LOGIN = False
     CAS_APPLY_ATTRIBUTES_TO_USER = True
     CAS_USERNAME_ATTRIBUTE = 'email'
+
+    # Test SSO server — απενεργοποίηση SSL verify αν χρειάζεται
+    CAS_VERIFY_SSL_CERTIFICATE = config(
+        'CAS_VERIFY_SSL_CERTIFICATE',
+        default='sso-01-test' not in CAS_SERVER_URL,
+        cast=bool,
+    )
 
     # HTTPS service URL — απαιτείται από το ΠΣΔ (καταχωρημένο service με https)
     CAS_FORCE_SSL_SERVICE_URL = config('CAS_FORCE_SSL_SERVICE_URL', default=True, cast=bool)
@@ -29,16 +38,14 @@ if CAS_ENABLED:
     # Proxy-granting ticket (δεν χρειάζεται για την περίπτωσή μας)
     CAS_PROXY_CALLBACK = None
 
-    # Χαρτογράφηση CAS attributes → Django User fields
-    # Το ΠΣΔ στέλνει: email, givenName, sn, gsnfathername, employeeNumber,
-    # gsnBranch, title, ou, umdobject, businessCategory
-    CAS_USER_ATTRIBUTES_MAPPING = {
-        'email': 'email',
-        'first_name': 'givenName',
-        'last_name': 'sn',
-        'father_name': 'gsnfathername',
-        'role_description': 'title',
-        'employee_number': 'employeeNumber',
+    # Μετονομασία CAS attributes → πεδία User πριν την εφαρμογή
+    CAS_RENAME_ATTRIBUTES = {
+        'givenName': 'first_name',
+        'sn': 'last_name',
+        'gsnfathername': 'father_name',
+        'employeeNumber': 'employee_number',
+        'title': 'role_description',
+        'mail': 'email',
     }
 
     # Session timeout: 8 ώρες (480 λεπτά) όπως δηλώνεται στο helpdesk

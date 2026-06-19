@@ -69,6 +69,7 @@ services:
       - CAS_SERVER_URL=${CAS_SERVER_URL}
       - CAS_ROOT_PROXIED_AS=${CAS_ROOT_PROXIED_AS:-}
       - CAS_FORCE_SSL_SERVICE_URL=${CAS_FORCE_SSL_SERVICE_URL:-True}
+      - CAS_VERIFY_SSL_CERTIFICATE=${CAS_VERIFY_SSL_CERTIFICATE:-}
     networks:
       - pdede_network
     healthcheck:
