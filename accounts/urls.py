@@ -11,7 +11,7 @@ def dashboard_redirect(request):
 
 urlpatterns = [
     path('', views.login_view, name='login'),
-    path('login/', views.login_view, name='login'),
+    path('login/', views.login_view),
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
     path('registration-pending/', views.registration_pending_view, name='registration_pending'),

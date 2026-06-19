@@ -43,6 +43,8 @@ class CompleteSSORegistrationView(FormView):
             initial['email'] = user.email
             initial['first_name'] = user.first_name
             initial['last_name'] = user.last_name
+            initial['father_name'] = user.father_name
+            initial['role_description'] = user.role_description
         except User.DoesNotExist:
             pass
         return initial
@@ -222,9 +224,11 @@ class PdedeCASLoginView(CASLoginView):
             # Αποσύνδεση για να μην έχει πρόσβαση ακόμα
             auth_logout(request)
 
-            # Redirect στη σελίδα ολοκλήρωσης εγγραφής με το email ως param
-            from django.shortcuts import redirect
-            return redirect(f'/accounts/complete-sso-registration/?email={email}')
+            complete_url = (
+                reverse('accounts:complete_sso_registration')
+                + f'?email={quote(email, safe="")}'
+            )
+            return redirect(complete_url)
 
         # Εγκεκριμένος χρήστης → κανονική σύνδεση
         return super().successful_login(request, user)

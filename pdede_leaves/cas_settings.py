@@ -8,22 +8,31 @@ CAS_SERVER_URL = config('CAS_SERVER_URL', default='')
 CAS_ENABLED = bool(CAS_SERVER_URL)
 
 if CAS_ENABLED:
+    AUTHENTICATION_BACKENDS = (
+        'django.contrib.auth.backends.ModelBackend',
+        'django_cas_ng.backends.CASBackend',
+    )
+
     CAS_VERSION = '3'
     CAS_CREATE_USER = True
     CAS_LOGOUT_COMPLETELY = True
     CAS_REDIRECT_URL = '/'
     CAS_RETRY_LOGIN = False
     CAS_APPLY_ATTRIBUTES_TO_USER = True
+    CAS_USERNAME_ATTRIBUTE = 'email'
 
     # Proxy-granting ticket (δεν χρειάζεται για την περίπτωσή μας)
     CAS_PROXY_CALLBACK = None
 
     # Χαρτογράφηση CAS attributes → Django User fields
-    # Το ΠΣΔ στέλνει: uid, givenName, sn, email, umdobject, businessCategory
+    # Το ΠΣΔ στέλνει: email, givenName, sn, gsnfathername, employeeNumber,
+    # gsnBranch, title, ou, umdobject, businessCategory
     CAS_USER_ATTRIBUTES_MAPPING = {
         'email': 'email',
         'first_name': 'givenName',
         'last_name': 'sn',
+        'father_name': 'gsnfathername',
+        'role_description': 'title',
     }
 
     # Session timeout: 8 ώρες (480 λεπτά) όπως δηλώνεται στο helpdesk
