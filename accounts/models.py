@@ -259,6 +259,13 @@ class User(AbstractUser):
     ]
     gender = models.CharField('Φύλο', max_length=10, choices=GENDER_CHOICES, blank=True)
     father_name = models.CharField('Πατρώνυμο', max_length=50, blank=True)
+    employee_number = models.CharField(
+        'Αριθμός Μητρώου',
+        max_length=30,
+        blank=True,
+        null=True,
+        unique=True,
+    )
     
     # Υπηρεσιακά στοιχεία
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,

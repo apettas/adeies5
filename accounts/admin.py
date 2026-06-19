@@ -62,9 +62,9 @@ class SpecialtyAdmin(admin.ModelAdmin):
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ('email', 'last_name', 'first_name', 'department', 'specialty', 'get_role_names', 'get_category_display', 'get_registration_status_display', 'is_active')
+    list_display = ('email', 'employee_number', 'last_name', 'first_name', 'department', 'specialty', 'get_role_names', 'get_category_display', 'get_registration_status_display', 'is_active')
     list_filter = ('roles', 'department', 'specialty', 'employee_type', 'registration_status', 'is_active', 'is_staff')
-    search_fields = ('first_name', 'last_name', 'email')
+    search_fields = ('first_name', 'last_name', 'email', 'employee_number')
     ordering = ('last_name', 'first_name')
     filter_horizontal = ('roles',)
     actions = ['approve_users', 'reject_users']
@@ -122,7 +122,7 @@ class CustomUserAdmin(UserAdmin):
     # Προσαρμογή fieldsets για email-based authentication (χωρίς username)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'name_accusative', 'father_name', 'gender', 'phone1', 'hire_date')}),
+        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'name_accusative', 'father_name', 'gender', 'phone1', 'employee_number', 'hire_date')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'employee_type', 'roles')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('role_description', 'notification_recipients')}),
         ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'current_regular_leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
@@ -141,7 +141,7 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Προσωπικά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('first_name', 'last_name', 'father_name', 'phone1', 'hire_date')
+            'fields': ('first_name', 'last_name', 'father_name', 'employee_number', 'phone1', 'hire_date')
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),

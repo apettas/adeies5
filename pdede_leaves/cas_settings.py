@@ -33,6 +33,7 @@ if CAS_ENABLED:
         'last_name': 'sn',
         'father_name': 'gsnfathername',
         'role_description': 'title',
+        'employee_number': 'employeeNumber',
     }
 
     # Session timeout: 8 ώρες (480 λεπτά) όπως δηλώνεται στο helpdesk
