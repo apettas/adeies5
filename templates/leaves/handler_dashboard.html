@@ -137,6 +137,39 @@
 </div>
 {% endif %}
 
+<!-- Alert για ολοκληρωμένη αποστολή δικαιολογητικών από αιτούντα -->
+{% if document_submission_alert_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-success border-start border-success border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-send-check fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-file-earmark-check"></i> Ολοκληρωμένη Αποστολή Δικαιολογητικών</h5>
+                    <p>Οι παρακάτω αιτήσεις έχουν ολοκληρωμένη αποστολή δικαιολογητικών από τον αιτούντα:</p>
+                    <ul class="mb-0">
+                        {% for lr in document_submission_alerts %}
+                        <li>
+                            <strong>#{{ lr.pk }} — {{ lr.user.get_full_name }}</strong>
+                            ({{ lr.leave_type.name }})
+                            — {{ lr.applicant_documents_submitted_at|date:"d/m/Y H:i" }}
+                            <a href="{% url 'leaves:prepare_decision_preview' lr.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-file-earmark-text"></i> Ετοιμασία Απόφασης
+                            </a>
+                            <a href="{% url 'leaves:acknowledge_document_submission' lr.pk %}" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Το alert κρύβεται για εσάς αφού πατήσετε «Έλαβα Γνώση».</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Filter bar -->
 {% include 'leaves/includes/filter_bar.html' %}
 

@@ -272,7 +272,8 @@
                             <div class="card-body">
                                 <p class="text-muted small mb-3">
                                     Μπορείτε να ανεβάσετε τα απαιτούμενα δικαιολογητικά εδώ.
-                                    Ο χειριστής αδειών θα επιβεβαιώσει την παραλαβή τους και θα προχωρήσει την αίτηση.
+                                    Όταν ολοκληρώσετε την αποστολή, πατήστε το κουμπί ολοκλήρωσης
+                                    ώστε να ενημερωθεί ο χειριστής αδειών.
                                 </p>
                                 <form method="post" action="{% url 'leaves:handler_upload_attachment' leave_request.pk %}" enctype="multipart/form-data" class="row g-2 align-items-end">
                                     {% csrf_token %}
@@ -290,6 +291,16 @@
                                         </button>
                                     </div>
                                 </form>
+                                {% if can_submit_applicant_documents %}
+                                <div id="submit-documents-complete" class="mt-3 pt-3 border-top">
+                                    <p class="small text-muted mb-2">
+                                        Αν έχετε ανεβάσει όλα τα δικαιολογητικά, δηλώστε ολοκλήρωση αποστολής:
+                                    </p>
+                                    <a href="{% url 'leaves:submit_applicant_documents' leave_request.pk %}" class="btn btn-success">
+                                        <i class="bi bi-send-check"></i> Ολοκλήρωση Αποστολής Δικαιολογητικών
+                                    </a>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

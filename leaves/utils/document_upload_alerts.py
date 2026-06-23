@@ -1,7 +1,11 @@
 """
 Alerts για ανέβασμα δικαιολογητικών από αιτούντα — «Έλαβα Γνώση» στο dashboard χειριστή.
 """
-from leaves.models import DocumentUploadAcknowledgment, LeaveRequest
+from leaves.models import (
+    ApplicantDocumentsSubmissionAcknowledgment,
+    DocumentUploadAcknowledgment,
+    LeaveRequest,
+)
 
 
 def get_pending_document_upload_alerts(handler):
@@ -30,3 +34,22 @@ def mark_applicant_document_uploaded(leave_request):
     leave_request.applicant_documents_uploaded_at = timezone.now()
     leave_request.save(update_fields=['applicant_documents_uploaded_at'])
     DocumentUploadAcknowledgment.objects.filter(leave_request=leave_request).delete()
+
+
+def get_pending_document_submission_alerts(handler):
+    """
+    Αιτήσεις όπου ο αιτών δήλωσε ολοκλήρωση αποστολής δικαιολογητικών
+    και ο χειριστής δεν έχει δηλώσει «Έλαβα Γνώση».
+    """
+    acknowledged_ids = ApplicantDocumentsSubmissionAcknowledgment.objects.filter(
+        handler=handler,
+    ).values_list('leave_request_id', flat=True)
+
+    return LeaveRequest.objects.filter(
+        status='DECISION_PREPARATION',
+        applicant_documents_submitted_at__isnull=False,
+    ).exclude(
+        id__in=acknowledged_ids,
+    ).select_related('user', 'user__department', 'leave_type').order_by(
+        '-applicant_documents_submitted_at',
+    )

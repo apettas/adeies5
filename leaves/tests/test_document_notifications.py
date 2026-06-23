@@ -5,9 +5,14 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from accounts.tests.test_data import TestDataMixin
-from leaves.models import DocumentUploadAcknowledgment, LeaveType
+from leaves.models import (
+    ApplicantDocumentsSubmissionAcknowledgment,
+    DocumentUploadAcknowledgment,
+    LeaveType,
+)
 from leaves.tests.helpers import create_submitted_leave_request
 from leaves.utils.document_upload_alerts import (
+    get_pending_document_submission_alerts,
     get_pending_document_upload_alerts,
     mark_applicant_document_uploaded,
 )
@@ -83,3 +88,61 @@ class DocumentNotificationTests(TestDataMixin, TestCase):
 
         mark_applicant_document_uploaded(req)
         self.assertEqual(len(get_pending_document_upload_alerts(self.leave_handler)), 1)
+
+    def _upload_applicant_attachment(self, req):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from leaves.models import SecureFile
+
+        SecureFile.objects.create(
+            leave_request=req,
+            uploaded_by=self.employee,
+            original_filename='test.pdf',
+            file_path='private_media/test_enc.pdf',
+            encryption_key='abc' * 16,
+            description='Βεβαίωση',
+            file_size=100,
+            content_type='application/pdf',
+        )
+        mark_applicant_document_uploaded(req)
+
+    @patch('leaves.views.create_notification')
+    def test_applicant_submit_documents_moves_to_decision_preparation(self, mock_notify):
+        req = self._waiting_request()
+        self._upload_applicant_attachment(req)
+
+        self.client.force_login(self.employee)
+        response = self.client.post(
+            reverse('leaves:submit_applicant_documents', kwargs={'pk': req.pk}),
+        )
+        self.assertRedirects(response, reverse('leaves:leave_request_detail', kwargs={'pk': req.pk}))
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'DECISION_PREPARATION')
+        self.assertIsNotNone(req.applicant_documents_submitted_at)
+        self.assertTrue(mock_notify.called)
+
+    def test_submission_shows_handler_alert_until_acknowledged(self):
+        req = self._waiting_request()
+        self._upload_applicant_attachment(req)
+        req.submit_applicant_documents(self.employee)
+        req.refresh_from_db()
+
+        alerts = list(get_pending_document_submission_alerts(self.leave_handler))
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(alerts[0].pk, req.pk)
+
+        self.client.force_login(self.leave_handler)
+        response = self.client.get(
+            reverse('leaves:acknowledge_document_submission', kwargs={'pk': req.pk}),
+        )
+        self.assertRedirects(response, reverse('leaves:handler_dashboard'))
+        self.assertEqual(list(get_pending_document_submission_alerts(self.leave_handler)), [])
+
+    def test_cannot_submit_without_uploaded_documents(self):
+        req = self._waiting_request()
+        self.client.force_login(self.employee)
+        response = self.client.post(
+            reverse('leaves:submit_applicant_documents', kwargs={'pk': req.pk}),
+        )
+        self.assertRedirects(response, reverse('leaves:leave_request_detail', kwargs={'pk': req.pk}))
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'WAITING_FOR_DOCUMENTS')

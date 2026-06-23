@@ -87,6 +87,12 @@ urlpatterns = [
     path('yc-decision/<int:pk>/', views.receive_from_yc_committee, name='receive_from_yc_committee'),
     path('yc-acknowledge/<int:user_id>/', views.acknowledge_yc_alert, name='acknowledge_yc_alert'),
     path('document-upload-acknowledge/<int:pk>/', views.acknowledge_document_upload, name='acknowledge_document_upload'),
+    path('submit-applicant-documents/<int:pk>/', views.submit_applicant_documents, name='submit_applicant_documents'),
+    path(
+        'document-submission-acknowledge/<int:pk>/',
+        views.acknowledge_document_submission,
+        name='acknowledge_document_submission',
+    ),
     
     # Attendance sheet
     path('attendance/', views.attendance_sheet, name='attendance_sheet'),

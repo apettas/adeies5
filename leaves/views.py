@@ -901,9 +901,14 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
         context['sick_alert_users'] = get_sick_alert_users(self.request.user)
         context['sick_alert_count'] = len(context['sick_alert_users'])
 
-        from leaves.utils.document_upload_alerts import get_pending_document_upload_alerts
+        from leaves.utils.document_upload_alerts import (
+            get_pending_document_submission_alerts,
+            get_pending_document_upload_alerts,
+        )
         context['document_upload_alerts'] = get_pending_document_upload_alerts(self.request.user)
         context['document_upload_alert_count'] = len(context['document_upload_alerts'])
+        context['document_submission_alerts'] = get_pending_document_submission_alerts(self.request.user)
+        context['document_submission_alert_count'] = len(context['document_submission_alerts'])
         
         # Add today's date for protocol forms
         context['today'] = timezone.now().date()
@@ -1485,6 +1490,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
         context['detail_actions'] = [
             action for action in all_actions if action[0] != 'view'
         ]
+        context['can_submit_applicant_documents'] = leave_request.can_submit_applicant_documents(user)
         context['handler_can_reject'] = user.is_leave_handler and any(
             action[0] == 'reject' for action in all_actions
         )
@@ -2390,6 +2396,81 @@ def acknowledge_document_upload(request, pk):
         return redirect('leaves:handler_dashboard')
 
     DocumentUploadAcknowledgment.objects.get_or_create(
+        leave_request=leave_request,
+        handler=request.user,
+    )
+    messages.success(request, 'Η γνώση καταχωρήθηκε.')
+    return redirect('leaves:handler_dashboard')
+
+
+@login_required
+def submit_applicant_documents(request, pk):
+    """Ολοκλήρωση αποστολής δικαιολογητικών από αιτούντα."""
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if not leave_request.can_submit_applicant_documents(request.user):
+        messages.error(
+            request,
+            'Δεν μπορείτε να ολοκληρώσετε την αποστολή δικαιολογητικών για αυτή την αίτηση.',
+        )
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
+    if request.method == 'POST':
+        try:
+            leave_request.submit_applicant_documents(request.user)
+
+            from accounts.models import User
+
+            leave_handlers = User.objects.filter(
+                roles__code='LEAVE_HANDLER',
+                is_active=True,
+            ).distinct()
+            for handler in leave_handlers:
+                create_notification(
+                    user=handler,
+                    title='Ολοκληρώθηκε η αποστολή δικαιολογητικών',
+                    message=(
+                        f"Ο/Η {leave_request.user.full_name} ολοκλήρωσε την αποστολή "
+                        f"δικαιολογητικών για την αίτηση #{leave_request.pk} "
+                        f"({leave_request.leave_type.name}). Μπορείτε να προχωρήσετε στην απόφαση."
+                    ),
+                    related_object=leave_request,
+                )
+
+            messages.success(
+                request,
+                'Η αποστολή δικαιολογητικών ολοκληρώθηκε. Ο χειριστής αδειών θα ενημερωθεί.',
+            )
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
+    return render(request, 'leaves/submit_applicant_documents_confirm.html', {
+        'leave_request': leave_request,
+    })
+
+
+@login_required
+def acknowledge_document_submission(request, pk):
+    """Δήλωση γνώσης για ολοκληρωμένη αποστολή δικαιολογητικών από αιτούντα."""
+    from leaves.models import ApplicantDocumentsSubmissionAcknowledgment
+
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    if (
+        leave_request.status != 'DECISION_PREPARATION'
+        or not leave_request.applicant_documents_submitted_at
+    ):
+        messages.error(
+            request,
+            'Δεν υπάρχει εκκρεμής ολοκλήρωση αποστολής δικαιολογητικών για αυτή την αίτηση.',
+        )
+        return redirect('leaves:handler_dashboard')
+
+    ApplicantDocumentsSubmissionAcknowledgment.objects.get_or_create(
         leave_request=leave_request,
         handler=request.user,
     )

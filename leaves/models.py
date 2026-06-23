@@ -273,6 +273,11 @@ class LeaveRequest(models.Model):
         null=True,
         blank=True,
     )
+    applicant_documents_submitted_at = models.DateTimeField(
+        'Ημερομηνία Ολοκλήρωσης Αποστολής Δικαιολογητικών από Αιτούντα',
+        null=True,
+        blank=True,
+    )
     
     # Ανάκληση και κλείδωμα
     parent_leave = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
@@ -617,8 +622,38 @@ class LeaveRequest(models.Model):
         self.documents_requested_at = timezone.now()
         self.documents_notification_email = notification_email or self.user.email
         self.applicant_documents_uploaded_at = None
+        self.applicant_documents_submitted_at = None
         if self.pk:
             self.document_upload_acknowledgments.all().delete()
+            self.document_submission_acknowledgments.all().delete()
+        self.save()
+        return True
+    
+    def applicant_has_uploaded_documents(self):
+        """Έχει ο αιτών ανεβάσει τουλάχιστον ένα συνημμένο σε αυτή την αίτηση."""
+        return self.attachments.filter(uploaded_by_id=self.user_id).exists()
+
+    def can_submit_applicant_documents(self, user):
+        """Έλεγχος αν ο αιτών μπορεί να δηλώσει ολοκλήρωση αποστολής δικαιολογητικών."""
+        return (
+            user.is_authenticated
+            and self.user_id == user.pk
+            and self.status == 'WAITING_FOR_DOCUMENTS'
+            and self.applicant_has_uploaded_documents()
+        )
+
+    def submit_applicant_documents(self, user):
+        """Ολοκλήρωση αποστολής δικαιολογητικών από αιτούντα → ετοιμασία απόφασης."""
+        if not self.can_submit_applicant_documents(user):
+            raise ValueError(
+                "Δεν μπορείτε να ολοκληρώσετε την αποστολή δικαιολογητικών για αυτή την αίτηση."
+            )
+
+        self.status = 'DECISION_PREPARATION'
+        self.applicant_documents_submitted_at = timezone.now()
+        if self.pk:
+            self.document_upload_acknowledgments.all().delete()
+            self.document_submission_acknowledgments.all().delete()
         self.save()
         return True
     
@@ -632,6 +667,7 @@ class LeaveRequest(models.Model):
         self.documents_provided_at = timezone.now()
         self.documents_notes = notes
         self.applicant_documents_uploaded_at = None
+        self.applicant_documents_submitted_at = None
         self.save()
         return True
     
@@ -1303,3 +1339,29 @@ class DocumentUploadAcknowledgment(models.Model):
 
     def __str__(self):
         return f"{self.handler} → αίτηση #{self.leave_request_id} ({self.acknowledged_at.strftime('%d/%m/%Y')})"
+
+
+class ApplicantDocumentsSubmissionAcknowledgment(models.Model):
+    """Καταγραφή ότι ο χειριστής έλαβε γνώση για ολοκληρωμένη αποστολή δικαιολογητικών."""
+    leave_request = models.ForeignKey(
+        LeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='document_submission_acknowledgments',
+        verbose_name='Αίτηση Άδειας',
+    )
+    handler = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='document_submission_acknowledgments',
+        verbose_name='Χειριστής',
+    )
+    acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Γνώση Ολοκλήρωσης Αποστολής Δικαιολογητικών'
+        verbose_name_plural = 'Γνώσεις Ολοκλήρωσης Αποστολής Δικαιολογητικών'
+        unique_together = ['leave_request', 'handler']
+        ordering = ['-acknowledged_at']
+
+    def __str__(self):
+        return f"{self.handler} → ολοκλήρωση αίτησης #{self.leave_request_id}"

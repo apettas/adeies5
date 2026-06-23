@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Ολοκλήρωση Αποστολής Δικαιολογητικών{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-send-check"></i> Ολοκλήρωση Αποστολής Δικαιολογητικών</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                Δηλώνετε ότι έχετε ανεβάσει όλα τα απαιτούμενα δικαιολογητικά για την ακόλουθη αίτηση
+                και δεν έχετε άλλα να προσθέσετε.
+            </p>
+            <ul>
+                <li><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</li>
+                <li><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</li>
+                <li><strong>Περίοδος:</strong> {{ leave_request.start_date|date:"d/m/Y" }}{% if leave_request.end_date and leave_request.start_date != leave_request.end_date %} - {{ leave_request.end_date|date:"d/m/Y" }}{% endif %}</li>
+                {% if leave_request.required_documents %}
+                <li><strong>Απαιτούμενα Δικαιολογητικά:</strong> {{ leave_request.required_documents|linebreaksbr }}</li>
+                {% endif %}
+            </ul>
+            <p class="text-success">
+                <i class="bi bi-info-circle"></i>
+                Με την επιβεβαίωση, η αίτηση θα προχωρήσει σε «Ετοιμασία Απόφασης» και ο χειριστής αδειών θα ενημερωθεί.
+            </p>
+            <hr>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-x"></i> Ακύρωση
+                </a>
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Ολοκλήρωση Αποστολής Δικαιολογητικών
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
