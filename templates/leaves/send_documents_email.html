@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Αποστολή Email Δικαιολογητικών{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-envelope-paper"></i> Αποστολή Email Δικαιολογητικών</h2>
+        <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Επιστροφή
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Στοιχεία Αίτησης</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</p>
+                    <p><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</p>
+                    <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
+                    {% if leave_request.required_documents %}
+                    <p class="mb-1"><strong>Απαιτούμενα Δικαιολογητικά:</strong></p>
+                    <p class="text-muted">{{ leave_request.required_documents|linebreaks }}</p>
+                    {% endif %}
+                    {% if leave_request.documents_deadline %}
+                    <p><strong>Προθεσμία:</strong> {{ leave_request.documents_deadline|date:"d/m/Y H:i" }}</p>
+                    {% endif %}
+                    {% if email_sent_at %}
+                    <p class="text-success mb-0">
+                        <i class="bi bi-check-circle"></i>
+                        Τελευταία αποστολή: {{ email_sent_at|date:"d/m/Y H:i" }}
+                        {% if leave_request.documents_notification_email %}
+                        στο {{ leave_request.documents_notification_email }}
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <form method="post">
+                {% csrf_token %}
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-envelope"></i> Παραλήπτης Email</h5>
+                    </div>
+                    <div class="card-body">
+                        <label for="notification_email" class="form-label"><strong>Email αποστολής:</strong></label>
+                        <input type="email" class="form-control" id="notification_email" name="notification_email"
+                               value="{{ notification_email }}" required>
+                        <small class="text-muted">
+                            Αλλάξτε τη διεύθυνση αν χρειάζεται. Η αποστολή γίνεται μόνο όταν πατήσετε το κουμπί παρακάτω.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+                        <button type="submit" class="btn btn-primary btn-lg"
+                                onclick="return confirm('Είστε σίγουροι ότι θέλετε να στείλετε email για τα απαιτούμενα δικαιολογητικά;');">
+                            <i class="bi bi-envelope-paper"></i> Αποστολή Email
+                        </button>
+                        <p class="mt-2 small text-muted mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            Μπορείτε να παραλείψετε την αποστολή email και να επιστρέψετε στην αίτηση.
+                        </p>
+                    </div>
+                </div>
+            </form>
+
+            {% if send_error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-x-circle"></i> Η αποστολή απέτυχε. Ελέγξτε τις ρυθμίσεις SMTP.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

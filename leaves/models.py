@@ -268,6 +268,11 @@ class LeaveRequest(models.Model):
         blank=True,
         help_text='Email για ειδοποίηση αιτήματος δικαιολογητικών (επεξεργάσιμο από χειριστή)',
     )
+    documents_notification_sent_at = models.DateTimeField(
+        'Ημερομηνία Αποστολής Email Δικαιολογητικών',
+        null=True,
+        blank=True,
+    )
     applicant_documents_uploaded_at = models.DateTimeField(
         'Ημερομηνία Ανεβάσματος Δικαιολογητικών από Αιτούντα',
         null=True,
@@ -621,6 +626,7 @@ class LeaveRequest(models.Model):
         self.documents_requested_by = handler
         self.documents_requested_at = timezone.now()
         self.documents_notification_email = notification_email or self.user.email
+        self.documents_notification_sent_at = None
         self.applicant_documents_uploaded_at = None
         self.applicant_documents_submitted_at = None
         if self.pk:
@@ -668,6 +674,7 @@ class LeaveRequest(models.Model):
         self.documents_notes = notes
         self.applicant_documents_uploaded_at = None
         self.applicant_documents_submitted_at = None
+        self.documents_notification_sent_at = None
         self.save()
         return True
     

@@ -2205,7 +2205,6 @@ def request_documents(request, pk):
     
     if request.method == 'POST':
         required_documents = request.POST.get('required_documents', '').strip()
-        notification_email = request.POST.get('notification_email', '').strip()
         deadline_date = request.POST.get('deadline_date', '')
         deadline_time = request.POST.get('deadline_time', '')
         
@@ -2214,21 +2213,6 @@ def request_documents(request, pk):
             return render(request, 'leaves/request_documents_form.html', {
                 'leave_request': leave_request,
                 'today': timezone.now().date(),
-                'notification_email': notification_email or leave_request.user.email,
-            })
-
-        from django.core.validators import validate_email
-        from django.core.exceptions import ValidationError
-
-        recipient_email = notification_email or leave_request.user.email
-        try:
-            validate_email(recipient_email)
-        except ValidationError:
-            messages.error(request, 'Παρακαλώ εισάγετε έγκυρη διεύθυνση email.')
-            return render(request, 'leaves/request_documents_form.html', {
-                'leave_request': leave_request,
-                'today': timezone.now().date(),
-                'notification_email': recipient_email,
             })
         
         try:
@@ -2248,7 +2232,6 @@ def request_documents(request, pk):
                 handler=request.user,
                 required_documents=required_documents,
                 deadline=deadline,
-                notification_email=recipient_email,
             )
             
             create_notification(
@@ -2260,21 +2243,6 @@ def request_documents(request, pk):
                 ),
                 related_object=leave_request,
             )
-
-            from django.urls import reverse
-            from pdede_leaves.email_utils import send_documents_required_email
-
-            upload_url = request.build_absolute_uri(
-                reverse('leaves:leave_request_detail', kwargs={'pk': leave_request.pk})
-            ) + '#applicant-documents-upload'
-            if send_documents_required_email(leave_request, recipient_email, upload_url=upload_url):
-                messages.success(request, f'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών. Εστάλη email στο {recipient_email}.')
-            else:
-                messages.warning(
-                    request,
-                    'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών, αλλά το email δεν στάλθηκε. '
-                    'Ελέγξτε τις ρυθμίσεις αποστολής email.',
-                )
             
             if leave_request.manager_approved_by:
                 create_notification(
@@ -2286,8 +2254,13 @@ def request_documents(request, pk):
                     ),
                     related_object=leave_request,
                 )
-            
-            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
+            messages.success(
+                request,
+                'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών. '
+                'Μπορείτε να στείλετε email στον υπάλληλο ή να το παραλείψετε.',
+            )
+            return redirect('leaves:send_documents_email', pk=leave_request.pk)
             
         except Exception as e:
             messages.error(request, f'Σφάλμα κατά το αίτημα δικαιολογητικών: {str(e)}')
@@ -2295,8 +2268,67 @@ def request_documents(request, pk):
     return render(request, 'leaves/request_documents_form.html', {
         'leave_request': leave_request,
         'today': timezone.now().date(),
-        'notification_email': leave_request.documents_notification_email or leave_request.user.email,
     })
+
+
+@login_required
+def send_documents_email(request, pk):
+    """Αποστολή email αιτήματος δικαιολογητικών — ξεχωριστό βήμα από χειριστή."""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα αποστολής email δικαιολογητικών.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    if leave_request.status != 'WAITING_FOR_DOCUMENTS':
+        messages.error(request, 'Η αίτηση δεν είναι σε αναμονή δικαιολογητικών.')
+        return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
+    default_email = (
+        leave_request.documents_notification_email
+        or leave_request.user.email
+    )
+    context = {
+        'leave_request': leave_request,
+        'notification_email': default_email,
+        'email_sent': bool(leave_request.documents_notification_sent_at),
+        'email_sent_at': leave_request.documents_notification_sent_at,
+    }
+
+    if request.method == 'POST':
+        from django.core.exceptions import ValidationError
+        from django.core.validators import validate_email
+        from django.urls import reverse
+
+        from pdede_leaves.email_utils import send_documents_required_email
+
+        recipient_email = request.POST.get('notification_email', '').strip()
+        if not recipient_email:
+            messages.error(request, 'Παρακαλώ εισάγετε διεύθυνση email.')
+            context['notification_email'] = recipient_email
+            return render(request, 'leaves/send_documents_email.html', context)
+
+        try:
+            validate_email(recipient_email)
+        except ValidationError:
+            messages.error(request, 'Παρακαλώ εισάγετε έγκυρη διεύθυνση email.')
+            context['notification_email'] = recipient_email
+            return render(request, 'leaves/send_documents_email.html', context)
+
+        upload_url = request.build_absolute_uri(
+            reverse('leaves:leave_request_detail', kwargs={'pk': leave_request.pk})
+        ) + '#applicant-documents-upload'
+
+        if send_documents_required_email(leave_request, recipient_email, upload_url=upload_url):
+            messages.success(request, f'Το email στάλθηκε επιτυχώς στο {recipient_email}.')
+            return redirect('leaves:leave_request_detail', pk=leave_request.pk)
+
+        messages.error(
+            request,
+            'Το email δεν στάλθηκε. Ελέγξτε τις ρυθμίσεις αποστολής email.',
+        )
+        context['notification_email'] = recipient_email
+        context['send_error'] = True
+
+    return render(request, 'leaves/send_documents_email.html', context)
 
 
 @login_required

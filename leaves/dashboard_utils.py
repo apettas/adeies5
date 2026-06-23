@@ -184,6 +184,7 @@ def _handler_actions(leave_request, actions):
     elif status == 'WAITING_FOR_DOCUMENTS':
         _append_view(actions)
         actions.extend([
+            ('send_documents_email', 'ΑΠΟΣΤΟΛΗ EMAIL', 'leaves:send_documents_email'),
             ('upload_docs', 'ΠΑΡΟΧΗ ΔΙΚ/ΚΩΝ', None),
             ('return', 'ΕΠΙΣΤΡΟΦΗ', None),
             ('reject', 'ΑΠΟΡΡΙΨΗ', None),

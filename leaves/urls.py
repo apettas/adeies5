@@ -38,6 +38,7 @@ urlpatterns = [
     path('send-to-protocol/<int:pk>/', views.send_to_protocol_pdede, name='send_to_protocol_pdede'),
     path('upload-protocol-pdf/<int:pk>/', views.upload_protocol_pdf, name='upload_protocol_pdf'),
     path('request-documents/<int:pk>/', views.request_documents, name='request_documents'),
+    path('send-documents-email/<int:pk>/', views.send_documents_email, name='send_documents_email'),
     path('provide-documents/<int:pk>/', views.provide_documents, name='provide_documents'),
     path('return-to-employee/<int:pk>/', views.return_leave_to_employee, name='return_leave_to_employee'),
     path('handler-upload-attachment/<int:pk>/', views.handler_upload_attachment, name='handler_upload_attachment'),

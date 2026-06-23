@@ -9,7 +9,12 @@
             <h5 class="mb-0"><i class="bi bi-file-earmark-excel"></i> Αίτημα Δικαιολογητικών</h5>
         </div>
         <div class="card-body">
-            <p>Η αίτηση θα τεθεί σε κατάσταση <strong>Σε αναμονή δικαιολογητικών</strong> και θα ειδοποιηθεί ο υπάλληλος.</p>
+            <p>Η αίτηση θα τεθεί σε κατάσταση <strong>Σε αναμονή δικαιολογητικών</strong>.</p>
+            <p class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Ο υπάλληλος θα ειδοποιηθεί μέσω του συστήματος.
+                Η αποστολή email γίνεται ξεχωριστά στο επόμενο βήμα και μπορείτε να την παραλείψετε.
+            </p>
             <ul class="mb-4">
                 <li><strong>Αρ. Αίτησης:</strong> #{{ leave_request.pk }}</li>
                 <li><strong>Υπάλληλος:</strong> {{ leave_request.user.full_name }}</li>
@@ -27,16 +32,6 @@
                     <textarea class="form-control" id="required_documents" name="required_documents" rows="5" required
                               placeholder="Περιγράψτε αναλυτικά τα δικαιολογητικά που απαιτούνται..."></textarea>
                 </div>
-                <div class="mb-3">
-                    <label for="notification_email" class="form-label fw-bold">
-                        Email Υπαλλήλου <span class="text-danger">*</span>
-                    </label>
-                    <input type="email" class="form-control" id="notification_email" name="notification_email"
-                           value="{{ notification_email|default:leave_request.user.email }}" required>
-                    <small class="form-text text-muted">
-                        Θα σταλεί ειδοποίηση στο σύστημα και email σε αυτή τη διεύθυνση. Μπορείτε να την αλλάξετε αν χρειάζεται.
-                    </small>
-                </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="deadline_date" class="form-label">Προθεσμία (ημερομηνία)</label>
@@ -48,13 +43,12 @@
                         <input type="time" class="form-control" id="deadline_time" name="deadline_time">
                     </div>
                 </div>
-                <p class="text-muted"><i class="bi bi-info-circle"></i> Μετά την παροχή των δικαιολογητικών, η αίτηση θα επιστρέψει σε «Σε επεξεργασία».</p>
                 <hr>
                 <a href="{% url 'leaves:leave_request_detail' leave_request.pk %}" class="btn btn-secondary">
                     <i class="bi bi-x"></i> Ακύρωση
                 </a>
                 <button type="submit" class="btn btn-warning">
-                    <i class="bi bi-send"></i> Υποβολή Αιτήματος Δικαιολογητικών
+                    <i class="bi bi-file-earmark-excel"></i> Υποβολή Αιτήματος Δικαιολογητικών
                 </button>
             </form>
         </div>

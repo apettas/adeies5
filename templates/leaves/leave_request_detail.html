@@ -257,6 +257,26 @@
                                 {% if leave_request.documents_requested_at %} — {{ leave_request.documents_requested_at|date:"d/m/Y H:i" }}{% endif %}
                             </p>
                             {% endif %}
+                            {% if user.is_leave_handler %}
+                            <hr class="my-2">
+                            {% if leave_request.documents_notification_sent_at %}
+                            <p class="mb-2 small text-success">
+                                <i class="bi bi-envelope-check"></i>
+                                Email εστάλη στις {{ leave_request.documents_notification_sent_at|date:"d/m/Y H:i" }}
+                                {% if leave_request.documents_notification_email %}
+                                στο {{ leave_request.documents_notification_email }}
+                                {% endif %}
+                            </p>
+                            {% else %}
+                            <p class="mb-2 small text-muted">
+                                <i class="bi bi-envelope"></i> Δεν έχει σταλεί email στον υπάλληλο.
+                            </p>
+                            {% endif %}
+                            <a href="{% url 'leaves:send_documents_email' leave_request.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-envelope-paper"></i>
+                                {% if leave_request.documents_notification_sent_at %}Επανάληψη Αποστολής Email{% else %}Αποστολή Email{% endif %}
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

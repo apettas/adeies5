@@ -192,6 +192,12 @@ def send_documents_required_email(leave_request, recipient_email, upload_url='')
             recipient_list=[recipient_email],
             fail_silently=False,
         )
+        leave_request.documents_notification_email = recipient_email
+        leave_request.documents_notification_sent_at = timezone.now()
+        leave_request.save(update_fields=[
+            'documents_notification_email',
+            'documents_notification_sent_at',
+        ])
         return True
     except Exception as e:
         import logging
