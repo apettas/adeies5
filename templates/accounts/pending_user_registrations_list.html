@@ -28,6 +28,7 @@
                         <th>Email</th>
                         <th>Τμήμα</th>
                         <th>Ειδικότητα</th>
+                        <th>Περιγραφή Ρόλου</th>
                         <th>Ημ/νία Υποβολής</th>
                         <th>Ενέργειες</th>
                     </tr>
@@ -45,6 +46,7 @@
                                 —
                             {% endif %}
                         </td>
+                        <td>{{ u.role_description|default:"—" }}</td>
                         <td>
                             {% if u.registration_submitted_at %}
                                 <span class="date-greek">{{ u.registration_submitted_at|date:"d/m/Y H:i" }}</span>
