@@ -50,6 +50,17 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
         self.assertContains(response, 'pending@test.com')
         self.assertContains(response, 'νέος')
 
+    def test_review_form_shows_editable_role_description(self):
+        self.pending_user.role_description = 'Αναπληρωτής'
+        self.pending_user.save(update_fields=['role_description'])
+        response = self.client.get(
+            reverse('leaves:pending_user_registration_review', args=[self.pending_user.pk]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Περιγραφή Ρόλου')
+        self.assertContains(response, 'name="role_description"')
+        self.assertContains(response, 'Αναπληρωτής')
+
     def test_alert_visible_until_acknowledged(self):
         alerts = get_pending_registration_alerts(self.leave_handler)
         self.assertEqual(alerts.count(), 1)
@@ -77,6 +88,16 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
         with patch('pdede_leaves.email_utils.send_registration_approved_email') as mock_email:
             with patch('pdede_leaves.email_utils.send_registration_approved_notification'):
                 response = self.client.post(review_url, {
+                    'first_name': self.pending_user.first_name,
+                    'last_name': self.pending_user.last_name,
+                    'name_accusative': '',
+                    'father_name': '',
+                    'gender': '',
+                    'phone1': '',
+                    'employee_number': self.pending_user.employee_number,
+                    'gsn_branch': '',
+                    'sso_organizational_unit': '',
+                    'role_description': 'Εκπαιδευτικός',
                     'department': self.child_department.pk,
                     'specialty': self.specialty.pk,
                     'employee_type': self.employee_type.pk,

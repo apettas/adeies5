@@ -162,6 +162,16 @@ class HandlerUserActivationForm(forms.ModelForm):
     class Meta:
         model = User
         fields = (
+            'first_name',
+            'last_name',
+            'name_accusative',
+            'father_name',
+            'gender',
+            'phone1',
+            'employee_number',
+            'gsn_branch',
+            'sso_organizational_unit',
+            'role_description',
             'department',
             'specialty',
             'employee_type',
@@ -172,6 +182,16 @@ class HandlerUserActivationForm(forms.ModelForm):
             'can_request_leave',
         )
         widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name_accusative': forms.TextInput(attrs={'class': 'form-control'}),
+            'father_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'gender': forms.Select(attrs={'class': 'form-select'}),
+            'phone1': forms.TextInput(attrs={'class': 'form-control'}),
+            'employee_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'gsn_branch': forms.TextInput(attrs={'class': 'form-control'}),
+            'sso_organizational_unit': forms.TextInput(attrs={'class': 'form-control'}),
+            'role_description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'department': forms.Select(attrs={'class': 'form-select'}),
             'specialty': forms.Select(attrs={'class': 'form-select'}),
             'employee_type': forms.Select(attrs={'class': 'form-select'}),
@@ -184,6 +204,8 @@ class HandlerUserActivationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['role_description'].label = 'Περιγραφή Ρόλου'
+        self.fields['phone1'].label = 'Τηλέφωνο'
         self.fields['department'].queryset = Department.objects.filter(is_active=True).order_by('name')
         self.fields['specialty'].queryset = Specialty.objects.filter(is_active=True).order_by(
             'specialties_short', 'specialties_full',
@@ -193,6 +215,8 @@ class HandlerUserActivationForm(forms.ModelForm):
         self.fields['employee_type'].required = True
         self.fields['department'].required = True
         self.fields['specialty'].required = True
+        self.fields['first_name'].required = True
+        self.fields['last_name'].required = True
 
         if self.instance and self.instance.pk:
             if not self.instance.roles.exists():
