@@ -28,6 +28,11 @@
                         <strong>Μετά την υποβολή, θα χρειαστείτε έγκριση από τον χειριστή αδειών.</strong>
                     </div>
 
+                    <p class="text-muted small mb-3">
+                        <span class="text-danger fw-bold">*</span>
+                        Υποχρεωτικά πεδία — πρέπει να τα συμπληρώσετε ή να τα επιβεβαιώσετε πριν την υποβολή.
+                    </p>
+
                     {% if form.errors %}
                         <div class="alert alert-danger" role="alert">
                             <i class="bi bi-exclamation-triangle me-2"></i>
@@ -45,6 +50,7 @@
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
                         {{ form.email }}
+                        {{ form.employee_number }}
                         
                         <!-- Στοιχεία από ΠΣΔ (read-only email) -->
                         <div class="card bg-light mb-3">
@@ -67,38 +73,33 @@
                                     </div>
                                 </div>
                                 <div class="row">
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.first_name required=True %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.last_name required=True %}
+                                </div>
+                                <div class="row">
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.name_accusative required=True col_class='col-md-12' %}
+                                </div>
+                                <div class="row">
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.father_name required=False %}
                                     <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.first_name %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.last_name %}
+                                        <label class="form-label fw-bold">Αριθμός Μητρώου</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.employee_number.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο (employeeNumber)</small>
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        {% bootstrap_field form.name_accusative %}
-                                    </div>
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.gsn_branch required=False %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.sso_organizational_unit required=False %}
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.father_name %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.employee_number %}
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.gsn_branch %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.sso_organizational_unit %}
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        {% bootstrap_field form.role_description %}
-                                    </div>
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.role_description required=False col_class='col-md-12' %}
                                 </div>
                             </div>
                         </div>
@@ -110,12 +111,8 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.gender %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.phone %}
-                                    </div>
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.gender required=False %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.phone required=False %}
                                 </div>
                             </div>
                         </div>
@@ -127,12 +124,8 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.department %}
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        {% bootstrap_field form.specialty %}
-                                    </div>
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.department required=True %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.specialty required=True %}
                                 </div>
                             </div>
                         </div>
@@ -141,7 +134,11 @@
                         <div class="card bg-light mb-3">
                             <div class="card-body">
                                 <div class="form-check">
-                                    {% bootstrap_field form.terms_accepted %}
+                                    {% bootstrap_field form.terms_accepted show_label=False %}
+                                    <label for="{{ form.terms_accepted.id_for_label }}" class="form-check-label fw-semibold">
+                                        {{ form.terms_accepted.label }}
+                                        <span class="text-danger" title="Υποχρεωτικό">*</span>
+                                    </label>
                                 </div>
                             </div>
                         </div>

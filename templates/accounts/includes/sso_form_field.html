@@ -1,0 +1,7 @@
+{% load django_bootstrap5 %}
+<div class="{{ col_class|default:'col-md-6' }} mb-3">
+    <label for="{{ field.id_for_label }}" class="form-label{% if required %} fw-semibold{% endif %}">
+        {{ field.label }}{% if required %} <span class="text-danger" title="Υποχρεωτικό">*</span>{% endif %}
+    </label>
+    {% bootstrap_field field show_label=False %}
+</div>

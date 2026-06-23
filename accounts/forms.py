@@ -205,11 +205,7 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=30,
         required=False,
         label='Αριθμός Μητρώου',
-        help_text='Από το Σχολικό Δίκτυο (employeeNumber). Μπορείτε να το διορθώσετε.',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. 12345'
-        })
+        widget=forms.HiddenInput(),
     )
 
     gsn_branch = forms.CharField(
@@ -304,6 +300,16 @@ class CompleteSSORegistrationForm(forms.Form):
         if self.target_email:
             return self.target_email
         return self.cleaned_data.get('email')
+
+    def clean_employee_number(self):
+        """Αριθμός μητρώου από ΠΣΔ — δεν επιτρέπεται τροποποίηση από τον χρήστη."""
+        if self.target_email:
+            try:
+                user = User.objects.get(email=self.target_email)
+                return user.employee_number
+            except User.DoesNotExist:
+                pass
+        return self.cleaned_data.get('employee_number') or None
     
     def clean_first_name(self):
         value = self.cleaned_data.get('first_name', '')

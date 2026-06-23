@@ -56,6 +56,20 @@ class CompleteSSORegistrationFormTests(SimpleTestCase):
         self.assertEqual(form.clean_name_accusative(), 'γεώργιο νικολάου')
 
 
+class EmployeeNumberReadonlyTests(TestCase):
+    def test_employee_number_not_editable_by_user(self):
+        User.objects.create(
+            email='empno@sch.gr',
+            first_name='νίκος',
+            last_name='δοκιμής',
+            employee_number='12345',
+            is_active=False,
+        )
+        form = CompleteSSORegistrationForm(target_email='empno@sch.gr')
+        form.cleaned_data = {'employee_number': '99999'}
+        self.assertEqual(form.clean_employee_number(), '12345')
+
+
 class UserNameAccusativeSaveTests(TestCase):
     def test_manual_accusative_not_overwritten(self):
         user = User.objects.create(
