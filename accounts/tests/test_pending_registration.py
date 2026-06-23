@@ -111,3 +111,13 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
         mark_registration_submitted(self.pending_user)
         alerts = get_pending_registration_alerts(self.leave_handler)
         self.assertEqual(alerts.count(), 1)
+
+    def test_reject_deletes_pending_user(self):
+        user_id = self.pending_user.pk
+        response = self.client.post(reverse('leaves:reject_pending_registration', args=[user_id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=user_id).exists())
+        self.assertEqual(
+            get_pending_registration_alerts(self.leave_handler).count(),
+            0,
+        )

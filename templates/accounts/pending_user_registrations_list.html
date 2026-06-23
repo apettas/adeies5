@@ -55,9 +55,18 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'leaves:pending_user_registration_review' u.pk %}" class="btn btn-sm btn-primary">
-                                <i class="bi bi-pencil-square"></i> Έλεγχος / Ενεργοποίηση
-                            </a>
+                            <div class="d-flex flex-wrap gap-1">
+                                <a href="{% url 'leaves:pending_user_registration_review' u.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-pencil-square"></i> Έλεγχος / Ενεργοποίηση
+                                </a>
+                                <form method="post" action="{% url 'leaves:reject_pending_registration' u.pk %}" class="d-inline"
+                                      onsubmit="return confirm('Οριστική διαγραφή της εγγραφής; Η ενέργεια δεν αναιρείται.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Απόρριψη Εγγραφής
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

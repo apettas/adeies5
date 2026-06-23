@@ -12,6 +12,7 @@ from accounts.handler_registration_views import (
     PendingUserRegistrationsListView,
     PendingUserRegistrationReviewView,
     acknowledge_pending_registration,
+    reject_pending_registration,
 )
 
 app_name = 'leaves'
@@ -58,6 +59,11 @@ urlpatterns = [
         'pending-registration-acknowledge/<int:user_id>/',
         acknowledge_pending_registration,
         name='acknowledge_pending_registration',
+    ),
+    path(
+        'pending-registration-reject/<int:user_id>/',
+        reject_pending_registration,
+        name='reject_pending_registration',
     ),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     

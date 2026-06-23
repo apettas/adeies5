@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
 from accounts.forms import HandlerUserActivationForm
@@ -107,3 +108,24 @@ def acknowledge_pending_registration(request, user_id):
     )
     messages.success(request, 'Η γνώση καταχωρήθηκε.')
     return redirect('leaves:handler_dashboard')
+
+
+@login_required
+@require_POST
+def reject_pending_registration(request, user_id):
+    """Οριστική διαγραφή άσχετης/λανθασμένης εκκρεμούς εγγραφής."""
+    if not request.user.is_leave_handler:
+        raise PermissionDenied('Δεν έχετε δικαίωμα.')
+
+    pending_user = get_object_or_404(
+        get_pending_registrations_queryset(),
+        pk=user_id,
+    )
+    full_name = pending_user.get_full_name()
+    email = pending_user.email
+    pending_user.delete()
+    messages.success(
+        request,
+        f'Η εγγραφή του χρήστη {full_name} ({email}) διαγράφηκε οριστικά.',
+    )
+    return redirect('leaves:pending_user_registrations')
