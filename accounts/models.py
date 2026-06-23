@@ -1,4 +1,7 @@
+import re
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -44,6 +47,22 @@ def normalize_person_name_lower(name):
     if not name:
         return name
     return name.strip().lower()
+
+
+LATIN_LETTER_PATTERN = re.compile(r'[A-Za-z]')
+GREEK_NAME_HELP_TEXT = (
+    'Παρακαλώ διορθώστε το με το σωστό τονισμό και κεφαλαίο το πρώτο γράμμα'
+)
+
+
+def validate_greek_name_characters(value, field_label='Το πεδίο'):
+    """Απόρριψη λατινικών χαρακτήρων που μοιάζουν με ελληνικούς (π.χ. A αντί Α)."""
+    if value and LATIN_LETTER_PATTERN.search(value):
+        raise ValidationError(
+            f'{field_label}: εντοπίστηκαν λατινικοί χαρακτήρες '
+            f'(π.χ. λατινικό «A» αντί για ελληνικό «Α»). '
+            'Παρακαλώ αλλάξτε τη γλώσσα πληκτρολογίου σε Ελληνικά.'
+        )
 
 
 class UserManager(BaseUserManager):

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import User, Department, Specialty, normalize_person_name_lower
+from .models import User, Department, Specialty, normalize_person_name_lower, validate_greek_name_characters, GREEK_NAME_HELP_TEXT
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -154,10 +154,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Όνομα',
-        help_text='Από το Σχολικό Δίκτυο, σε πεζά γράμματα. Ελέγξτε και διορθώστε αν χρειάζεται.',
+        help_text=GREEK_NAME_HELP_TEXT,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'π.χ. γεώργιος'
+            'placeholder': 'π.χ. Γεώργιος'
         })
     )
     
@@ -165,10 +165,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Επώνυμο',
-        help_text='Από το Σχολικό Δίκτυο, σε πεζά γράμματα. Ελέγξτε και διορθώστε αν χρειάζεται.',
+        help_text=GREEK_NAME_HELP_TEXT,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'π.χ. νικολάου'
+            'placeholder': 'π.χ. Νικολάου'
         })
     )
     
@@ -176,10 +176,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=False,
         label='Πατρώνυμο',
-        help_text='Από το Σχολικό Δίκτυο (gsnfathername), σε πεζά. Ελέγξτε και διορθώστε αν χρειάζεται.',
+        help_text=GREEK_NAME_HELP_TEXT,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'π.χ. ιωάννης'
+            'placeholder': 'π.χ. Ιωάννης'
         })
     )
 
@@ -301,25 +301,33 @@ class CompleteSSORegistrationForm(forms.Form):
         value = self.cleaned_data.get('first_name', '')
         if not value.strip():
             raise ValidationError('Το όνομα είναι υποχρεωτικό')
-        return normalize_person_name_lower(value)
+        value = value.strip()
+        validate_greek_name_characters(value, 'Όνομα')
+        return value
     
     def clean_last_name(self):
         value = self.cleaned_data.get('last_name', '')
         if not value.strip():
             raise ValidationError('Το επώνυμο είναι υποχρεωτικό')
-        return normalize_person_name_lower(value)
+        value = value.strip()
+        validate_greek_name_characters(value, 'Επώνυμο')
+        return value
 
     def clean_father_name(self):
         value = self.cleaned_data.get('father_name', '')
         if not value:
             return ''
-        return normalize_person_name_lower(value)
+        value = value.strip()
+        validate_greek_name_characters(value, 'Πατρώνυμο')
+        return value
 
     def clean_name_accusative(self):
         value = self.cleaned_data.get('name_accusative', '')
         if not value.strip():
             raise ValidationError('Το ονοματεπώνυμο στην αιτιατική είναι υποχρεωτικό')
-        return value.strip()
+        value = normalize_person_name_lower(value)
+        validate_greek_name_characters(value, 'Ονοματεπώνυμο (Αιτιατική)')
+        return value
     
     def clean(self):
         cleaned_data = super().clean()

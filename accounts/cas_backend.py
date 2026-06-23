@@ -10,8 +10,6 @@ from django_cas_ng.backends import CASBackend
 from django_cas_ng.signals import cas_user_authenticated
 from django_cas_ng.utils import get_cas_client
 
-from accounts.models import normalize_person_name_lower
-
 logger = logging.getLogger(__name__)
 
 
@@ -62,12 +60,6 @@ class PdedeCASBackend(CASBackend):
             user.first_name = '—'
         if not user.last_name:
             user.last_name = '—'
-        if user.first_name and user.first_name != '—':
-            user.first_name = normalize_person_name_lower(user.first_name)
-        if user.last_name and user.last_name != '—':
-            user.last_name = normalize_person_name_lower(user.last_name)
-        if user.father_name:
-            user.father_name = normalize_person_name_lower(user.father_name)
         user.save()
         return user
 
@@ -80,9 +72,6 @@ class PdedeCASBackend(CASBackend):
 
         if attributes:
             attributes = _apply_cas_attribute_aliases(attributes)
-            for name_field in ('first_name', 'last_name', 'father_name'):
-                if attributes.get(name_field):
-                    attributes[name_field] = normalize_person_name_lower(attributes[name_field])
 
         if settings.CAS_USERNAME_ATTRIBUTE != 'cas:user' and settings.CAS_VERSION != 'CAS_2_SAML_1_0':
             if attributes:
