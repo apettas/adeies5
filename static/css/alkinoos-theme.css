@@ -1,61 +1,61 @@
 /**
- * Αλκίνοος — ζεστό, φιλικό theme (ανεξάρτητο από χρώματα λογοτύπου)
+ * Αλκίνοος — ζεστό μπλε theme (φιλικό, όχι ψυχρό corporate)
  */
 
 :root {
-    /* Brand — ζεστά, γήινα τόνια */
-    --brand-navy: #5c3d2e;
-    --brand-blue: #e07a5f;
-    --brand-silver: #e8c4a8;
+    /* Brand — ζεστό μπλε-σκούρο (λιγότερο cyan) */
+    --brand-navy: #2e4a66;
+    --brand-blue: #5a8fb5;
+    --brand-silver: #c8d4e0;
 
-    /* Primary / interactive — κοραλί & βερικοκί */
-    --primary-600: #e76f51;
-    --primary-500: #f4845f;
-    --primary-400: #f7a072;
+    /* Primary / interactive — ωκεάνιο μπλε με ζεστή απόχρωση */
+    --primary-600: #4d85b5;
+    --primary-500: #5f96c4;
+    --primary-400: #7aadd4;
 
-    /* Playful accents */
-    --accent-gold: #f4a261;
-    --accent-teal: #2a9d8f;
-    --accent-plum: #9b5de5;
+    /* Accents */
+    --accent-gold: #e8b86d;
+    --accent-teal: #3d9a8f;
+    --accent-plum: #7c6cbf;
 
-    /* Surfaces — κρεμ/ροδακινί */
-    --bg-page: #fff8f2;
+    /* Surfaces — ζεστό off-white με ελαφρύ μπλε */
+    --bg-page: #f5f8fc;
     --bg-card: #ffffff;
-    --bg-subtle: #ffe8d6;
-    --border-color: #f5d0b5;
-    --border-focus: #e76f51;
+    --bg-subtle: #e8eef5;
+    --border-color: #d4dde8;
+    --border-focus: #5f96c4;
 
     /* Text */
-    --text-primary: #3d2c24;
-    --text-secondary: #6b5348;
-    --text-muted: #a08072;
+    --text-primary: #2a3544;
+    --text-secondary: #5a6578;
+    --text-muted: #8a95a8;
 
-    /* Semantic — ζεστότερα */
-    --success-bg: #e8f8ef;
-    --success-text: #1d8a5c;
-    --warning-bg: #fff4d6;
-    --warning-text: #c45d00;
-    --danger-bg: #ffe8e8;
-    --danger-text: #c62828;
+    /* Semantic */
+    --success-bg: #e8f5ee;
+    --success-text: #1d7a55;
+    --warning-bg: #fff6e5;
+    --warning-text: #b86e00;
+    --danger-bg: #fef0f0;
+    --danger-text: #c0392b;
 
-    /* Elevation & shape — πιο στρογγυλά */
-    --shadow-soft: 0 8px 28px rgba(231, 111, 81, 0.14);
-    --shadow-card: 0 2px 8px rgba(92, 61, 46, 0.07);
+    /* Elevation & shape */
+    --shadow-soft: 0 8px 28px rgba(46, 74, 102, 0.12);
+    --shadow-card: 0 2px 8px rgba(46, 74, 102, 0.06);
     --radius-card: 20px;
     --radius-pill: 999px;
     --radius-input: 12px;
 
-    /* Warm chrome — navbar / footer / mobile bar */
-    --glass-blur: blur(12px) saturate(150%);
-    --glass-chrome-deep: #a84332;
-    --glass-chrome-mid: #c75a3f;
-    --glass-chrome-light: #e07a5f;
-    --glass-chrome-overlay: rgba(199, 90, 63, 0.92);
-    --glass-edge-chrome: rgba(255, 236, 220, 0.28);
-    --glass-edge-highlight: rgba(255, 248, 240, 0.18);
-    --glass-text-chrome: rgba(255, 252, 248, 0.96);
-    --glass-text-chrome-muted: rgba(255, 240, 228, 0.82);
-    --glass-shadow: 0 4px 24px rgba(168, 67, 50, 0.22);
+    /* Chrome — ζεστό μπλε gradient (navbar / footer) */
+    --glass-blur: blur(12px) saturate(145%);
+    --glass-chrome-deep: #2a4560;
+    --glass-chrome-mid: #3d6285;
+    --glass-chrome-light: #5289b0;
+    --glass-chrome-overlay: rgba(61, 98, 133, 0.92);
+    --glass-edge-chrome: rgba(220, 232, 245, 0.22);
+    --glass-edge-highlight: rgba(255, 255, 255, 0.14);
+    --glass-text-chrome: rgba(248, 251, 255, 0.96);
+    --glass-text-chrome-muted: rgba(220, 232, 245, 0.82);
+    --glass-shadow: 0 4px 24px rgba(42, 69, 96, 0.2);
     /* Legacy aliases */
     --glass-bg-footer: var(--glass-chrome-mid);
     --glass-bg-footer-end: var(--glass-chrome-light);
@@ -63,22 +63,22 @@
     --glass-edge-light: var(--glass-edge-chrome);
 
     /* Bootstrap overrides */
-    --bs-primary: #e76f51;
-    --bs-primary-rgb: 231, 111, 81;
-    --bs-secondary: #6b5348;
-    --bs-secondary-rgb: 107, 83, 72;
-    --bs-success: #1d8a5c;
-    --bs-info: #2a9d8f;
-    --bs-warning: #c45d00;
-    --bs-danger: #c62828;
-    --bs-body-bg: #fff8f2;
-    --bs-body-color: #3d2c24;
-    --bs-border-color: #f5d0b5;
+    --bs-primary: #4d85b5;
+    --bs-primary-rgb: 77, 133, 181;
+    --bs-secondary: #5a6578;
+    --bs-secondary-rgb: 90, 101, 120;
+    --bs-success: #1d7a55;
+    --bs-info: #3d9a8f;
+    --bs-warning: #b86e00;
+    --bs-danger: #c0392b;
+    --bs-body-bg: #f5f8fc;
+    --bs-body-color: #2a3544;
+    --bs-border-color: #d4dde8;
     --bs-border-radius: 12px;
     --bs-border-radius-lg: 20px;
     --bs-border-radius-pill: 999px;
-    --bs-link-color: #d45d3e;
-    --bs-link-hover-color: #b84a32;
+    --bs-link-color: #4d85b5;
+    --bs-link-hover-color: #3d6f9a;
     --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -317,14 +317,14 @@ h1, h2, h3, h4, h5, h6,
 .btn-primary {
     background-color: var(--primary-600);
     border-color: var(--primary-600);
-    box-shadow: 0 2px 8px rgba(231, 111, 81, 0.35);
+    box-shadow: 0 2px 8px rgba(77, 133, 181, 0.3);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
     background-color: var(--primary-500);
     border-color: var(--primary-500);
-    box-shadow: 0 4px 14px rgba(244, 132, 95, 0.4);
+    box-shadow: 0 4px 14px rgba(95, 150, 196, 0.35);
 }
 
 .btn-outline-primary {
@@ -372,7 +372,7 @@ h1, h2, h3, h4, h5, h6,
 .form-control:focus,
 .form-select:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(231, 111, 81, 0.2);
+    box-shadow: 0 0 0 3px rgba(95, 150, 196, 0.2);
 }
 
 .form-control::placeholder {
@@ -424,8 +424,8 @@ h1, h2, h3, h4, h5, h6,
 
 .badge.bg-primary,
 .badge.bg-info {
-    background-color: #ffe8d6 !important;
-    color: #c75a3f !important;
+    background-color: #e8eef5 !important;
+    color: #3d6285 !important;
 }
 
 .badge.bg-success {
@@ -500,9 +500,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .alert-info {
-    background: #fff0e6;
-    color: #9a4d2e;
-    border-color: #f5c9a8;
+    background: #eef4fa;
+    color: #2e4a66;
+    border-color: #c5d8eb;
 }
 
 /* ── Tabs ─────────────────────────────────────────────── */
@@ -663,7 +663,7 @@ h1, h2, h3, h4, h5, h6,
     -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--glass-edge-chrome);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -4px 24px rgba(168, 67, 50, 0.2), inset 0 1px 0 var(--glass-edge-highlight);
+    box-shadow: 0 -4px 24px rgba(42, 69, 96, 0.18), inset 0 1px 0 var(--glass-edge-highlight);
 }
 
 .mobile-tab-bar .tab-items {
@@ -739,7 +739,7 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #fff8f2 0%, #ffe8d6 45%, #ffd4b8 100%);
+    background: linear-gradient(145deg, #f5f8fc 0%, #e8eef5 50%, #dce8f4 100%);
     padding: 24px 16px;
 }
 
@@ -812,7 +812,7 @@ h1, h2, h3, h4, h5, h6,
 
 .select2-container--default.select2-container--focus .select2-selection--single {
     border-color: var(--border-focus) !important;
-    box-shadow: 0 0 0 3px rgba(231, 111, 81, 0.2);
+    box-shadow: 0 0 0 3px rgba(95, 150, 196, 0.2);
 }
 
 .ui-datepicker {
@@ -866,7 +866,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .stat-card-primary .stat-card-icon {
-    background: #ffe8d6;
+    background: #e8eef5;
     color: var(--primary-600);
 }
 
@@ -881,7 +881,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .stat-card-info .stat-card-icon {
-    background: #dff5f0;
+    background: #e5f3f1;
     color: var(--accent-teal);
 }
 
@@ -915,8 +915,8 @@ h1, h2, h3, h4, h5, h6,
 
 .card.bg-warning.bg-opacity-10 .bi { background: var(--warning-bg); color: var(--warning-text); }
 .card.bg-success.bg-opacity-10 .bi { background: var(--success-bg); color: var(--success-text); }
-.card.bg-info.bg-opacity-10 .bi { background: #dff5f0; color: var(--accent-teal); }
-.card.bg-primary.bg-opacity-10 .bi { background: #ffe8d6; color: var(--primary-600); }
+.card.bg-info.bg-opacity-10 .bi { background: #e5f3f1; color: var(--accent-teal); }
+.card.bg-primary.bg-opacity-10 .bi { background: #e8eef5; color: var(--primary-600); }
 
 /* ── Page cards (auth / registration) ─────────────────── */
 
@@ -946,7 +946,7 @@ h1, h2, h3, h4, h5, h6,
     text-align: center;
     padding: 24px 24px 16px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(180deg, #fff0e6 0%, var(--bg-card) 100%);
+    background: linear-gradient(180deg, #eef4fa 0%, var(--bg-card) 100%);
 }
 
 .page-card-header .page-card-logo {
