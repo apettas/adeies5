@@ -198,37 +198,53 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         return context
 
 
+def _handle_email_password_login(request):
+    """Κοινή λογική σύνδεσης με email/κωδικό. Επιστρέφει redirect αν επιτυχής."""
+    email = request.POST.get('email')
+    password = request.POST.get('password')
+
+    user = authenticate(request, username=email, password=password)
+    if user is not None:
+        if user.can_access_system():
+            login(request, user)
+            return redirect('accounts:dashboard')
+        if user.registration_status == 'PENDING':
+            messages.warning(
+                request,
+                'Η εγγραφή σας είναι σε εκκρεμότητα. Παρακαλώ περιμένετε την έγκριση από τον χειριστή αδειών.',
+            )
+        elif user.registration_status == 'REJECTED':
+            messages.error(
+                request,
+                'Η εγγραφή σας έχει απορριφθεί. Παρακαλώ επικοινωνήστε με το διαχειριστή.',
+            )
+        else:
+            messages.error(request, 'Δεν έχετε δικαίωμα πρόσβασης στο σύστημα.')
+    else:
+        messages.error(request, 'Λάθος email ή κωδικός πρόσβασης.')
+    return None
+
+
 def login_view(request):
-    """Login view με έλεγχο registration status και CAS option"""
+    """Κύρια σελίδα σύνδεσης — είσοδος/εγγραφή μέσω ΠΣΔ (Σχολικό Δίκτυο)."""
     if request.user.is_authenticated:
         return redirect('accounts:dashboard')
-    
-    from django.conf import settings
+
     cas_enabled = getattr(settings, 'CAS_ENABLED', False)
-    
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        
-        user = authenticate(request, username=email, password=password)
-        if user is not None:
-            if user.can_access_system():
-                login(request, user)
-                return redirect('accounts:dashboard')
-            else:
-                if user.registration_status == 'PENDING':
-                    messages.warning(request, 
-                        'Η εγγραφή σας είναι σε εκκρεμότητα. Παρακαλώ περιμένετε την έγκριση από τον χειριστή αδειών.')
-                elif user.registration_status == 'REJECTED':
-                    messages.error(request, 
-                        'Η εγγραφή σας έχει απορριφθεί. Παρακαλώ επικοινωνήστε με το διαχειριστή.')
-                else:
-                    messages.error(request, 
-                        'Δεν έχετε δικαίωμα πρόσβασης στο σύστημα.')
-        else:
-            messages.error(request, 'Λάθος email ή κωδικός πρόσβασης.')
-    
     return render(request, 'accounts/login.html', {'cas_enabled': cas_enabled})
+
+
+def alt_login_view(request):
+    """Εναλλακτική σύνδεση με email και κωδικό πρόσβασης."""
+    if request.user.is_authenticated:
+        return redirect('accounts:dashboard')
+
+    if request.method == 'POST':
+        redirect_response = _handle_email_password_login(request)
+        if redirect_response:
+            return redirect_response
+
+    return render(request, 'accounts/alt_login.html')
 
 
 from django_cas_ng.views import LoginView as CASLoginView
