@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from django.conf import settings
-from .models import User, Role, Department, normalize_person_name_lower
+from .models import User, Role, Department, normalize_person_name_lower, resolve_specialty_from_gsn_branch
 from .forms import UserRegistrationForm, CompleteSSORegistrationForm
 from notifications.utils import create_notification
 from pdede_leaves.email_utils import send_registration_approved_email
@@ -50,14 +50,20 @@ class CompleteSSORegistrationView(FormView):
         try:
             user = User.objects.get(email=self.target_email)
             initial['email'] = user.email
-            initial['first_name'] = user.first_name
-            initial['last_name'] = user.last_name
-            initial['father_name'] = user.father_name
+            initial['first_name'] = normalize_person_name_lower(user.first_name)
+            initial['last_name'] = normalize_person_name_lower(user.last_name)
+            initial['father_name'] = normalize_person_name_lower(user.father_name)
             initial['name_accusative'] = normalize_person_name_lower(user.name_accusative)
             initial['employee_number'] = user.employee_number
             initial['gsn_branch'] = user.gsn_branch
             initial['sso_organizational_unit'] = user.sso_organizational_unit
             initial['role_description'] = user.role_description
+            if user.specialty_id:
+                initial['specialty'] = user.specialty_id
+            elif user.gsn_branch:
+                specialty = resolve_specialty_from_gsn_branch(user.gsn_branch)
+                if specialty:
+                    initial['specialty'] = specialty.pk
         except User.DoesNotExist:
             pass
         return initial

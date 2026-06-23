@@ -253,6 +253,35 @@ class Specialty(models.Model):
         super().save(*args, **kwargs)
 
 
+def resolve_specialty_from_gsn_branch(gsn_branch):
+    """Αντιστοίχιση κωδικού gsnBranch (ΠΣΔ) σε εγγραφή ειδικότητας."""
+    if not gsn_branch:
+        return None
+    code = str(gsn_branch).strip()
+    if not code:
+        return None
+    specialty = Specialty.objects.filter(
+        is_active=True,
+        specialties_short__iexact=code,
+    ).first()
+    if specialty:
+        return specialty
+    return Specialty.objects.filter(
+        is_active=True,
+        specialties_full__iexact=code,
+    ).first()
+
+
+def apply_gsn_branch_specialty(user, overwrite=False):
+    """Ορίζει user.specialty από gsn_branch όταν υπάρχει αντιστοιχία."""
+    if user.specialty_id and not overwrite:
+        return user.specialty
+    specialty = resolve_specialty_from_gsn_branch(user.gsn_branch)
+    if specialty:
+        user.specialty = specialty
+    return specialty
+
+
 class User(AbstractUser):
     """Επεκτεταμένο μοντέλο χρήστη"""
     

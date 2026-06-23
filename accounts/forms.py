@@ -1,7 +1,14 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import User, Department, Specialty, normalize_person_name_lower, validate_greek_name_characters, GREEK_NAME_HELP_TEXT
+from .models import (
+    User,
+    Department,
+    Specialty,
+    normalize_person_name_lower,
+    validate_greek_name_characters,
+    GREEK_NAME_HELP_TEXT,
+)
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -250,6 +257,7 @@ class CompleteSSORegistrationForm(forms.Form):
         queryset=Specialty.objects.filter(is_active=True),
         required=True,
         label='Ειδικότητα',
+        help_text='Από το Σχολικό Δίκτυο (gsnBranch), αν υπάρχει αντιστοιχία στον κατάλογο. Μπορείτε να το διορθώσετε.',
         empty_label='Επιλέξτε Ειδικότητα',
         widget=forms.Select(attrs={
             'class': 'form-control'
@@ -303,7 +311,7 @@ class CompleteSSORegistrationForm(forms.Form):
             raise ValidationError('Το όνομα είναι υποχρεωτικό')
         value = value.strip()
         validate_greek_name_characters(value, 'Όνομα')
-        return value
+        return normalize_person_name_lower(value)
     
     def clean_last_name(self):
         value = self.cleaned_data.get('last_name', '')
@@ -311,7 +319,7 @@ class CompleteSSORegistrationForm(forms.Form):
             raise ValidationError('Το επώνυμο είναι υποχρεωτικό')
         value = value.strip()
         validate_greek_name_characters(value, 'Επώνυμο')
-        return value
+        return normalize_person_name_lower(value)
 
     def clean_father_name(self):
         value = self.cleaned_data.get('father_name', '')
@@ -319,7 +327,7 @@ class CompleteSSORegistrationForm(forms.Form):
             return ''
         value = value.strip()
         validate_greek_name_characters(value, 'Πατρώνυμο')
-        return value
+        return normalize_person_name_lower(value)
 
     def clean_name_accusative(self):
         value = self.cleaned_data.get('name_accusative', '')
