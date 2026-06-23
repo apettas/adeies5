@@ -188,7 +188,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;

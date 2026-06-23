@@ -250,7 +250,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-focus on first form field
     const firstField = document.querySelector('form input:first-of-type');

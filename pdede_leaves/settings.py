@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'pdede_leaves.middleware.SecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -73,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'leaves.context_processors.role_switcher',
+                'pdede_leaves.context_processors.csp_nonce',
             ],
         },
     },
@@ -120,8 +122,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
-# Αύξησε κατά deploy που αλλάζει CSS — το nginx σερβίρει /static/ με cache 1 έτους.
-THEME_STATIC_VERSION = config('THEME_STATIC_VERSION', default='5')
+# Αύξησε κατά deploy που αλλάζει CSS/JS — το nginx σερβίρει /static/ με cache 1 έτους.
+THEME_STATIC_VERSION = config('THEME_STATIC_VERSION', default='6')
 
 # Security settings - keep relaxed defaults for local development and enable via env
 # in staging/production.
@@ -130,8 +132,9 @@ SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
 SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
 SECURE_CONTENT_TYPE_NOSNIFF = config('SECURE_CONTENT_TYPE_NOSNIFF', default=not DEBUG, cast=bool)
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-# X-Frame-Options: DENY (το nginx ΔΕΝ προσθέτει το header για να αποφευχθεί διπλοτύπωση)
+# X-Frame-Options: DENY — συμπληρώνεται από CSP frame-ancestors 'none' στο SecurityHeadersMiddleware
 X_FRAME_OPTIONS = 'DENY'
 
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=False, cast=bool)

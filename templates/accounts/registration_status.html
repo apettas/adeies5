@@ -289,7 +289,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-focus on email field if it exists
     const emailField = document.getElementById('email');

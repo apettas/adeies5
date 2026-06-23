@@ -3,7 +3,7 @@
 {% block title %}Διόρθωση Υπολοίπου - {{ target_user.get_full_name }}{% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const suggestedEl = document.getElementById('suggested_balance');
     const balanceEl = document.getElementById('balance_after');

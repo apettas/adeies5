@@ -10,23 +10,32 @@
     <title>{% block title %}Αλκίνοος - Σύστημα αδειών{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet"
+          integrity="sha384-l4UPAMHGzl7zwogLW4nOwaU2XTk6oiM1jhCRQstZEndoIiA2I5bg6fST3wzBSRBD" crossorigin="anonymous">
     
     <!-- jQuery UI CSS -->
-    <link href="https://code.jquery.com/ui/1.13.2/themes/ui-lightness/jquery-ui.css" rel="stylesheet">
+    <link href="https://code.jquery.com/ui/1.13.2/themes/ui-lightness/jquery-ui.css" rel="stylesheet"
+          integrity="sha384-sbN6DAOsHf2AwLbuQRbYMwPvp8Le+kFj2GPmWWHAtAFkNPxGHAwt8r19RaShfBj7" crossorigin="anonymous">
     <!-- Select2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"
+          integrity="sha384-OXVF05DQEe311p6ohU11NwlnX08FzMCsyoXzGOaL+83dKAb3qS17yZJxESl8YrJQ" crossorigin="anonymous">
     
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.6"
+            integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
     
     <!-- Αλκίνοος theme (?v= busts nginx 1y immutable cache on deploy) -->
     <link href="{% static 'css/alkinoos-theme.css' %}?v={{ theme_static_version }}" rel="stylesheet">
     
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% if user.is_authenticated %}has-mobile-nav{% endif %}">
+<body class="{% if user.is_authenticated %}has-mobile-nav{% endif %}"
+      data-csrf-token="{{ csrf_token }}"
+      data-notifications-api="{% url 'notifications:api_recent_notifications' %}"
+      data-mark-all-read-url="{% url 'notifications:mark_all_as_read' %}"
+      {% if user.is_authenticated %}data-user-authenticated="true"{% endif %}>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark alkinoos-navbar sticky-top">
         <div class="container-fluid">
@@ -215,164 +224,21 @@
     {% endif %}
 
     <!-- jQuery and jQuery UI JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+            integrity="sha384-vtXRMe3mGCbOeY7l30aIg8H9p3GdeSe4IFlP6G8JMa7o7lXvnz3GFKzPxzJdPfGK" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"
+            integrity="sha384-4D3G3GikQs6hLlLZGdz5wLFzuqE9v4yVGAcOH86y23JqBDPzj9viv0EqyfIa6YUL" crossorigin="anonymous"></script>
     <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"
+            integrity="sha384-d3UHjPdzJkZuk5H3qKYMLRyWLAQBJbby2yr2Q58hXXtAGF8RSNO9jpLDlKKPv5v3" crossorigin="anonymous"></script>
     
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
     
-    <!-- Custom JavaScript -->
-    <script>
-        function syncMobileNotifBadge(count) {
-            const mobileBadge = document.getElementById('mobile-notif-badge');
-            if (!mobileBadge) return;
-            if (count > 0) {
-                mobileBadge.textContent = count > 9 ? '9+' : count;
-                mobileBadge.classList.remove('d-none');
-            } else {
-                mobileBadge.classList.add('d-none');
-            }
-        }
-
-        function loadNotifications() {
-            fetch('{% url "notifications:api_recent_notifications" %}')
-                .then(response => response.json())
-                .then(data => {
-                    const notificationList = document.getElementById('notification-list');
-                    const notificationCount = document.getElementById('notification-count');
-                    
-                    if (data.unread_count > 0) {
-                        notificationCount.textContent = data.unread_count;
-                        notificationCount.classList.remove('d-none');
-                    } else {
-                        notificationCount.classList.add('d-none');
-                    }
-                    syncMobileNotifBadge(data.unread_count);
-                    
-                    if (data.notifications.length > 0) {
-                        notificationList.innerHTML = data.notifications.map(notification => `
-                            <li>
-                                <a class="dropdown-item ${notification.is_read ? '' : 'fw-bold'}" 
-                                   href="#" onclick="markAsRead(${notification.id})">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
-                                            <div class="fw-bold">${notification.title}</div>
-                                            <small class="text-muted">${notification.message}</small>
-                                            <br><small class="text-muted">${notification.created_at}</small>
-                                        </div>
-                                        <span class="badge ${notification.badge_class}">${notification.type}</span>
-                                    </div>
-                                </a>
-                            </li>
-                        `).join('');
-                    } else {
-                        notificationList.innerHTML = '<li><span class="dropdown-item-text text-muted">Δεν υπάρχουν ειδοποιήσεις</span></li>';
-                    }
-                });
-        }
-        
-        function markAsRead(notificationId) {
-            fetch(`/notifications/mark-read/${notificationId}/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            }).then(() => {
-                loadNotifications();
-            });
-        }
-
-        function markAllAsRead() {
-            fetch('{% url "notifications:mark_all_as_read" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            }).then(() => {
-                loadNotifications();
-            });
-        }
-        
-        function formatGreekDate(date) {
-            const days = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
-            const months = ['Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου',
-                'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου'];
-            return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            {% if user.is_authenticated %}
-            loadNotifications();
-            setInterval(loadNotifications, 30000);
-
-            const markAllBtn = document.getElementById('mark-all-notifications-read');
-            if (markAllBtn) {
-                markAllBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    markAllAsRead();
-                });
-            }
-            {% endif %}
-            
-            const dateElement = document.getElementById('current-date-greek');
-            if (dateElement) {
-                dateElement.textContent = formatGreekDate(new Date());
-            }
-        });
-    </script>
-    
-    <!-- Greek Datepicker Configuration -->
-    <script>
-        $(document).ready(function() {
-            $.datepicker.regional['el'] = {
-                closeText: 'Κλείσιμο',
-                prevText: '&#x3C;Προηγ',
-                nextText: 'Επομ&#x3E;',
-                currentText: 'Σήμερα',
-                monthNames: ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
-                    'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'],
-                monthNamesShort: ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαι', 'Ιουν',
-                    'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'],
-                dayNames: ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'],
-                dayNamesShort: ['Κυρ', 'Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ'],
-                dayNamesMin: ['Κυ', 'Δε', 'Τρ', 'Τε', 'Πε', 'Πα', 'Σα'],
-                weekHeader: 'Εβδ',
-                dateFormat: 'dd/mm/yy',
-                firstDay: 1,
-                isRTL: false,
-                showMonthAfterYear: false,
-                yearSuffix: ''
-            };
-            
-            $.datepicker.setDefaults($.datepicker.regional['el']);
-            
-            $('.greek-datepicker').datepicker({
-                dateFormat: 'dd/mm/yy',
-                minDate: 0,
-                changeMonth: true,
-                changeYear: true,
-                showButtonPanel: true,
-                yearRange: 'c-1:c+2',
-                onSelect: function(dateText, inst) {
-                    $(this).trigger('change');
-                }
-            });
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
-                document.querySelectorAll('.dropdown-toggle').forEach(function(toggle) {
-                    new bootstrap.Dropdown(toggle);
-                });
-            }
-        });
-    </script>
+    <script src="{% static 'js/alkinoos-notifications.js' %}?v={{ theme_static_version }}"></script>
+    <script src="{% static 'js/alkinoos-datepicker.js' %}?v={{ theme_static_version }}"></script>
+    <script src="{% static 'js/alkinoos-dropdowns.js' %}?v={{ theme_static_version }}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

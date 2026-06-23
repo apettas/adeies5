@@ -357,7 +357,7 @@
     {% endif %}
 {% endfor %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
     'use strict';
     // Άνοιγμα modal καταχώρησης Πρωτοκόλλου ΠΔΕΔΕ όταν πατηθεί το κουμπί 'ΚΑΤΑΧΩΡΗΣΗ ΠΡΩΤ.'
@@ -537,7 +537,7 @@
     {% endif %}
 {% endfor %}
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
     'use strict';
     // Άνοιγμα modal απόρριψης όταν πατηθεί το κουμπί 'ΑΠΟΡΡΙΨΗ'
