@@ -758,6 +758,13 @@
                             Το PDF της απόφασης περιέχει την επίσημη απόφαση για την έγκριση της άδειας με όλα τα απαιτούμενα στοιχεία.
                         {% endif %}
                     </small>
+                    {% if leave_request.can_complete_request %}
+                    <div class="mt-3">
+                        <a href="{% url 'leaves:complete_leave_request_final' leave_request.pk %}" class="btn btn-success">
+                            <i class="bi bi-check-lg"></i> Ολοκλήρωση Αίτησης
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
