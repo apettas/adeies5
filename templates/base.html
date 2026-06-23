@@ -85,6 +85,16 @@
                             <i class="bi bi-database-gear"></i> Στοιχεία Βάσης
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{% url 'leaves:pending_user_registrations' %}">
+                            <i class="bi bi-person-plus"></i> Νέες Εγγραφές Χρηστών
+                            {% if pending_registration_count %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ pending_registration_count }}
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
                 

@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Νέες Εγγραφές Χρηστών - Αλκίνοος{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-plus"></i> Νέες Εγγραφές Χρηστών</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
+                </a>
+                <span class="badge bg-secondary fs-6">Χειριστής Αδειών</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if pending_users %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ονοματεπώνυμο</th>
+                        <th>Email</th>
+                        <th>Τμήμα</th>
+                        <th>Ειδικότητα</th>
+                        <th>Ημ/νία Υποβολής</th>
+                        <th>Ενέργειες</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in pending_users %}
+                    <tr>
+                        <td><strong>{{ u.get_full_name }}</strong></td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.department.name|default:"—" }}</td>
+                        <td>
+                            {% if u.specialty %}
+                                {{ u.specialty.specialties_short }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.registration_submitted_at %}
+                                <span class="date-greek">{{ u.registration_submitted_at|date:"d/m/Y H:i" }}</span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'leaves:pending_user_registration_review' u.pk %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-pencil-square"></i> Έλεγχος / Ενεργοποίηση
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Προηγούμενη</a>
+        </li>
+        {% endif %}
+        <li class="page-item disabled">
+            <span class="page-link">Σελίδα {{ page_obj.number }} από {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Επόμενη</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Δεν υπάρχουν εκκρεμείς εγγραφές χρηστών προς έλεγχο.
+</div>
+{% endif %}
+{% endblock %}

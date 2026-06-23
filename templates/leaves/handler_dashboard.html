@@ -74,6 +74,40 @@
     </li>
 </ul>
 
+<!-- Alert για νέες εγγραφές χρηστών -->
+{% if pending_registration_alert_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning border-start border-warning border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-person-plus-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-person-lines-fill"></i> Νέες Εγγραφές Χρηστών</h5>
+                    <p>Οι παρακάτω χρήστες υπέβαλαν νέα αίτηση εγγραφής και αναμένουν έλεγχο:</p>
+                    <ul class="mb-0">
+                        {% for u in pending_registration_alerts %}
+                        <li>
+                            <strong>{{ u.get_full_name }}</strong>
+                            ({{ u.email }})
+                            {% if u.department %}— {{ u.department.name }}{% endif %}
+                            — {{ u.registration_submitted_at|date:"d/m/Y H:i" }}
+                            <a href="{% url 'leaves:pending_user_registration_review' u.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-pencil-square"></i> Έλεγχος
+                            </a>
+                            <a href="{% url 'leaves:acknowledge_pending_registration' u.pk %}" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Το alert κρύβεται για εσάς αφού πατήσετε «Έλαβα Γνώση».</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Alert για Υγειονομική Επιτροπή -->
 {% if sick_alert_count > 0 %}
 <div class="row mb-4">

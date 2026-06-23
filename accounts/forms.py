@@ -5,6 +5,8 @@ from .models import (
     User,
     Department,
     Specialty,
+    Role,
+    EmployeeType,
     normalize_person_name_lower,
     validate_greek_name_characters,
     GREEK_NAME_HELP_TEXT,
@@ -146,6 +148,61 @@ class UserRegistrationForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class HandlerUserActivationForm(forms.ModelForm):
+    """Φόρμα χειριστή για συμπλήρωση πεδίων και ενεργοποίηση εκκρεμούς εγγραφής."""
+
+    approval_notes = forms.CharField(
+        required=False,
+        label='Σημειώσεις Έγκρισης',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+    )
+
+    class Meta:
+        model = User
+        fields = (
+            'department',
+            'specialty',
+            'employee_type',
+            'roles',
+            'notification_recipients',
+            'annual_leave_entitlement',
+            'current_regular_leave_balance',
+            'can_request_leave',
+        )
+        widgets = {
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'specialty': forms.Select(attrs={'class': 'form-select'}),
+            'employee_type': forms.Select(attrs={'class': 'form-select'}),
+            'roles': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 6}),
+            'notification_recipients': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'annual_leave_entitlement': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'current_regular_leave_balance': forms.NumberInput(attrs={'class': 'form-control'}),
+            'can_request_leave': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['department'].queryset = Department.objects.filter(is_active=True).order_by('name')
+        self.fields['specialty'].queryset = Specialty.objects.filter(is_active=True).order_by(
+            'specialties_short', 'specialties_full',
+        )
+        self.fields['employee_type'].queryset = EmployeeType.objects.filter(is_active=True).order_by('name')
+        self.fields['roles'].queryset = Role.objects.filter(is_active=True).order_by('name')
+        self.fields['employee_type'].required = True
+        self.fields['department'].required = True
+        self.fields['specialty'].required = True
+
+        if self.instance and self.instance.pk:
+            if not self.instance.roles.exists():
+                employee_role = Role.objects.filter(code='EMPLOYEE', is_active=True).first()
+                if employee_role:
+                    self.fields['roles'].initial = [employee_role.pk]
+            if self.instance.current_regular_leave_balance == 0:
+                self.fields['current_regular_leave_balance'].initial = (
+                    self.instance.annual_leave_entitlement or 25
+                )
 
 
 class CompleteSSORegistrationForm(forms.Form):

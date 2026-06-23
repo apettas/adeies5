@@ -8,6 +8,11 @@ from .decision_views import (
 from .calendar_views import leave_calendar_view
 from .balance_views import balance_ledger_view, manual_balance_adjustment
 from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordDataView
+from accounts.handler_registration_views import (
+    PendingUserRegistrationsListView,
+    PendingUserRegistrationReviewView,
+    acknowledge_pending_registration,
+)
 
 app_name = 'leaves'
 
@@ -43,6 +48,17 @@ urlpatterns = [
     path('return-to-employee/<int:pk>/', views.return_leave_to_employee, name='return_leave_to_employee'),
     path('handler-upload-attachment/<int:pk>/', views.handler_upload_attachment, name='handler_upload_attachment'),
     path('users/', views.UsersListView.as_view(), name='users_list'),
+    path('pending-registrations/', PendingUserRegistrationsListView.as_view(), name='pending_user_registrations'),
+    path(
+        'pending-registrations/<int:user_id>/',
+        PendingUserRegistrationReviewView.as_view(),
+        name='pending_user_registration_review',
+    ),
+    path(
+        'pending-registration-acknowledge/<int:user_id>/',
+        acknowledge_pending_registration,
+        name='acknowledge_pending_registration',
+    ),
     path('user/<int:user_id>/history/', views.UserLeaveHistoryView.as_view(), name='user_leave_history'),
     
     # Secretary URLs (ΚΕΔΑΣΥ/ΚΕΠΕΑ)

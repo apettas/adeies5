@@ -92,6 +92,9 @@ class CompleteSSORegistrationView(FormView):
             # Παραμένει PENDING — θα το εγκρίνει ο χειριστής
             user.save()
 
+            from accounts.utils.pending_registration_alerts import mark_registration_submitted
+            mark_registration_submitted(user)
+
             import logging
             logger = logging.getLogger(__name__)
             logger.info(f"SSO user completed registration: {user.email}")
@@ -298,6 +301,8 @@ def register_view(request):
         if form.is_valid():
             try:
                 user = form.save()
+                from accounts.utils.pending_registration_alerts import mark_registration_submitted
+                mark_registration_submitted(user)
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.info(f"New user registered: {user.email}")

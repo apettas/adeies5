@@ -909,6 +909,10 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
         context['document_upload_alert_count'] = len(context['document_upload_alerts'])
         context['document_submission_alerts'] = get_pending_document_submission_alerts(self.request.user)
         context['document_submission_alert_count'] = len(context['document_submission_alerts'])
+
+        from accounts.utils.pending_registration_alerts import get_pending_registration_alerts
+        context['pending_registration_alerts'] = get_pending_registration_alerts(self.request.user)
+        context['pending_registration_alert_count'] = len(context['pending_registration_alerts'])
         
         # Add today's date for protocol forms
         context['today'] = timezone.now().date()

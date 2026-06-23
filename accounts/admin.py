@@ -5,7 +5,7 @@ from django.utils import timezone
 from .models import (
     User, Department, DepartmentType, Role, Specialty,
     Headquarters, Prefecture,
-    EmployeeType,
+    EmployeeType, PendingRegistrationAcknowledgment,
 )
 
 
@@ -161,3 +161,11 @@ class EmployeeTypeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     ordering = ('name',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(PendingRegistrationAcknowledgment)
+class PendingRegistrationAcknowledgmentAdmin(admin.ModelAdmin):
+    list_display = ('handler', 'pending_user', 'acknowledged_at')
+    list_filter = ('acknowledged_at',)
+    search_fields = ('handler__email', 'pending_user__email', 'pending_user__last_name')
+    readonly_fields = ('acknowledged_at',)

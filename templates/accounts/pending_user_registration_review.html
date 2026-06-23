@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Έλεγχος Εγγραφής — {{ pending_user.get_full_name }} - Αλκίνοος{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-check"></i> Έλεγχος Εγγραφής: {{ pending_user.get_full_name }}</h2>
+            <a href="{% url 'leaves:pending_user_registrations' %}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή στη Λίστα
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-person-vcard"></i> Στοιχεία από Χρήστη</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Email</dt>
+                    <dd class="col-sm-7">{{ pending_user.email }}</dd>
+
+                    <dt class="col-sm-5">Όνομα</dt>
+                    <dd class="col-sm-7">{{ pending_user.first_name }}</dd>
+
+                    <dt class="col-sm-5">Επώνυμο</dt>
+                    <dd class="col-sm-7">{{ pending_user.last_name }}</dd>
+
+                    <dt class="col-sm-5">Αιτιατική</dt>
+                    <dd class="col-sm-7">{{ pending_user.name_accusative|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Πατρώνυμο</dt>
+                    <dd class="col-sm-7">{{ pending_user.father_name|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Φύλο</dt>
+                    <dd class="col-sm-7">{{ pending_user.get_gender_display|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Τηλέφωνο</dt>
+                    <dd class="col-sm-7">{{ pending_user.phone1|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Αρ. Μητρώου</dt>
+                    <dd class="col-sm-7">{{ pending_user.employee_number|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Κλάδος (ΠΣΔ)</dt>
+                    <dd class="col-sm-7">{{ pending_user.gsn_branch|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Οργανική Μονάδα</dt>
+                    <dd class="col-sm-7">{{ pending_user.sso_organizational_unit|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Υπηρεσιακή Ιδιότητα</dt>
+                    <dd class="col-sm-7">{{ pending_user.role_description|default:"—" }}</dd>
+
+                    <dt class="col-sm-5">Ημ/νία Υποβολής</dt>
+                    <dd class="col-sm-7">
+                        {% if pending_user.registration_submitted_at %}
+                            <span class="date-greek">{{ pending_user.registration_submitted_at|date:"d/m/Y H:i" }}</span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Συμπλήρωση &amp; Ενεργοποίηση</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Συμπληρώστε τα πεδία που δεν συμπληρώνονται από τον χρήστη κατά την εγγραφή.
+                    Με την ενεργοποίηση θα σταλεί email στον χρήστη.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.department.id_for_label }}">{{ form.department.label }} *</label>
+                            {{ form.department }}
+                            {% if form.department.errors %}<div class="text-danger small">{{ form.department.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.specialty.id_for_label }}">{{ form.specialty.label }} *</label>
+                            {{ form.specialty }}
+                            {% if form.specialty.errors %}<div class="text-danger small">{{ form.specialty.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.employee_type.id_for_label }}">{{ form.employee_type.label }} *</label>
+                            {{ form.employee_type }}
+                            {% if form.employee_type.errors %}<div class="text-danger small">{{ form.employee_type.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.roles.id_for_label }}">{{ form.roles.label }} *</label>
+                            {{ form.roles }}
+                            <div class="form-text">Επιλέξτε τουλάχιστον τον ρόλο «Υπάλληλος».</div>
+                            {% if form.roles.errors %}<div class="text-danger small">{{ form.roles.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.annual_leave_entitlement.id_for_label }}">{{ form.annual_leave_entitlement.label }}</label>
+                            {{ form.annual_leave_entitlement }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.current_regular_leave_balance.id_for_label }}">{{ form.current_regular_leave_balance.label }}</label>
+                            {{ form.current_regular_leave_balance }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.notification_recipients.id_for_label }}">{{ form.notification_recipients.label }}</label>
+                            {{ form.notification_recipients }}
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ form.can_request_leave }}
+                                <label class="form-check-label" for="{{ form.can_request_leave.id_for_label }}">
+                                    {{ form.can_request_leave.label }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ form.approval_notes.id_for_label }}">{{ form.approval_notes.label }}</label>
+                            {{ form.approval_notes }}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" name="action" value="save" class="btn btn-outline-secondary">
+                            <i class="bi bi-save"></i> Αποθήκευση
+                        </button>
+                        <button type="submit" name="action" value="activate" class="btn btn-success"
+                                onclick="return confirm('Ενεργοποίηση λογαριασμού; Θα σταλεί email στον χρήστη.');">
+                            <i class="bi bi-person-check"></i> Ενεργοποίηση Χρήστη
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

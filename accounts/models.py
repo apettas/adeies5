@@ -353,6 +353,12 @@ class User(AbstractUser):
                                          choices=REGISTRATION_STATUS_CHOICES,
                                          default='PENDING')
     registration_date = models.DateTimeField('Ημερομηνία Εγγραφής', auto_now_add=True)
+    registration_submitted_at = models.DateTimeField(
+        'Ημερομηνία Υποβολής Στοιχείων',
+        null=True,
+        blank=True,
+        help_text='Πότε ο χρήστης ολοκλήρωσε τη φόρμα εγγραφής (SSO ή κλασική)',
+    )
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
                                   verbose_name='Εγκρίθηκε από', related_name='approved_users')
     approval_date = models.DateTimeField('Ημερομηνία Έγκρισης', null=True, blank=True)
@@ -719,6 +725,32 @@ class EmployeeType(models.Model):
                     'description': item['description'],
                 },
             )
+
+
+class PendingRegistrationAcknowledgment(models.Model):
+    """Καταγραφή ότι ο χειριστής έλαβε γνώση για νέα εγγραφή χρήστη."""
+    handler = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='pending_registration_acknowledgments',
+        verbose_name='Χειριστής',
+    )
+    pending_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='registration_acknowledged_by',
+        verbose_name='Εκκρεμής Χρήστης',
+    )
+    acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Γνώση Νέας Εγγραφής'
+        verbose_name_plural = 'Γνώσεις Νέων Εγγραφών'
+        unique_together = ['handler', 'pending_user']
+        ordering = ['-acknowledged_at']
+
+    def __str__(self):
+        return f"{self.handler} → {self.pending_user} ({self.acknowledged_at.strftime('%d/%m/%Y')})"
 
 
 @receiver(post_save, sender=Department)
