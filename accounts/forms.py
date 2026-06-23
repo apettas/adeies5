@@ -211,23 +211,15 @@ class CompleteSSORegistrationForm(forms.Form):
     gsn_branch = forms.CharField(
         max_length=100,
         required=False,
-        label='Κλάδος',
-        help_text='Από το Σχολικό Δίκτυο (gsnBranch). Μπορείτε να το διορθώσετε.',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. ΠΕ02'
-        })
+        label='Κλάδος (Ειδικότητα)',
+        widget=forms.HiddenInput(),
     )
 
     sso_organizational_unit = forms.CharField(
         max_length=255,
         required=False,
         label='Οργανική Μονάδα (ou)',
-        help_text='Από το Σχολικό Δίκτυο — σχολική/υπηρεσιακή μονάδα.',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. 1ο Λύκειο Νέου Ψυχικού'
-        })
+        widget=forms.HiddenInput(),
     )
     
     gender = forms.ChoiceField(
@@ -244,17 +236,6 @@ class CompleteSSORegistrationForm(forms.Form):
         required=True,
         label='Υπηρεσία-Τμήμα τρέχουσας υπηρέτησης',
         empty_label='Επιλέξτε Υπηρεσία-Τμήμα',
-        widget=forms.Select(attrs={
-            'class': 'form-control'
-        })
-    )
-    
-    specialty = forms.ModelChoiceField(
-        queryset=Specialty.objects.filter(is_active=True),
-        required=True,
-        label='Ειδικότητα',
-        help_text='Από το Σχολικό Δίκτυο (gsnBranch), αν υπάρχει αντιστοιχία στον κατάλογο. Μπορείτε να το διορθώσετε.',
-        empty_label='Επιλέξτε Ειδικότητα',
         widget=forms.Select(attrs={
             'class': 'form-control'
         })
@@ -310,6 +291,21 @@ class CompleteSSORegistrationForm(forms.Form):
             except User.DoesNotExist:
                 pass
         return self.cleaned_data.get('employee_number') or None
+
+    def _clean_psd_readonly_field(self, field_name):
+        if self.target_email:
+            try:
+                user = User.objects.get(email=self.target_email)
+                return getattr(user, field_name) or ''
+            except User.DoesNotExist:
+                pass
+        return self.cleaned_data.get(field_name) or ''
+
+    def clean_gsn_branch(self):
+        return self._clean_psd_readonly_field('gsn_branch')
+
+    def clean_sso_organizational_unit(self):
+        return self._clean_psd_readonly_field('sso_organizational_unit')
     
     def clean_first_name(self):
         value = self.cleaned_data.get('first_name', '')

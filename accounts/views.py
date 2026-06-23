@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from django.conf import settings
-from .models import User, Role, Department, normalize_person_name_lower, resolve_specialty_from_gsn_branch
+from .models import User, Role, Department, normalize_person_name_lower, resolve_specialty_from_gsn_branch, apply_gsn_branch_specialty
 from .forms import UserRegistrationForm, CompleteSSORegistrationForm
 from notifications.utils import create_notification
 from pdede_leaves.email_utils import send_registration_approved_email
@@ -43,6 +43,13 @@ class CompleteSSORegistrationView(FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['target_email'] = self.target_email
+        try:
+            user = User.objects.get(email=self.target_email)
+            context['sso_specialty'] = (
+                user.specialty or resolve_specialty_from_gsn_branch(user.gsn_branch)
+            )
+        except User.DoesNotExist:
+            context['sso_specialty'] = None
         return context
 
     def get_initial(self):
@@ -58,12 +65,6 @@ class CompleteSSORegistrationView(FormView):
             initial['gsn_branch'] = user.gsn_branch
             initial['sso_organizational_unit'] = user.sso_organizational_unit
             initial['role_description'] = user.role_description
-            if user.specialty_id:
-                initial['specialty'] = user.specialty_id
-            elif user.gsn_branch:
-                specialty = resolve_specialty_from_gsn_branch(user.gsn_branch)
-                if specialty:
-                    initial['specialty'] = specialty.pk
         except User.DoesNotExist:
             pass
         return initial
@@ -80,7 +81,6 @@ class CompleteSSORegistrationView(FormView):
             user.last_name = form.cleaned_data['last_name']
             user.name_accusative = form.cleaned_data['name_accusative']
             user.department = form.cleaned_data['department']
-            user.specialty = form.cleaned_data['specialty']
             user.phone1 = form.cleaned_data.get('phone', '')
             user.father_name = form.cleaned_data.get('father_name', '')
             user.employee_number = form.cleaned_data.get('employee_number') or None
@@ -88,6 +88,7 @@ class CompleteSSORegistrationView(FormView):
             user.sso_organizational_unit = form.cleaned_data.get('sso_organizational_unit', '')
             user.gender = form.cleaned_data.get('gender', '')
             user.role_description = form.cleaned_data.get('role_description', '')
+            apply_gsn_branch_specialty(user)
             # Παραμένει PENDING — θα το εγκρίνει ο χειριστής
             user.save()
 

@@ -51,6 +51,8 @@
                         {% csrf_token %}
                         {{ form.email }}
                         {{ form.employee_number }}
+                        {{ form.gsn_branch }}
+                        {{ form.sso_organizational_unit }}
                         
                         <!-- Στοιχεία από ΠΣΔ (read-only email) -->
                         <div class="card bg-light mb-3">
@@ -95,8 +97,30 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.gsn_branch required=False %}
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.sso_organizational_unit required=False %}
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Κλάδος (Ειδικότητα)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-mortarboard"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{% if sso_specialty %}{{ form.gsn_branch.value }} — {{ sso_specialty.specialties_full }}{% else %}{{ form.gsn_branch.value|default:'—' }}{% endif %}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο (gsnBranch)</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Οργανική Μονάδα (ou)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.sso_organizational_unit.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο (ou)</small>
+                                    </div>
                                 </div>
                                 <div class="row">
                                     {% include 'accounts/includes/sso_form_field.html' with field=form.role_description required=False col_class='col-md-12' %}
@@ -124,8 +148,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.department required=True %}
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.specialty required=True %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.department required=True col_class='col-md-12' %}
                                 </div>
                             </div>
                         </div>
