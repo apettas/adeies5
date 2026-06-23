@@ -8,9 +8,6 @@ from .models import (
     Specialty,
     Role,
     EmployeeType,
-    normalize_person_name_lower,
-    validate_greek_name_characters,
-    GREEK_NAME_HELP_TEXT,
 )
 
 
@@ -222,7 +219,7 @@ class HandlerUserActivationForm(forms.ModelForm):
             if not self.is_bound and not self.instance.roles.exists():
                 employee_role = Role.objects.filter(code=ROLE_EMPLOYEE, is_active=True).first()
                 if employee_role:
-                    self.initial.setdefault('roles', [employee_role.pk])
+                    self.initial['roles'] = [employee_role.pk]
             if self.instance.current_regular_leave_balance == 0:
                 self.fields['current_regular_leave_balance'].initial = (
                     self.instance.annual_leave_entitlement or 25
@@ -242,44 +239,21 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Όνομα',
-        help_text=GREEK_NAME_HELP_TEXT,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. Γεώργιος'
-        })
+        widget=forms.HiddenInput(),
     )
     
     last_name = forms.CharField(
         max_length=50,
         required=True,
         label='Επώνυμο',
-        help_text=GREEK_NAME_HELP_TEXT,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. Νικολάου'
-        })
+        widget=forms.HiddenInput(),
     )
     
     father_name = forms.CharField(
         max_length=50,
         required=False,
         label='Πατρώνυμο',
-        help_text=GREEK_NAME_HELP_TEXT,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. Ιωάννης'
-        })
-    )
-
-    name_accusative = forms.CharField(
-        max_length=150,
-        required=True,
-        label='Ονοματεπώνυμο (Αιτιατική)',
-        help_text='Καταχωρήστε το ονοματεπώνυμό σας στην αιτιατική, π.χ. «γεώργιο νικολάου».',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'π.χ. γεώργιο νικολάου'
-        })
+        widget=forms.HiddenInput(),
     )
 
     employee_number = forms.CharField(
@@ -386,38 +360,15 @@ class CompleteSSORegistrationForm(forms.Form):
 
     def clean_role_description(self):
         return self._clean_psd_readonly_field('role_description')
-    
+
     def clean_first_name(self):
-        value = self.cleaned_data.get('first_name', '')
-        if not value.strip():
-            raise ValidationError('Το όνομα είναι υποχρεωτικό')
-        value = value.strip()
-        validate_greek_name_characters(value, 'Όνομα')
-        return normalize_person_name_lower(value)
-    
+        return self._clean_psd_readonly_field('first_name')
+
     def clean_last_name(self):
-        value = self.cleaned_data.get('last_name', '')
-        if not value.strip():
-            raise ValidationError('Το επώνυμο είναι υποχρεωτικό')
-        value = value.strip()
-        validate_greek_name_characters(value, 'Επώνυμο')
-        return normalize_person_name_lower(value)
+        return self._clean_psd_readonly_field('last_name')
 
     def clean_father_name(self):
-        value = self.cleaned_data.get('father_name', '')
-        if not value:
-            return ''
-        value = value.strip()
-        validate_greek_name_characters(value, 'Πατρώνυμο')
-        return normalize_person_name_lower(value)
-
-    def clean_name_accusative(self):
-        value = self.cleaned_data.get('name_accusative', '')
-        if not value.strip():
-            raise ValidationError('Το ονοματεπώνυμο στην αιτιατική είναι υποχρεωτικό')
-        value = normalize_person_name_lower(value)
-        validate_greek_name_characters(value, 'Ονοματεπώνυμο (Αιτιατική)')
-        return value
+        return self._clean_psd_readonly_field('father_name')
     
     def clean(self):
         cleaned_data = super().clean()

@@ -50,6 +50,9 @@
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
                         {{ form.email }}
+                        {{ form.first_name }}
+                        {{ form.last_name }}
+                        {{ form.father_name }}
                         {{ form.employee_number }}
                         {{ form.gsn_branch }}
                         {{ form.sso_organizational_unit }}
@@ -76,14 +79,44 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.first_name required=True %}
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.last_name required=True %}
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Όνομα</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.first_name.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Επώνυμο</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.last_name.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο</small>
+                                    </div>
                                 </div>
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.name_accusative required=True col_class='col-md-12' %}
-                                </div>
-                                <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.father_name required=False %}
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Πατρώνυμο</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.father_name.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο</small>
+                                    </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label fw-bold">Αριθμός Μητρώου</label>
                                         <div class="input-group">
