@@ -2723,16 +2723,16 @@ def withdraw_completed_leave(request, pk):
 
 @login_required
 def handler_upload_attachment(request, pk):
-    """Μεταφόρτωση συνημμένου από χειριστή"""
+    """Μεταφόρτωση συνημμένου — χειριστής ή αιτών (σε αναμονή δικαιολογητικών)."""
     from django.conf import settings
     from django.utils import timezone
     import os
     from .crypto_utils import SecureFileHandler
     
-    if not request.user.is_leave_handler:
-        raise PermissionDenied("Δεν έχετε δικαίωμα πρόσβασης.")
-    
     leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if not leave_request.can_user_upload_attachment(request.user):
+        raise PermissionDenied("Δεν έχετε δικαίωμα μεταφόρτωσης συνημμένου σε αυτή την αίτηση.")
     
     if request.method == 'POST' and request.FILES.get('attachment'):
         file_obj = request.FILES['attachment']
@@ -2766,6 +2766,22 @@ def handler_upload_attachment(request, pk):
                     description=description
                 )
                 messages.success(request, f'Το αρχείο "{file_obj.name}" προστέθηκε επιτυχώς.')
+                if (
+                    not request.user.is_leave_handler
+                    and leave_request.status == 'WAITING_FOR_DOCUMENTS'
+                ):
+                    from notifications.utils import create_notification
+                    from accounts.models import User
+                    for handler in User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True):
+                        create_notification(
+                            user=handler,
+                            title="Νέο Δικαιολογητικό από Αιτούντα",
+                            message=(
+                                f"Ο/Η {leave_request.user.full_name} ανέβασε δικαιολογητικό "
+                                f"για την αίτηση #{leave_request.pk} ({leave_request.leave_type.name})."
+                            ),
+                            related_object=leave_request,
+                        )
             else:
                 messages.error(request, 'Σφάλμα κατά την αποθήκευση του αρχείου.')
         except Exception as e:

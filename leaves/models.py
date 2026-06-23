@@ -637,6 +637,14 @@ class LeaveRequest(models.Model):
         """Ελέγχει αν ο χρήστης μπορεί να παρέχει δικαιολογητικά"""
         return self.status == "WAITING_FOR_DOCUMENTS"
 
+    def can_user_upload_attachment(self, user):
+        """Έλεγχος δικαιώματος μεταφόρτωσης συνημμένου στην αίτηση."""
+        if not user.is_authenticated:
+            return False
+        if user.is_leave_handler:
+            return True
+        return self.user_id == user.pk and self.status == 'WAITING_FOR_DOCUMENTS'
+
     @property
     def can_request_documents(self):
         """Ελέγχει αν ο χειριστής μπορεί να ζητήσει δικαιολογητικά"""
@@ -658,6 +666,8 @@ class LeaveRequest(models.Model):
         if not self.leave_type.is_sick_leave_total:
             return False
         if self.has_returned_from_yc_committee:
+            return False
+        if self.documents_provided_at:
             return False
         from leaves.utils.sick_leave_alerts import user_exceeds_sick_threshold
         return user_exceeds_sick_threshold(self.user)

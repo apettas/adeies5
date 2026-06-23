@@ -4,8 +4,8 @@
 
 {% for action_code, label, url_name in actions %}
     {% if url_name %}
-        <a href="{% url url_name leave_request.pk %}" class="btn btn-sm btn-outline-primary" title="{{ label }}">
-            <i class="bi bi-{% if action_code == 'view' %}eye{% elif action_code == 'cancel' or action_code == 'cancel_completed' %}x-circle{% elif action_code == 'complete' %}check-lg{% elif action_code == 'decision' or action_code == 'edit_decision' %}file-earmark-text{% elif action_code == 'request_documents' %}file-earmark-excel{% elif action_code == 'send_protocol_pdf' %}file-earmark-pdf{% elif action_code == 'yc_referral' %}file-medical{% elif action_code == 'upload_docs' %}paperclip{% else %}arrow-right{% endif %}"></i>
+        <a href="{% url url_name leave_request.pk %}{% if action_code == 'upload_attachment' %}#applicant-documents-upload{% endif %}" class="btn btn-sm btn-outline-primary" title="{{ label }}">
+            <i class="bi bi-{% if action_code == 'view' %}eye{% elif action_code == 'cancel' or action_code == 'cancel_completed' %}x-circle{% elif action_code == 'complete' %}check-lg{% elif action_code == 'decision' or action_code == 'edit_decision' %}file-earmark-text{% elif action_code == 'request_documents' %}file-earmark-excel{% elif action_code == 'send_protocol_pdf' %}file-earmark-pdf{% elif action_code == 'yc_referral' %}file-medical{% elif action_code == 'upload_docs' or action_code == 'upload_attachment' %}paperclip{% else %}arrow-right{% endif %}"></i>
             {{ label }}
         </a>
     {% elif action_code == 'approve' %}

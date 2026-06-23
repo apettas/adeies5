@@ -145,6 +145,9 @@ def _owner_actions(leave_request, user, actions):
     elif leave_request.can_be_withdrawn:
         _append_view(actions)
         actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ', 'leaves:withdraw_leave_request'))
+    elif status == 'WAITING_FOR_DOCUMENTS':
+        _append_view(actions)
+        actions.append(('upload_attachment', 'ΑΝΕΒΑΣΜΑ ΔΙΚ/ΚΩΝ', 'leaves:leave_request_detail'))
     elif status == 'COMPLETED':
         _append_view(actions)
         actions.append(('cancel_completed', 'ΑΝΑΚΛΗΣΗ ΟΛΟΚΛΗΡΩΜΕΝΗΣ', 'leaves:withdraw_completed_leave'))

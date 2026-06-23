@@ -375,6 +375,50 @@ class DocumentsWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
         req.refresh_from_db()
         self.assertEqual(req.status, 'IN_REVIEW')
 
+    def test_applicant_can_upload_attachment_while_waiting_documents(self):
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'docs upload', START, END,
+        )
+        req.status = 'IN_REVIEW'
+        req.save()
+        req.request_documents(self.leave_handler, 'Βεβαίωση ιατρού')
+        req.refresh_from_db()
+
+        self.assertTrue(req.can_user_upload_attachment(self.employee))
+        self.assertFalse(req.can_user_upload_attachment(self.dept_manager))
+
+        from leaves.dashboard_utils import get_available_actions
+        codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
+        self.assertIn('upload_attachment', codes)
+
+    def test_decision_after_documents_provided_despite_sick_threshold(self):
+        """Μετά παροχή δικαιολογητικών, η αίτηση προχωρά σε απόφαση — όχι ξανά σε ΥΕ."""
+        from leaves.dashboard_utils import get_available_actions
+
+        prior = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'prior sick', '2025-01-06', '2025-01-10',
+        )
+        prior.status = 'COMPLETED'
+        prior.submitted_at = timezone.now()
+        prior.save()
+
+        req = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'sick docs', '2025-03-03', '2025-03-14',
+        )
+        req.status = 'IN_REVIEW'
+        req.submitted_at = timezone.now()
+        req.save()
+
+        self.assertTrue(req.can_send_to_yc)
+        req.request_documents(self.leave_handler, 'Γνωμάτευση')
+        req.provide_documents(self.leave_handler, 'Ελήφθη')
+        req.refresh_from_db()
+
+        self.assertFalse(req.can_send_to_yc)
+        codes = [code for code, _label, _url in get_available_actions(req, self.leave_handler)]
+        self.assertIn('decision', codes)
+        self.assertNotIn('yc_referral', codes)
+
 
 class DecisionPathModelTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
     """ΣΗΔΕ path μέσω model transitions."""
