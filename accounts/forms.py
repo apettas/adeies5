@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
-from .models import User, Department, Specialty
+from .models import User, Department, Specialty, normalize_person_name_lower
 
 
 class UserRegistrationForm(UserCreationForm):
@@ -154,10 +154,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Όνομα',
-        help_text='Από το Σχολικό Δίκτυο. Μπορείτε να το διορθώσετε.',
+        help_text='Από το Σχολικό Δίκτυο, σε πεζά γράμματα. Ελέγξτε και διορθώστε αν χρειάζεται.',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Εισάγετε το όνομά σας'
+            'placeholder': 'π.χ. γεώργιος'
         })
     )
     
@@ -165,10 +165,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Επώνυμο',
-        help_text='Από το Σχολικό Δίκτυο. Μπορείτε να το διορθώσετε.',
+        help_text='Από το Σχολικό Δίκτυο, σε πεζά γράμματα. Ελέγξτε και διορθώστε αν χρειάζεται.',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Εισάγετε το επώνυμό σας'
+            'placeholder': 'π.χ. νικολάου'
         })
     )
     
@@ -176,10 +176,21 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=False,
         label='Πατρώνυμο',
-        help_text='Από το Σχολικό Δίκτυο (gsnfathername). Μπορείτε να το διορθώσετε.',
+        help_text='Από το Σχολικό Δίκτυο (gsnfathername), σε πεζά. Ελέγξτε και διορθώστε αν χρειάζεται.',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'π.χ. Γεώργιος'
+            'placeholder': 'π.χ. ιωάννης'
+        })
+    )
+
+    name_accusative = forms.CharField(
+        max_length=150,
+        required=True,
+        label='Ονοματεπώνυμο (Αιτιατική)',
+        help_text='Καταχωρήστε το ονοματεπώνυμό σας στην αιτιατική, π.χ. «γεώργιο νικολάου».',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. γεώργιο νικολάου'
         })
     )
 
@@ -228,8 +239,8 @@ class CompleteSSORegistrationForm(forms.Form):
     department = forms.ModelChoiceField(
         queryset=Department.objects.filter(is_active=True),
         required=True,
-        label='Υπηρεσία Υπηρέτησης',
-        empty_label='Επιλέξτε Υπηρεσία Υπηρέτησης',
+        label='Υπηρεσία-Τμήμα τρέχουσας υπηρέτησης',
+        empty_label='Επιλέξτε Υπηρεσία-Τμήμα',
         widget=forms.Select(attrs={
             'class': 'form-control'
         })
@@ -290,12 +301,24 @@ class CompleteSSORegistrationForm(forms.Form):
         value = self.cleaned_data.get('first_name', '')
         if not value.strip():
             raise ValidationError('Το όνομα είναι υποχρεωτικό')
-        return value.strip()
+        return normalize_person_name_lower(value)
     
     def clean_last_name(self):
         value = self.cleaned_data.get('last_name', '')
         if not value.strip():
             raise ValidationError('Το επώνυμο είναι υποχρεωτικό')
+        return normalize_person_name_lower(value)
+
+    def clean_father_name(self):
+        value = self.cleaned_data.get('father_name', '')
+        if not value:
+            return ''
+        return normalize_person_name_lower(value)
+
+    def clean_name_accusative(self):
+        value = self.cleaned_data.get('name_accusative', '')
+        if not value.strip():
+            raise ValidationError('Το ονοματεπώνυμο στην αιτιατική είναι υποχρεωτικό')
         return value.strip()
     
     def clean(self):

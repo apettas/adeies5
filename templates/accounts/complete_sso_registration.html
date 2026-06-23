@@ -105,6 +105,11 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        {% bootstrap_field form.name_accusative %}
+                                    </div>
+                                </div>
+                                <div class="row">
                                     <div class="col-md-6 mb-3">
                                         {% bootstrap_field form.gender %}
                                     </div>
@@ -145,6 +150,9 @@
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-send me-2"></i>Υποβολή Αίτησης Εγγραφής
                             </button>
+                            <a href="{% url 'accounts:logout' %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-box-arrow-right me-2"></i>Αποσύνδεση
+                            </a>
                         </div>
                         
                         <div class="text-center mt-3">

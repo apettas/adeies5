@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from accounts.models import Department, Role, Specialty
 import random
-from datetime import date, timedelta
 
 User = get_user_model()
 
@@ -178,7 +177,6 @@ class Command(BaseCommand):
                     phone1=self.generate_random_phone(),
                     employee_type=emp_type,
                     specialty=random.choice(specialties) if specialties else None,
-                    hire_date=self.generate_random_hire_date(),
                     notification_recipients=f'Κοινοποίηση στο {user_data["department"].name}',
                     role_description=f'{user_data["first_name"]} {user_data["last_name"]} - {user_data["department"].name}',
                     registration_status='APPROVED',
@@ -196,12 +194,3 @@ class Command(BaseCommand):
     def generate_random_phone(self):
         """Δημιουργία τυχαίου τηλεφώνου"""
         return f"26{random.randint(10, 99)}{random.randint(100000, 999999)}"
-
-    def generate_random_hire_date(self):
-        """Δημιουργία τυχαίας ημερομηνίας πρόσληψης"""
-        start_date = date(2020, 1, 1)
-        end_date = date(2024, 12, 31)
-        time_between = end_date - start_date
-        days_between = time_between.days
-        random_days = random.randrange(days_between)
-        return start_date + timedelta(days=random_days)

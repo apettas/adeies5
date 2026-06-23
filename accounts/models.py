@@ -39,6 +39,13 @@ def convert_last_name_to_accusative(surname):
     return surname
 
 
+def normalize_person_name_lower(name):
+    """Κανονικοποίηση ονόματος/επωνύμου/πατρωνύμου σε πεζά για αποθήκευση."""
+    if not name:
+        return name
+    return name.strip().lower()
+
+
 class UserManager(BaseUserManager):
     """Custom user manager για email authentication"""
     
@@ -243,11 +250,10 @@ class User(AbstractUser):
         help_text='Αυτόματα δημιουργείται από το Όνομα και Επίθετο, π.χ. "Γεώργιο Νικολόπουλο"')
 
     def save(self, *args, **kwargs):
-        if self.first_name and self.last_name:
+        if self.first_name and self.last_name and not (self.name_accusative or '').strip():
             first = convert_first_name_to_accusative(self.first_name)
             last = convert_last_name_to_accusative(self.last_name)
-            if self.name_accusative != f"{first} {last}":
-                self.name_accusative = f"{first} {last}"
+            self.name_accusative = f"{first} {last}"
         super().save(*args, **kwargs)
 
     email = models.EmailField('Email', unique=True)
@@ -304,8 +310,6 @@ class User(AbstractUser):
     approval_date = models.DateTimeField('Ημερομηνία Έγκρισης', null=True, blank=True)
     approval_notes = models.TextField('Σημειώσεις Έγκρισης', blank=True)
     
-    # Ημερομηνίες
-    hire_date = models.DateField('Ημερομηνία Πρόσληψης', null=True, blank=True)
     is_active = models.BooleanField('Ενεργός', default=True)
     
     # Δικαιώματα άδειας

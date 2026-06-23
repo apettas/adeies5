@@ -122,7 +122,7 @@ class CustomUserAdmin(UserAdmin):
     # Προσαρμογή fieldsets για email-based authentication (χωρίς username)
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'name_accusative', 'father_name', 'gender', 'phone1', 'employee_number', 'gsn_branch', 'sso_organizational_unit', 'hire_date')}),
+        ('Προσωπικά Στοιχεία', {'fields': ('first_name', 'last_name', 'name_accusative', 'father_name', 'gender', 'phone1', 'employee_number', 'gsn_branch', 'sso_organizational_unit')}),
         ('Υπηρεσιακά Στοιχεία', {'fields': ('department', 'specialty', 'employee_type', 'roles')}),
         ('Πρόσθετα Στοιχεία', {'fields': ('role_description', 'notification_recipients')}),
         ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'current_regular_leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
@@ -141,7 +141,7 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Προσωπικά Στοιχεία', {
             'classes': ('wide',),
-            'fields': ('first_name', 'last_name', 'father_name', 'employee_number', 'phone1', 'hire_date')
+            'fields': ('first_name', 'last_name', 'father_name', 'employee_number', 'phone1')
         }),
         ('Υπηρεσιακά Στοιχεία', {
             'classes': ('wide',),
