@@ -263,6 +263,16 @@ class LeaveRequest(models.Model):
     documents_provided_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                             related_name='provided_documents', verbose_name='Παρείχε Δικαιολογητικά')
     documents_notes = models.TextField('Σημειώσεις Δικαιολογητικών', blank=True)
+    documents_notification_email = models.EmailField(
+        'Email Ειδοποίησης Δικαιολογητικών',
+        blank=True,
+        help_text='Email για ειδοποίηση αιτήματος δικαιολογητικών (επεξεργάσιμο από χειριστή)',
+    )
+    applicant_documents_uploaded_at = models.DateTimeField(
+        'Ημερομηνία Ανεβάσματος Δικαιολογητικών από Αιτούντα',
+        null=True,
+        blank=True,
+    )
     
     # Ανάκληση και κλείδωμα
     parent_leave = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
@@ -595,16 +605,20 @@ class LeaveRequest(models.Model):
         self.save()
         return True
     
-    def request_documents(self, handler, required_documents, deadline=None):
+    def request_documents(self, handler, required_documents, deadline=None, notification_email=''):
         """Αίτημα για δικαιολογητικά από χειριστή"""
         if not self.status in ['IN_REVIEW']:
             raise ValueError("Δεν μπορεί να ζητηθούν δικαιολογητικά σε αυτή τη φάση")
-        
+
         self.status = 'WAITING_FOR_DOCUMENTS'
         self.required_documents = required_documents
         self.documents_deadline = deadline
         self.documents_requested_by = handler
         self.documents_requested_at = timezone.now()
+        self.documents_notification_email = notification_email or self.user.email
+        self.applicant_documents_uploaded_at = None
+        if self.pk:
+            self.document_upload_acknowledgments.all().delete()
         self.save()
         return True
     
@@ -617,6 +631,7 @@ class LeaveRequest(models.Model):
         self.documents_provided_by = handler
         self.documents_provided_at = timezone.now()
         self.documents_notes = notes
+        self.applicant_documents_uploaded_at = None
         self.save()
         return True
     
@@ -1262,3 +1277,29 @@ class YCCommitteeAcknowledgment(models.Model):
 
     def __str__(self):
         return f"{self.handler} → {self.employee} ({self.acknowledged_at.strftime('%d/%m/%Y')})"
+
+
+class DocumentUploadAcknowledgment(models.Model):
+    """Καταγραφή ότι ο χειριστής έλαβε γνώση για ανέβασμα δικαιολογητικών από αιτούντα."""
+    leave_request = models.ForeignKey(
+        LeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='document_upload_acknowledgments',
+        verbose_name='Αίτηση Άδειας',
+    )
+    handler = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='document_upload_acknowledgments',
+        verbose_name='Χειριστής',
+    )
+    acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Γνώση Ανεβάσματος Δικαιολογητικών'
+        verbose_name_plural = 'Γνώσεις Ανεβασμάτων Δικαιολογητικών'
+        unique_together = ['leave_request', 'handler']
+        ordering = ['-acknowledged_at']
+
+    def __str__(self):
+        return f"{self.handler} → αίτηση #{self.leave_request_id} ({self.acknowledged_at.strftime('%d/%m/%Y')})"

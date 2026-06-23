@@ -27,6 +27,16 @@
                     <textarea class="form-control" id="required_documents" name="required_documents" rows="5" required
                               placeholder="Περιγράψτε αναλυτικά τα δικαιολογητικά που απαιτούνται..."></textarea>
                 </div>
+                <div class="mb-3">
+                    <label for="notification_email" class="form-label fw-bold">
+                        Email Υπαλλήλου <span class="text-danger">*</span>
+                    </label>
+                    <input type="email" class="form-control" id="notification_email" name="notification_email"
+                           value="{{ notification_email|default:leave_request.user.email }}" required>
+                    <small class="form-text text-muted">
+                        Θα σταλεί ειδοποίηση στο σύστημα και email σε αυτή τη διεύθυνση. Μπορείτε να την αλλάξετε αν χρειάζεται.
+                    </small>
+                </div>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="deadline_date" class="form-label">Προθεσμία (ημερομηνία)</label>

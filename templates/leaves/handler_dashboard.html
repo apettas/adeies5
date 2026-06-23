@@ -104,6 +104,39 @@
 </div>
 {% endif %}
 
+<!-- Alert για ανέβασμα δικαιολογητικών από αιτούντα -->
+{% if document_upload_alert_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info border-start border-info border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-upload fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-file-earmark-arrow-up"></i> Νέα Δικαιολογητικά από Αιτούντες</h5>
+                    <p>Οι παρακάτω αιτήσεις έχουν νέο ανέβασμα δικαιολογητικών από τον αιτούντα:</p>
+                    <ul class="mb-0">
+                        {% for lr in document_upload_alerts %}
+                        <li>
+                            <strong>#{{ lr.pk }} — {{ lr.user.get_full_name }}</strong>
+                            ({{ lr.leave_type.name }})
+                            — {{ lr.applicant_documents_uploaded_at|date:"d/m/Y H:i" }}
+                            <a href="{% url 'leaves:leave_request_detail' lr.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-eye"></i> Προβολή
+                            </a>
+                            <a href="{% url 'leaves:acknowledge_document_upload' lr.pk %}" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Το alert κρύβεται για εσάς αφού πατήσετε «Έλαβα Γνώση».</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Filter bar -->
 {% include 'leaves/includes/filter_bar.html' %}
 

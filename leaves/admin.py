@@ -4,6 +4,7 @@ from .models import (
     Logo, Info, Ypopsin, Signee,
     PublicHoliday, LeaveActionLog, LeaveAccessLog, RegularLeaveBalanceEntry,
     YCCommitteeAcknowledgment,
+    DocumentUploadAcknowledgment,
     YearlySickLeaveTotal
 )
 
@@ -245,3 +246,10 @@ class YCCommitteeAcknowledgmentAdmin(admin.ModelAdmin):
     search_fields = ('handler__email', 'handler__last_name', 'employee__email', 'employee__last_name')
     readonly_fields = ('acknowledged_at',)
 
+
+@admin.register(DocumentUploadAcknowledgment)
+class DocumentUploadAcknowledgmentAdmin(admin.ModelAdmin):
+    list_display = ('handler', 'leave_request', 'acknowledged_at')
+    list_filter = ('acknowledged_at',)
+    search_fields = ('handler__email', 'leave_request__id')
+    readonly_fields = ('acknowledged_at',)

@@ -900,6 +900,10 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
         from leaves.utils.sick_leave_alerts import get_sick_alert_users
         context['sick_alert_users'] = get_sick_alert_users(self.request.user)
         context['sick_alert_count'] = len(context['sick_alert_users'])
+
+        from leaves.utils.document_upload_alerts import get_pending_document_upload_alerts
+        context['document_upload_alerts'] = get_pending_document_upload_alerts(self.request.user)
+        context['document_upload_alert_count'] = len(context['document_upload_alerts'])
         
         # Add today's date for protocol forms
         context['today'] = timezone.now().date()
@@ -2195,6 +2199,7 @@ def request_documents(request, pk):
     
     if request.method == 'POST':
         required_documents = request.POST.get('required_documents', '').strip()
+        notification_email = request.POST.get('notification_email', '').strip()
         deadline_date = request.POST.get('deadline_date', '')
         deadline_time = request.POST.get('deadline_time', '')
         
@@ -2203,6 +2208,21 @@ def request_documents(request, pk):
             return render(request, 'leaves/request_documents_form.html', {
                 'leave_request': leave_request,
                 'today': timezone.now().date(),
+                'notification_email': notification_email or leave_request.user.email,
+            })
+
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+
+        recipient_email = notification_email or leave_request.user.email
+        try:
+            validate_email(recipient_email)
+        except ValidationError:
+            messages.error(request, 'Παρακαλώ εισάγετε έγκυρη διεύθυνση email.')
+            return render(request, 'leaves/request_documents_form.html', {
+                'leave_request': leave_request,
+                'today': timezone.now().date(),
+                'notification_email': recipient_email,
             })
         
         try:
@@ -2222,6 +2242,7 @@ def request_documents(request, pk):
                 handler=request.user,
                 required_documents=required_documents,
                 deadline=deadline,
+                notification_email=recipient_email,
             )
             
             create_notification(
@@ -2233,6 +2254,21 @@ def request_documents(request, pk):
                 ),
                 related_object=leave_request,
             )
+
+            from django.urls import reverse
+            from pdede_leaves.email_utils import send_documents_required_email
+
+            upload_url = request.build_absolute_uri(
+                reverse('leaves:leave_request_detail', kwargs={'pk': leave_request.pk})
+            ) + '#applicant-documents-upload'
+            if send_documents_required_email(leave_request, recipient_email, upload_url=upload_url):
+                messages.success(request, f'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών. Εστάλη email στο {recipient_email}.')
+            else:
+                messages.warning(
+                    request,
+                    'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών, αλλά το email δεν στάλθηκε. '
+                    'Ελέγξτε τις ρυθμίσεις αποστολής email.',
+                )
             
             if leave_request.manager_approved_by:
                 create_notification(
@@ -2245,7 +2281,6 @@ def request_documents(request, pk):
                     related_object=leave_request,
                 )
             
-            messages.success(request, 'Η αίτηση τέθηκε σε αναμονή δικαιολογητικών.')
             return redirect('leaves:leave_request_detail', pk=leave_request.pk)
             
         except Exception as e:
@@ -2254,6 +2289,7 @@ def request_documents(request, pk):
     return render(request, 'leaves/request_documents_form.html', {
         'leave_request': leave_request,
         'today': timezone.now().date(),
+        'notification_email': leave_request.documents_notification_email or leave_request.user.email,
     })
 
 
@@ -2338,6 +2374,27 @@ def provide_documents(request, pk):
     
     # GET: Εμφάνιση σελίδας επιβεβαίωσης παροχής δικαιολογητικών
     return render(request, 'leaves/provide_documents_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def acknowledge_document_upload(request, pk):
+    """Δήλωση γνώσης για ανέβασμα δικαιολογητικών από αιτούντα."""
+    from leaves.models import DocumentUploadAcknowledgment
+
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    if leave_request.status != 'WAITING_FOR_DOCUMENTS' or not leave_request.applicant_documents_uploaded_at:
+        messages.error(request, 'Δεν υπάρχει εκκρεμές ανέβασμα δικαιολογητικών για αυτή την αίτηση.')
+        return redirect('leaves:handler_dashboard')
+
+    DocumentUploadAcknowledgment.objects.get_or_create(
+        leave_request=leave_request,
+        handler=request.user,
+    )
+    messages.success(request, 'Η γνώση καταχωρήθηκε.')
+    return redirect('leaves:handler_dashboard')
 
 
 @login_required
@@ -2770,18 +2827,8 @@ def handler_upload_attachment(request, pk):
                     not request.user.is_leave_handler
                     and leave_request.status == 'WAITING_FOR_DOCUMENTS'
                 ):
-                    from notifications.utils import create_notification
-                    from accounts.models import User
-                    for handler in User.objects.filter(roles__code='LEAVE_HANDLER', is_active=True):
-                        create_notification(
-                            user=handler,
-                            title="Νέο Δικαιολογητικό από Αιτούντα",
-                            message=(
-                                f"Ο/Η {leave_request.user.full_name} ανέβασε δικαιολογητικό "
-                                f"για την αίτηση #{leave_request.pk} ({leave_request.leave_type.name})."
-                            ),
-                            related_object=leave_request,
-                        )
+                    from leaves.utils.document_upload_alerts import mark_applicant_document_uploaded
+                    mark_applicant_document_uploaded(leave_request)
             else:
                 messages.error(request, 'Σφάλμα κατά την αποθήκευση του αρχείου.')
         except Exception as e:

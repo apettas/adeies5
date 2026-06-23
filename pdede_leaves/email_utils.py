@@ -139,3 +139,67 @@ def send_merged_pdf_email(leave_request, pdf_bytes, recipient=None, custom_subje
         logger = logging.getLogger(__name__)
         logger.error(f"Failed to send email for leave request {leave_request.id}: {e}")
         return False
+
+
+def send_documents_required_email(leave_request, recipient_email, upload_url=''):
+    """
+    Email στον αιτούντα όταν απαιτούνται δικαιολογητικά.
+
+    Returns:
+        bool: True αν στάλθηκε επιτυχώς
+    """
+    if not recipient_email:
+        return False
+
+    deadline_text = ''
+    if leave_request.documents_deadline:
+        deadline_text = leave_request.documents_deadline.strftime('%d/%m/%Y %H:%M')
+
+    message_lines = [
+        f"Αγαπητέ/ή {leave_request.user.full_name},",
+        "",
+        "Για την αίτησή σας άδειας στο Σύστημα Διαχείρισης Αδειών «Αλκίνοος» "
+        "απαιτούνται επιπλέον δικαιολογητικά.",
+        "",
+        f"Αρ. Αίτησης: #{leave_request.pk}",
+        f"Τύπος Άδειας: {leave_request.leave_type.name}",
+        "Απαιτούμενα Δικαιολογητικά:",
+        leave_request.required_documents,
+    ]
+    if deadline_text:
+        message_lines.extend(["", f"Προθεσμία κατάθεσης: {deadline_text}"])
+    if upload_url:
+        message_lines.extend([
+            "",
+            "Μπορείτε να συνδεθείτε στο σύστημα και να ανεβάσετε τα δικαιολογητικά εδώ:",
+            upload_url,
+        ])
+    message_lines.extend([
+        "",
+        "Με εκτίμηση,",
+        "ΠΔΕ Δυτικής Ελλάδας",
+        "Σύστημα Διαχείρισης Αδειών «Αλκίνοος»",
+    ])
+
+    try:
+        send_mail(
+            subject=(
+                f"Απαιτούνται Δικαιολογητικά — Αίτηση #{leave_request.pk} "
+                f"({leave_request.leave_type.name})"
+            ),
+            message="\n".join(message_lines),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient_email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(
+            "Failed to send documents-required email for leave request %s to %s: %s",
+            leave_request.id,
+            recipient_email,
+            e,
+        )
+        return False
