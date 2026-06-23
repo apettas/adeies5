@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
+from accounts.role_constants import ROLE_EMPLOYEE
 from .models import (
     User,
     Department,
@@ -204,7 +205,6 @@ class HandlerUserActivationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['role_description'].label = 'Περιγραφή Ρόλου'
         self.fields['phone1'].label = 'Τηλέφωνο'
         self.fields['department'].queryset = Department.objects.filter(is_active=True).order_by('name')
         self.fields['specialty'].queryset = Specialty.objects.filter(is_active=True).order_by(
@@ -219,10 +219,10 @@ class HandlerUserActivationForm(forms.ModelForm):
         self.fields['last_name'].required = True
 
         if self.instance and self.instance.pk:
-            if not self.instance.roles.exists():
-                employee_role = Role.objects.filter(code='EMPLOYEE', is_active=True).first()
+            if not self.is_bound and not self.instance.roles.exists():
+                employee_role = Role.objects.filter(code=ROLE_EMPLOYEE, is_active=True).first()
                 if employee_role:
-                    self.fields['roles'].initial = [employee_role.pk]
+                    self.initial.setdefault('roles', [employee_role.pk])
             if self.instance.current_regular_leave_balance == 0:
                 self.fields['current_regular_leave_balance'].initial = (
                     self.instance.annual_leave_entitlement or 25

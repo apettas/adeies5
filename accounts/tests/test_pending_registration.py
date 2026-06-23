@@ -57,9 +57,16 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
             reverse('leaves:pending_user_registration_review', args=[self.pending_user.pk]),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Περιγραφή Ρόλου')
+        self.assertContains(response, 'Υπηρεσιακή Ιδιότητα')
         self.assertContains(response, 'name="role_description"')
         self.assertContains(response, 'Αναπληρωτής')
+
+    def test_review_form_defaults_to_employee_role(self):
+        response = self.client.get(
+            reverse('leaves:pending_user_registration_review', args=[self.pending_user.pk]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'value="{self.employee_role.pk}" selected')
 
     def test_alert_visible_until_acknowledged(self):
         alerts = get_pending_registration_alerts(self.leave_handler)
