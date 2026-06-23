@@ -176,9 +176,43 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=False,
         label='Πατρώνυμο',
+        help_text='Από το Σχολικό Δίκτυο (gsnfathername). Μπορείτε να το διορθώσετε.',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'π.χ. Γεώργιος'
+        })
+    )
+
+    employee_number = forms.CharField(
+        max_length=30,
+        required=False,
+        label='Αριθμός Μητρώου',
+        help_text='Από το Σχολικό Δίκτυο (employeeNumber). Μπορείτε να το διορθώσετε.',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. 12345'
+        })
+    )
+
+    gsn_branch = forms.CharField(
+        max_length=100,
+        required=False,
+        label='Κλάδος',
+        help_text='Από το Σχολικό Δίκτυο (gsnBranch). Μπορείτε να το διορθώσετε.',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. ΠΕ02'
+        })
+    )
+
+    sso_organizational_unit = forms.CharField(
+        max_length=255,
+        required=False,
+        label='Οργανική Μονάδα (ou)',
+        help_text='Από το Σχολικό Δίκτυο — σχολική/υπηρεσιακή μονάδα.',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. 1ο Λύκειο Νέου Ψυχικού'
         })
     )
     
@@ -225,11 +259,11 @@ class CompleteSSORegistrationForm(forms.Form):
     role_description = forms.CharField(
         max_length=200,
         required=False,
-        label='Ιδιότητα / Θέση',
-        help_text='Π.χ. Αναπληρωτής Εκπαιδευτικός, Μόνιμος Διοικητικός Υπάλληλος',
+        label='Υπηρεσιακή Ιδιότητα',
+        help_text='Από το Σχολικό Δίκτυο (title). Π.χ. Αναπληρωτής Εκπαιδευτικός.',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Περιγράψτε την ιδιότητά σας'
+            'placeholder': 'Περιγράψτε την υπηρεσιακή σας ιδιότητα'
         })
     )
     

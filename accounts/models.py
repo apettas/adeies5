@@ -266,6 +266,18 @@ class User(AbstractUser):
         null=True,
         unique=True,
     )
+    gsn_branch = models.CharField(
+        'Κλάδος (ΠΣΔ)',
+        max_length=100,
+        blank=True,
+        help_text='Κλάδος από Σχολικό Δίκτυο (gsnBranch)',
+    )
+    sso_organizational_unit = models.CharField(
+        'Οργανική Μονάδα (ΠΣΔ)',
+        max_length=255,
+        blank=True,
+        help_text='ou από Σχολικό Δίκτυο — σχολική/υπηρεσιακή μονάδα',
+    )
     
     # Υπηρεσιακά στοιχεία
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
@@ -279,8 +291,8 @@ class User(AbstractUser):
     # Επιπλέον στοιχεία χρήστη
     notification_recipients = models.TextField('Κοινοποίηση Απόφασης', blank=True,
                                    help_text='Υπηρεσίες που θα γίνει κοινοποίηση η απόφαση της άδειας')
-    role_description = models.TextField('Περιγραφή Ρόλου', blank=True,
-                                      help_text='Ιδιότητα του χρήστη')
+    role_description = models.TextField('Υπηρεσιακή Ιδιότητα', blank=True,
+                                      help_text='Ιδιότητα του χρήστη από ΠΣΔ (title)')
     
     # Κατάσταση εγγραφής
     registration_status = models.CharField('Κατάσταση Εγγραφής', max_length=20,

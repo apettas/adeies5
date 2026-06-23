@@ -44,7 +44,10 @@ if CAS_ENABLED:
         'sn': 'last_name',
         'gsnfathername': 'father_name',
         'employeeNumber': 'employee_number',
+        'gsnBranch': 'gsn_branch',
         'title': 'role_description',
+        'Title': 'role_description',
+        'ou': 'sso_organizational_unit',
         'mail': 'email',
     }
 

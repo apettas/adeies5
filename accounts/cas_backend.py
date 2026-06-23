@@ -13,6 +13,35 @@ from django_cas_ng.utils import get_cas_client
 logger = logging.getLogger(__name__)
 
 
+def _apply_cas_attribute_aliases(attributes):
+    """Αντιστοίχιση CAS attributes σε πεδία User (case-insensitive όπου χρειάζεται)."""
+    if not attributes:
+        return attributes
+
+    if not attributes.get('email') and attributes.get('mail'):
+        attributes['email'] = attributes['mail']
+
+    keys_by_lower = {key.lower(): key for key in attributes}
+    for cas_attr_name, model_field in settings.CAS_RENAME_ATTRIBUTES.items():
+        source_key = None
+        if cas_attr_name in attributes:
+            source_key = cas_attr_name
+        else:
+            source_key = keys_by_lower.get(cas_attr_name.lower())
+
+        if not source_key or source_key == model_field:
+            continue
+
+        value = attributes.get(source_key)
+        if model_field not in attributes or attributes.get(model_field) in (None, ''):
+            attributes[model_field] = value
+        attributes.pop(source_key, None)
+        if cas_attr_name.lower() in keys_by_lower:
+            keys_by_lower.pop(cas_attr_name.lower(), None)
+
+    return attributes
+
+
 class PdedeCASBackend(CASBackend):
     """
     CAS backend προσαρμοσμένο για ΠΔΕΔΕ:
@@ -42,13 +71,7 @@ class PdedeCASBackend(CASBackend):
             request.session['attributes'] = attributes
 
         if attributes:
-            if not attributes.get('email') and attributes.get('mail'):
-                attributes['email'] = attributes['mail']
-
-            for cas_attr_name, model_field in settings.CAS_RENAME_ATTRIBUTES.items():
-                if cas_attr_name in attributes and cas_attr_name != model_field:
-                    attributes[model_field] = attributes[cas_attr_name]
-                    attributes.pop(cas_attr_name, None)
+            attributes = _apply_cas_attribute_aliases(attributes)
 
         if settings.CAS_USERNAME_ATTRIBUTE != 'cas:user' and settings.CAS_VERSION != 'CAS_2_SAML_1_0':
             if attributes:

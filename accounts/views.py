@@ -53,6 +53,9 @@ class CompleteSSORegistrationView(FormView):
             initial['first_name'] = user.first_name
             initial['last_name'] = user.last_name
             initial['father_name'] = user.father_name
+            initial['employee_number'] = user.employee_number
+            initial['gsn_branch'] = user.gsn_branch
+            initial['sso_organizational_unit'] = user.sso_organizational_unit
             initial['role_description'] = user.role_description
         except User.DoesNotExist:
             pass
@@ -72,6 +75,9 @@ class CompleteSSORegistrationView(FormView):
             user.specialty = form.cleaned_data['specialty']
             user.phone1 = form.cleaned_data.get('phone', '')
             user.father_name = form.cleaned_data.get('father_name', '')
+            user.employee_number = form.cleaned_data.get('employee_number') or None
+            user.gsn_branch = form.cleaned_data.get('gsn_branch', '')
+            user.sso_organizational_unit = form.cleaned_data.get('sso_organizational_unit', '')
             user.gender = form.cleaned_data.get('gender', '')
             user.role_description = form.cleaned_data.get('role_description', '')
             # Παραμένει PENDING — θα το εγκρίνει ο χειριστής
