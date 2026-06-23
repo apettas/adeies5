@@ -125,7 +125,7 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 # Αύξησε κατά deploy που αλλάζει CSS/JS — το nginx σερβίρει /static/ με cache 1 έτους.
-THEME_STATIC_VERSION = config('THEME_STATIC_VERSION', default='6')
+THEME_STATIC_VERSION = config('THEME_STATIC_VERSION', default='7')
 
 # Security settings - keep relaxed defaults for local development and enable via env
 # in staging/production.

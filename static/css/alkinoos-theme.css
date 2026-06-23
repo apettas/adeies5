@@ -1,57 +1,61 @@
 /**
- * Αλκίνοος — Apple-inspired light theme
- * Χρωματική παλέτα ευθυγραμμισμένη με static/Alkinoos.png
+ * Αλκίνοος — ζεστό, φιλικό theme (ανεξάρτητο από χρώματα λογοτύπου)
  */
 
 :root {
-    /* Brand — ζεστά μπλε-πετρόλ (λιγότερο cyan) */
-    --brand-navy: #2c4558;
-    --brand-blue: #3a6f8f;
-    --brand-silver: #c4bcb4;
+    /* Brand — ζεστά, γήινα τόνια */
+    --brand-navy: #5c3d2e;
+    --brand-blue: #e07a5f;
+    --brand-silver: #e8c4a8;
 
-    /* Primary / interactive */
-    --primary-600: #3d7fa6;
-    --primary-500: #4f93b8;
-    --primary-400: #6aa9c8;
+    /* Primary / interactive — κοραλί & βερικοκί */
+    --primary-600: #e76f51;
+    --primary-500: #f4845f;
+    --primary-400: #f7a072;
 
-    /* Surfaces */
-    --bg-page: #f7f5f1;
+    /* Playful accents */
+    --accent-gold: #f4a261;
+    --accent-teal: #2a9d8f;
+    --accent-plum: #9b5de5;
+
+    /* Surfaces — κρεμ/ροδακινί */
+    --bg-page: #fff8f2;
     --bg-card: #ffffff;
-    --bg-subtle: #ebe6df;
-    --border-color: #e4ddd4;
-    --border-focus: #4f93b8;
+    --bg-subtle: #ffe8d6;
+    --border-color: #f5d0b5;
+    --border-focus: #e76f51;
 
     /* Text */
-    --text-primary: #2a3238;
-    --text-secondary: #5c6670;
-    --text-muted: #8a939c;
+    --text-primary: #3d2c24;
+    --text-secondary: #6b5348;
+    --text-muted: #a08072;
 
-    /* Semantic */
-    --success-bg: #ecfdf5;
-    --success-text: #047857;
-    --warning-bg: #fffbeb;
-    --warning-text: #b45309;
-    --danger-bg: #fef2f2;
-    --danger-text: #b91c1c;
+    /* Semantic — ζεστότερα */
+    --success-bg: #e8f8ef;
+    --success-text: #1d8a5c;
+    --warning-bg: #fff4d6;
+    --warning-text: #c45d00;
+    --danger-bg: #ffe8e8;
+    --danger-text: #c62828;
 
-    /* Elevation & shape */
-    --shadow-soft: 0 4px 20px rgba(44, 69, 88, 0.1);
-    --shadow-card: 0 1px 3px rgba(44, 69, 88, 0.06);
-    --radius-card: 16px;
+    /* Elevation & shape — πιο στρογγυλά */
+    --shadow-soft: 0 8px 28px rgba(231, 111, 81, 0.14);
+    --shadow-card: 0 2px 8px rgba(92, 61, 46, 0.07);
+    --radius-card: 20px;
     --radius-pill: 999px;
-    --radius-input: 10px;
+    --radius-input: 12px;
 
-    /* Liquid glass chrome — αδιαφανές βάση + ελαφρύ blur */
-    --glass-blur: blur(12px) saturate(140%);
-    --glass-chrome-deep: #243d4f;
-    --glass-chrome-mid: #2f556c;
-    --glass-chrome-light: #3f7089;
-    --glass-chrome-overlay: rgba(47, 85, 108, 0.92);
-    --glass-edge-chrome: rgba(255, 248, 240, 0.18);
-    --glass-edge-highlight: rgba(255, 248, 240, 0.12);
-    --glass-text-chrome: rgba(255, 252, 248, 0.94);
-    --glass-text-chrome-muted: rgba(255, 248, 240, 0.72);
-    --glass-shadow: 0 4px 24px rgba(36, 61, 79, 0.18);
+    /* Warm chrome — navbar / footer / mobile bar */
+    --glass-blur: blur(12px) saturate(150%);
+    --glass-chrome-deep: #a84332;
+    --glass-chrome-mid: #c75a3f;
+    --glass-chrome-light: #e07a5f;
+    --glass-chrome-overlay: rgba(199, 90, 63, 0.92);
+    --glass-edge-chrome: rgba(255, 236, 220, 0.28);
+    --glass-edge-highlight: rgba(255, 248, 240, 0.18);
+    --glass-text-chrome: rgba(255, 252, 248, 0.96);
+    --glass-text-chrome-muted: rgba(255, 240, 228, 0.82);
+    --glass-shadow: 0 4px 24px rgba(168, 67, 50, 0.22);
     /* Legacy aliases */
     --glass-bg-footer: var(--glass-chrome-mid);
     --glass-bg-footer-end: var(--glass-chrome-light);
@@ -59,22 +63,22 @@
     --glass-edge-light: var(--glass-edge-chrome);
 
     /* Bootstrap overrides */
-    --bs-primary: #3d7fa6;
-    --bs-primary-rgb: 61, 127, 166;
-    --bs-secondary: #5c6670;
-    --bs-secondary-rgb: 92, 102, 112;
-    --bs-success: #047857;
-    --bs-info: #3a6f8f;
-    --bs-warning: #b45309;
-    --bs-danger: #b91c1c;
-    --bs-body-bg: #f7f5f1;
-    --bs-body-color: #2a3238;
-    --bs-border-color: #e4ddd4;
-    --bs-border-radius: 10px;
-    --bs-border-radius-lg: 16px;
+    --bs-primary: #e76f51;
+    --bs-primary-rgb: 231, 111, 81;
+    --bs-secondary: #6b5348;
+    --bs-secondary-rgb: 107, 83, 72;
+    --bs-success: #1d8a5c;
+    --bs-info: #2a9d8f;
+    --bs-warning: #c45d00;
+    --bs-danger: #c62828;
+    --bs-body-bg: #fff8f2;
+    --bs-body-color: #3d2c24;
+    --bs-border-color: #f5d0b5;
+    --bs-border-radius: 12px;
+    --bs-border-radius-lg: 20px;
     --bs-border-radius-pill: 999px;
-    --bs-link-color: #3d7fa6;
-    --bs-link-hover-color: #2f6685;
+    --bs-link-color: #d45d3e;
+    --bs-link-hover-color: #b84a32;
     --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -313,14 +317,14 @@ h1, h2, h3, h4, h5, h6,
 .btn-primary {
     background-color: var(--primary-600);
     border-color: var(--primary-600);
-    box-shadow: 0 1px 2px rgba(26, 111, 212, 0.2);
+    box-shadow: 0 2px 8px rgba(231, 111, 81, 0.35);
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
     background-color: var(--primary-500);
     border-color: var(--primary-500);
-    box-shadow: 0 2px 8px rgba(26, 111, 212, 0.25);
+    box-shadow: 0 4px 14px rgba(244, 132, 95, 0.4);
 }
 
 .btn-outline-primary {
@@ -368,7 +372,7 @@ h1, h2, h3, h4, h5, h6,
 .form-control:focus,
 .form-select:focus {
     border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(43, 132, 232, 0.15);
+    box-shadow: 0 0 0 3px rgba(231, 111, 81, 0.2);
 }
 
 .form-control::placeholder {
@@ -420,8 +424,8 @@ h1, h2, h3, h4, h5, h6,
 
 .badge.bg-primary,
 .badge.bg-info {
-    background-color: var(--bg-subtle) !important;
-    color: var(--brand-navy) !important;
+    background-color: #ffe8d6 !important;
+    color: #c75a3f !important;
 }
 
 .badge.bg-success {
@@ -496,9 +500,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .alert-info {
-    background: var(--bg-subtle);
-    color: var(--brand-navy);
-    border-color: #bfdbfe;
+    background: #fff0e6;
+    color: #9a4d2e;
+    border-color: #f5c9a8;
 }
 
 /* ── Tabs ─────────────────────────────────────────────── */
@@ -659,7 +663,7 @@ h1, h2, h3, h4, h5, h6,
     -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--glass-edge-chrome);
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -4px 24px rgba(36, 61, 79, 0.18), inset 0 1px 0 var(--glass-edge-highlight);
+    box-shadow: 0 -4px 24px rgba(168, 67, 50, 0.2), inset 0 1px 0 var(--glass-edge-highlight);
 }
 
 .mobile-tab-bar .tab-items {
@@ -735,7 +739,7 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-page);
+    background: linear-gradient(145deg, #fff8f2 0%, #ffe8d6 45%, #ffd4b8 100%);
     padding: 24px 16px;
 }
 
@@ -808,7 +812,7 @@ h1, h2, h3, h4, h5, h6,
 
 .select2-container--default.select2-container--focus .select2-selection--single {
     border-color: var(--border-focus) !important;
-    box-shadow: 0 0 0 3px rgba(43, 132, 232, 0.15);
+    box-shadow: 0 0 0 3px rgba(231, 111, 81, 0.2);
 }
 
 .ui-datepicker {
@@ -862,7 +866,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .stat-card-primary .stat-card-icon {
-    background: var(--bg-subtle);
+    background: #ffe8d6;
     color: var(--primary-600);
 }
 
@@ -877,8 +881,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .stat-card-info .stat-card-icon {
-    background: var(--bg-subtle);
-    color: var(--brand-blue);
+    background: #dff5f0;
+    color: var(--accent-teal);
 }
 
 .stat-card-neutral .stat-card-icon {
@@ -911,8 +915,8 @@ h1, h2, h3, h4, h5, h6,
 
 .card.bg-warning.bg-opacity-10 .bi { background: var(--warning-bg); color: var(--warning-text); }
 .card.bg-success.bg-opacity-10 .bi { background: var(--success-bg); color: var(--success-text); }
-.card.bg-info.bg-opacity-10 .bi { background: var(--bg-subtle); color: var(--brand-blue); }
-.card.bg-primary.bg-opacity-10 .bi { background: var(--bg-subtle); color: var(--primary-600); }
+.card.bg-info.bg-opacity-10 .bi { background: #dff5f0; color: var(--accent-teal); }
+.card.bg-primary.bg-opacity-10 .bi { background: #ffe8d6; color: var(--primary-600); }
 
 /* ── Page cards (auth / registration) ─────────────────── */
 
@@ -942,7 +946,7 @@ h1, h2, h3, h4, h5, h6,
     text-align: center;
     padding: 24px 24px 16px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(180deg, var(--bg-subtle) 0%, var(--bg-card) 100%);
+    background: linear-gradient(180deg, #fff0e6 0%, var(--bg-card) 100%);
 }
 
 .page-card-header .page-card-logo {
@@ -1110,6 +1114,6 @@ h1, h2, h3, h4, h5, h6,
     .alkinoos-navbar,
     .alkinoos-footer,
     .mobile-tab-bar {
-        background: var(--brand-navy) !important;
+        background: var(--glass-chrome-deep) !important;
     }
 }
