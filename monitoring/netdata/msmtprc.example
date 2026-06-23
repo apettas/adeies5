@@ -1,0 +1,11 @@
+defaults
+auth on
+tls on
+tls_starttls off
+host mail.sch.gr
+port 465
+from noreply@pdede.gov.gr
+user CHANGE_ME
+password CHANGE_ME
+account default
+logfile /var/log/msmtp.log

@@ -19,6 +19,7 @@ help:
 	@echo "  prod-up        - Start production services"
 	@echo "  prod-down      - Stop production services"
 	@echo "  prod-logs      - Show production logs"
+	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
 # Development commands
 build:
@@ -78,6 +79,9 @@ prod-down:
 
 prod-logs:
 	docker-compose -f docker-compose.prod.yml logs -f
+
+monitoring-setup:
+	bash monitoring/setup.sh
 
 prod-backup:
 	docker-compose -f docker-compose.prod.yml --profile backup run backup

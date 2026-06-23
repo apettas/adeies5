@@ -1,0 +1,55 @@
+[DEFAULT]
+# Αποστολή email με whois + log lines
+destemail = apettas@gmail.com
+sender = fail2ban@pdede-leaves
+sendername = Fail2Ban PDEDE Leaves
+action = %(action_mwl)s
+
+# Whitelist — Cloudflare δεν χρειάζεται αν nginx γράφει πραγματική IP (CF-Connecting-IP)
+# ignoreip = 127.0.0.1/8 ::1
+
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled  = true
+port     = ssh
+logpath  = /var/log/auth.log
+backend  = auto
+
+[nginx-botsearch]
+enabled  = true
+port     = http,https
+filter   = nginx-botsearch-pdede
+logpath  = %(nginx_logpath)s/access.log
+maxretry = 2
+findtime = 5m
+bantime  = 24h
+
+[nginx-http-auth]
+enabled  = true
+port     = http,https
+filter   = nginx-http-auth
+logpath  = %(nginx_logpath)s/access.log
+maxretry = 10
+findtime = 5m
+bantime  = 1h
+
+[nginx-limit-req]
+enabled  = true
+port     = http,https
+filter   = nginx-limit-req
+logpath  = %(nginx_logpath)s/error.log
+maxretry = 10
+findtime = 2m
+bantime  = 1h
+
+[nginx-bad-request]
+enabled  = true
+port     = http,https
+filter   = nginx-bad-request
+logpath  = %(nginx_logpath)s/access.log
+maxretry = 10
+findtime = 2m
+bantime  = 30m

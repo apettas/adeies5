@@ -8,11 +8,6 @@ CAS_SERVER_URL = config('CAS_SERVER_URL', default='')
 CAS_ENABLED = bool(CAS_SERVER_URL)
 
 if CAS_ENABLED:
-    AUTHENTICATION_BACKENDS = (
-        'django.contrib.auth.backends.ModelBackend',
-        'accounts.cas_backend.PdedeCASBackend',
-    )
-
     CAS_VERSION = '3'
     CAS_CREATE_USER = True
     CAS_LOGOUT_COMPLETELY = True

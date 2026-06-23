@@ -13,3 +13,5 @@ venv/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+logs/nginx/*.log
+monitoring/netdata/msmtprc

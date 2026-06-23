@@ -28,6 +28,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Application definition
 INSTALLED_APPS = [
+    'axes',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 # CAS — no global middleware. SSO is triggered only via the login button (cas_ng_login).
@@ -183,6 +185,34 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 # Email recipient for protocol requests
 PROTOCOL_EMAIL_RECIPIENT = config('PROTOCOL_EMAIL_RECIPIENT', default='apettas@gmail.com')
 
+# Email για security / monitoring alerts
+ALERT_EMAIL = config('ALERT_EMAIL', default='apettas@gmail.com')
+
+# Redis cache (axes lockout + γενική χρήση)
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': config('REDIS_URL', default='redis://redis:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+    }
+}
+
+# django-axes — προστασία brute force στο login
+AXES_FAILURE_LIMIT = config('AXES_FAILURE_LIMIT', default=5, cast=int)
+AXES_COOLOFF_TIME = config('AXES_COOLOFF_TIME', default=1, cast=int)  # ώρες
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [['ip_address'], ['username']]
+AXES_ENABLE_ACCESS_FAILURE_LOG = True
+AXES_CACHE = 'default'
+AXES_IPWARE_META_PRECEDENCE_ORDER = [
+    'HTTP_CF_CONNECTING_IP',
+    'HTTP_X_FORWARDED_FOR',
+    'HTTP_X_REAL_IP',
+    'REMOTE_ADDR',
+]
+
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -192,3 +222,10 @@ PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 
 # CAS SSO (Σχολικό Δίκτυο) — ενεργοποιείται μόνο με CAS_SERVER_URL στο .env
 from .cas_settings import *  # noqa: F401, F403
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+if CAS_ENABLED:
+    AUTHENTICATION_BACKENDS.append('accounts.cas_backend.PdedeCASBackend')

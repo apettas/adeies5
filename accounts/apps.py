@@ -5,3 +5,6 @@ class AccountsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'accounts'
     verbose_name = 'Λογαριασμοί Χρηστών'
+
+    def ready(self):
+        import pdede_leaves.security_alerts  # noqa: F401
