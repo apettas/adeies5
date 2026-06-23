@@ -13,6 +13,6 @@ bash "${ROOT_DIR}/monitoring/fail2ban/install.sh"
 
 echo ""
 echo "=== Ολοκληρώθηκε ==="
-echo "1. Τρέξτε: make prod-up"
+echo "1. Τρέξτε: make prod-build && make prod-up && make prod-migrate"
 echo "2. Netdata UI: http://127.0.0.1:19999"
 echo "3. Uptime Kuma: http://127.0.0.1:3001 (ρυθμίστε monitor για https://sadeies.pdede.gov.gr/health/)"

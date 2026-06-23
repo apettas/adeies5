@@ -34,6 +34,10 @@ if ! command -v fail2ban-client >/dev/null 2>&1; then
   fi
 fi
 
+# fail2ban αρνείται να ξεκινήσει αν λείπουν τα log αρχεία
+sudo mkdir -p "${NGINX_LOGPATH}"
+sudo touch "${NGINX_LOGPATH}/access.log" "${NGINX_LOGPATH}/error.log"
+
 sudo mkdir -p /etc/fail2ban/jail.d /etc/fail2ban/filter.d
 
 # jail με σωστό logpath
@@ -45,7 +49,7 @@ sudo cp "${F2B_SRC}/filter.d/nginx-botsearch-pdede.conf" \
   /etc/fail2ban/filter.d/nginx-botsearch-pdede.conf
 
 # msmtp στο host για email alerts από fail2ban (ίδιο SMTP με Django/Netdata)
-if [[ -n "${EMAIL_HOST_USER}" && -n "${EMAIL_HOST_PASSWORD}" ]]; then
+if [[ -n "${EMAIL_HOST_USER:-}" && -n "${EMAIL_HOST_PASSWORD:-}" ]]; then
   sudo tee /etc/msmtprc >/dev/null <<EOF
 defaults
 auth           on
@@ -59,20 +63,45 @@ password       ${EMAIL_HOST_PASSWORD}
 account        default
 EOF
   sudo chmod 600 /etc/msmtprc
-  if [[ -x /usr/sbin/sendmail ]] && ! readlink /usr/sbin/sendmail | grep -q msmtp; then
-    echo "Σημείωση: ρυθμίστε το sendmail του host να χρησιμοποιεί msmtp αν τα fail2ban emails δεν φεύγουν."
-  fi
 fi
 
 # Ενημέρωση email παραλήπτη
 sudo sed -i "s|^destemail = .*|destemail = ${ALERT_EMAIL}|" \
   /etc/fail2ban/jail.d/pdede-leaves.local
 
-# Χρήση custom botsearch filter (ορίζεται στο jail file)
+# Απενεργοποίηση sshd jail αν δεν υπάρχει auth.log
+if [[ ! -f /var/log/auth.log ]]; then
+  echo "Προειδοποίηση: /var/log/auth.log δεν υπάρχει — απενεργοποίηση sshd jail"
+  sudo sed -i '/\[sshd\]/,/^\[/ s/^enabled  = true/enabled  = false/' \
+    /etc/fail2ban/jail.d/pdede-leaves.local
+fi
+
+echo "Έλεγχος fail2ban configuration..."
+if ! sudo fail2ban-client -t; then
+  echo ""
+  echo "ΣΦΑΛΜΑ: Άκυρη fail2ban configuration. Τελευταία logs:"
+  sudo journalctl -u fail2ban -n 30 --no-pager || true
+  exit 1
+fi
 
 sudo systemctl enable fail2ban
-sudo systemctl restart fail2ban
+if ! sudo systemctl restart fail2ban; then
+  echo ""
+  echo "ΣΦΑΛΜΑ: Αποτυχία εκκίνησης fail2ban. Τελευταία logs:"
+  sudo journalctl -u fail2ban -n 30 --no-pager || true
+  exit 1
+fi
+
+sleep 2
 
 echo "fail2ban εγκαταστάθηκε. Παραλήπτης alerts: ${ALERT_EMAIL}"
 echo "Nginx logs: ${NGINX_LOGPATH}"
-sudo fail2ban-client status
+
+if sudo fail2ban-client status >/dev/null 2>&1; then
+  sudo fail2ban-client status
+else
+  echo ""
+  echo "Προειδοποίηση: fail2ban configs εγκαταστάθηκαν αλλά το service δεν απαντά."
+  echo "Δείτε: sudo journalctl -u fail2ban -n 50"
+  exit 1
+fi

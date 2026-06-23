@@ -1,5 +1,15 @@
 .PHONY: help build up down logs shell migrate collectstatic createsuperuser backup restore clean
 
+# Docker Compose v2 (docker compose) ή v1 (docker-compose)
+ifneq (,$(shell docker compose version >/dev/null 2>&1 && echo ok))
+  DOCKER_COMPOSE := docker compose
+else
+  DOCKER_COMPOSE := docker-compose
+endif
+
+COMPOSE_DEV := $(DOCKER_COMPOSE)
+COMPOSE_PROD := $(DOCKER_COMPOSE) -f docker-compose.prod.yml
+
 # Default target
 help:
 	@echo "Available commands:"
@@ -16,75 +26,80 @@ help:
 	@echo "  backup         - Backup database"
 	@echo "  restore        - Restore database from backup"
 	@echo "  clean          - Clean up containers and volumes"
+	@echo "  prod-build     - Build production images"
 	@echo "  prod-up        - Start production services"
 	@echo "  prod-down      - Stop production services"
 	@echo "  prod-logs      - Show production logs"
+	@echo "  prod-migrate   - Run production database migrations"
 	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
 # Development commands
 build:
-	docker-compose build
+	$(COMPOSE_DEV) build
 
 up:
-	docker-compose up -d
+	$(COMPOSE_DEV) up -d
 
 down:
-	docker-compose down
+	$(COMPOSE_DEV) down
 
 logs:
-	docker-compose logs -f
+	$(COMPOSE_DEV) logs -f
 
 shell:
-	docker-compose exec web python manage.py shell
+	$(COMPOSE_DEV) exec web python manage.py shell
 
 bash:
-	docker-compose exec web bash
+	$(COMPOSE_DEV) exec web bash
 
 migrate:
-	docker-compose exec web python fix_migrations.py
+	$(COMPOSE_DEV) exec web python fix_migrations.py
 
 fix-migrations:
-	docker-compose exec web python fix_migrations.py
+	$(COMPOSE_DEV) exec web python fix_migrations.py
 
 collectstatic:
-	docker-compose exec web python manage.py collectstatic --noinput
+	$(COMPOSE_DEV) exec web python manage.py collectstatic --noinput
 
 createsuperuser:
-	docker-compose exec web python manage.py createsuperuser
+	$(COMPOSE_DEV) exec web python manage.py createsuperuser
 
 # Database operations
 backup:
 	@echo "Creating database backup..."
-	docker-compose exec db pg_dump -U pdede_user pdede_leaves > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	$(COMPOSE_DEV) exec db pg_dump -U pdede_user pdede_leaves > backup_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "Backup created successfully"
 
 restore:
 	@read -p "Enter backup file name: " backup_file; \
-	docker-compose exec -T db psql -U pdede_user pdede_leaves < $$backup_file
+	$(COMPOSE_DEV) exec -T db psql -U pdede_user pdede_leaves < $$backup_file
 
 # Cleanup
 clean:
-	docker-compose down -v
+	$(COMPOSE_DEV) down -v
 	docker system prune -f
 
 # Production commands
 prod-build:
-	docker-compose -f docker-compose.prod.yml build
+	$(COMPOSE_PROD) build
 
 prod-up:
-	docker-compose -f docker-compose.prod.yml up -d
+	$(COMPOSE_PROD) up -d
 
 prod-down:
-	docker-compose -f docker-compose.prod.yml down
+	$(COMPOSE_PROD) down
 
 prod-logs:
-	docker-compose -f docker-compose.prod.yml logs -f
+	$(COMPOSE_PROD) logs -f
+
+prod-migrate:
+	$(COMPOSE_PROD) exec web python manage.py migrate --noinput
 
 monitoring-setup:
 	bash monitoring/setup.sh
 
 prod-backup:
-	docker-compose -f docker-compose.prod.yml --profile backup run backup
+	$(COMPOSE_PROD) --profile backup run backup
 
 # Development workflow
 dev-setup: build up migrate collectstatic
@@ -100,11 +115,11 @@ prod-setup: prod-build prod-up
 
 # Testing
 test:
-	docker-compose exec web python manage.py test
+	$(COMPOSE_DEV) exec web python manage.py test
 
 # Check services status
 status:
-	docker-compose ps
+	$(COMPOSE_DEV) ps
 
 # View container resource usage
 stats:
