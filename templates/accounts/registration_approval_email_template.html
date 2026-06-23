@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Πρότυπο Email Ενεργοποίησης - Αλκίνοος{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h2><i class="bi bi-envelope-paper"></i> Πρότυπο Email Ενεργοποίησης</h2>
+            <a href="{% url 'leaves:pending_user_registrations' %}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή στις Εγγραφές
+            </a>
+        </div>
+
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Αυτό το email αποστέλλεται αυτόματα στον χρήστη όταν ενεργοποιείτε τον λογαριασμό του
+            από τη σελίδα «Έλεγχος / Ενεργοποίηση».
+        </div>
+
+        {% if template_updated_at %}
+        <p class="text-muted small">
+            Τελευταία αποθήκευση:
+            <span class="date-greek">{{ template_updated_at|date:"d/m/Y H:i" }}</span>
+            {% if template_updated_by %}από {{ template_updated_by.get_full_name }}{% endif %}
+        </p>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_subject" class="form-label">Θέμα Email</label>
+                        {{ form.subject }}
+                        {% if form.subject.errors %}
+                            <div class="text-danger small">{{ form.subject.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_body" class="form-label">Κείμενο Email</label>
+                        {{ form.body }}
+                        {% if form.body.errors %}
+                            <div class="text-danger small">{{ form.body.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> Αποθήκευση
+                        </button>
+                        <a href="{% url 'leaves:pending_user_registrations' %}" class="btn btn-outline-secondary">
+                            Ακύρωση
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-braces me-1"></i> Διαθέσιμα placeholders
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for token, description in placeholders %}
+                    <li class="list-group-item">
+                        <code>{{ token }}</code>
+                        <div class="small text-muted">{{ description }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-eye me-1"></i> Προεπισκόπηση (με τα στοιχεία σας)
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-1">Θέμα:</p>
+                <p class="fw-semibold">{{ preview_subject }}</p>
+                <hr>
+                <p class="small text-muted mb-1">Κείμενο:</p>
+                <pre class="small mb-0" style="white-space: pre-wrap;">{{ preview_body }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

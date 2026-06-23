@@ -5,13 +5,18 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_POST
-from django.views.generic import DetailView, ListView
+from django.views.generic import DetailView, ListView, FormView
 
-from accounts.forms import HandlerUserActivationForm
+from accounts.forms import HandlerUserActivationForm, RegistrationApprovalEmailTemplateForm
 from accounts.models import PendingRegistrationAcknowledgment, User
 from accounts.utils.pending_registration_alerts import (
     get_pending_registration_alerts,
     get_pending_registrations_queryset,
+)
+from accounts.utils.registration_email import (
+    REGISTRATION_EMAIL_PLACEHOLDERS,
+    build_registration_approval_email,
+    get_registration_approval_email_template,
 )
 
 
@@ -34,6 +39,44 @@ class PendingUserRegistrationsListView(LeaveHandlerRequiredMixin, ListView):
 
     def get_queryset(self):
         return get_pending_registrations_queryset()
+
+
+class RegistrationApprovalEmailTemplateView(LeaveHandlerRequiredMixin, FormView):
+    """Επεξεργασία πρότυπου email ενεργοποίησης λογαριασμού."""
+
+    template_name = 'accounts/registration_approval_email_template.html'
+    form_class = RegistrationApprovalEmailTemplateForm
+
+    def get_initial(self):
+        template = get_registration_approval_email_template()
+        return {
+            'subject': template.subject,
+            'body': template.body,
+        }
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        template = get_registration_approval_email_template()
+        context['placeholders'] = REGISTRATION_EMAIL_PLACEHOLDERS
+        context['template_updated_at'] = template.updated_at
+        context['template_updated_by'] = template.updated_by
+        if self.request.user.is_authenticated:
+            preview_subject, preview_body = build_registration_approval_email(
+                self.request.user,
+                template=template,
+            )
+            context['preview_subject'] = preview_subject
+            context['preview_body'] = preview_body
+        return context
+
+    def form_valid(self, form):
+        template = get_registration_approval_email_template()
+        template.subject = form.cleaned_data['subject']
+        template.body = form.cleaned_data['body']
+        template.updated_by = self.request.user
+        template.save()
+        messages.success(self.request, 'Το πρότυπο email ενεργοποίησης αποθηκεύτηκε.')
+        return redirect('leaves:pending_user_registrations')
 
 
 class PendingUserRegistrationReviewView(LeaveHandlerRequiredMixin, DetailView):

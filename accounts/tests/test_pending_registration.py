@@ -149,3 +149,25 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
             get_pending_registration_alerts(self.leave_handler).count(),
             0,
         )
+
+    def test_handler_can_edit_registration_email_template(self):
+        response = self.client.get(reverse('leaves:registration_approval_email_template'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Πρότυπο Email Ενεργοποίησης')
+        self.assertContains(response, '{full_name}')
+
+    def test_save_registration_email_template(self):
+        custom_body = 'Γεια σας {full_name}, ενεργοποιήθηκε ο λογαριασμός σας.'
+        response = self.client.post(
+            reverse('leaves:registration_approval_email_template'),
+            data={
+                'subject': 'Νέο θέμα ενεργοποίησης',
+                'body': custom_body,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        from accounts.utils.registration_email import get_registration_approval_email_template
+        template = get_registration_approval_email_template()
+        self.assertEqual(template.subject, 'Νέο θέμα ενεργοποίησης')
+        self.assertEqual(template.body, custom_body)
+        self.assertEqual(template.updated_by, self.leave_handler)

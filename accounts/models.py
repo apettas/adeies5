@@ -753,6 +753,40 @@ class PendingRegistrationAcknowledgment(models.Model):
         return f"{self.handler} → {self.pending_user} ({self.acknowledged_at.strftime('%d/%m/%Y')})"
 
 
+class RegistrationApprovalEmailTemplate(models.Model):
+    """Πρότυπο email που αποστέλλεται στον χρήστη μετά την ενεργοποίηση λογαριασμού."""
+
+    subject = models.CharField(
+        'Θέμα Email',
+        max_length=255,
+        help_text='Χρησιμοποιήστε placeholders όπως {full_name}',
+    )
+    body = models.TextField(
+        'Κείμενο Email',
+        help_text='Χρησιμοποιήστε placeholders όπως {full_name}, {login_psd_url}',
+    )
+    updated_at = models.DateTimeField('Τελευταία Ενημέρωση', auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registration_email_template_updates',
+        verbose_name='Ενημερώθηκε από',
+    )
+
+    class Meta:
+        verbose_name = 'Πρότυπο Email Ενεργοποίησης'
+        verbose_name_plural = 'Πρότυπο Email Ενεργοποίησης'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return 'Πρότυπο email ενεργοποίησης λογαριασμού'
+
+
 @receiver(post_save, sender=Department)
 def sync_manager_role_on_department_save(sender, instance, **kwargs):
     """Όταν ορίζεται Department.manager, εξασφαλίζουμε ρόλο MANAGER στον χρήστη."""

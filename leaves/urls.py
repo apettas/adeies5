@@ -11,6 +11,7 @@ from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordData
 from accounts.handler_registration_views import (
     PendingUserRegistrationsListView,
     PendingUserRegistrationReviewView,
+    RegistrationApprovalEmailTemplateView,
     acknowledge_pending_registration,
     reject_pending_registration,
 )
@@ -50,6 +51,11 @@ urlpatterns = [
     path('handler-upload-attachment/<int:pk>/', views.handler_upload_attachment, name='handler_upload_attachment'),
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('pending-registrations/', PendingUserRegistrationsListView.as_view(), name='pending_user_registrations'),
+    path(
+        'pending-registrations/email-template/',
+        RegistrationApprovalEmailTemplateView.as_view(),
+        name='registration_approval_email_template',
+    ),
     path(
         'pending-registrations/<int:user_id>/',
         PendingUserRegistrationReviewView.as_view(),

@@ -387,3 +387,17 @@ class CompleteSSORegistrationForm(forms.Form):
                     'Παρακαλώ κάντε σύνδεση μέσω ΠΣΔ πρώτα.'
                 )
         return cleaned_data
+
+
+class RegistrationApprovalEmailTemplateForm(forms.Form):
+    """Φόρμα επεξεργασίας πρότυπου email ενεργοποίησης λογαριασμού."""
+
+    subject = forms.CharField(
+        label='Θέμα Email',
+        max_length=255,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+    )
+    body = forms.CharField(
+        label='Κείμενο Email',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 16}),
+    )

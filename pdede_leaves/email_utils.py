@@ -9,27 +9,12 @@ from django.utils import timezone
 def send_registration_approved_email(user):
     """
     Στέλνει email ειδοποίησης στον χρήστη ότι ο λογαριασμός του ενεργοποιήθηκε.
-    
-    Args:
-        user: User instance που μόλις εγκρίθηκε
-    
-    Returns:
-        bool: True αν στάλθηκε επιτυχώς
+    Το κείμενο προέρχεται από το επεξεργάσιμο πρότυπο (χειριστής αδειών).
     """
-    subject = 'Ενεργοποίηση Λογαριασμού - Σύστημα Διαχείρισης Αδειών ΠΔΕΔΕ'
-    message = (
-        f"Αγαπητέ/ή {user.full_name},\n\n"
-        f"Ο λογαριασμός σας στο Σύστημα Διαχείρισης Αδειών της "
-        f"Περιφερειακής Διεύθυνσης Εκπαίδευσης Δυτικής Ελλάδας ενεργοποιήθηκε επιτυχώς.\n\n"
-        f"Μπορείτε πλέον να συνδεθείτε στο σύστημα:\n"
-        f"  - Μέσω ΠΣΔ (Σχολικό Δίκτυο): {settings.LOGIN_URL}\n"
-        f"  - Μέσω email και κωδικού: {settings.LOGIN_URL}\n\n"
-        f"Παρακαλούμε να αλλάξετε τον κωδικό πρόσβασής σας με την πρώτη σύνδεση.\n\n"
-        f"Με εκτίμηση,\n"
-        f"ΠΔΕ Δυτικής Ελλάδας\n"
-        f"Σύστημα Διαχείρισης Αδειών «Αλκίνοος»"
-    )
-    
+    from accounts.utils.registration_email import build_registration_approval_email
+
+    subject, message = build_registration_approval_email(user)
+
     try:
         send_mail(
             subject=subject,

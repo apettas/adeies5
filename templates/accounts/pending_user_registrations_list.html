@@ -7,7 +7,10 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-person-plus"></i> Νέες Εγγραφές Χρηστών</h2>
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <a href="{% url 'leaves:registration_approval_email_template' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-envelope-paper"></i> Email Ενεργοποίησης
+                </a>
                 <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-primary">
                     <i class="bi bi-arrow-left"></i> Επιστροφή στο Dashboard
                 </a>
