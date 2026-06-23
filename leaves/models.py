@@ -643,9 +643,21 @@ class LeaveRequest(models.Model):
         return self.status == "IN_REVIEW"
 
     @property
+    def has_returned_from_yc_committee(self):
+        """Έχει ήδη επιστραφεί από Υγειονομική Επιτροπή σε αυτή την αίτηση."""
+        return self.action_logs.filter(
+            previous_status='PENDING_YC_COMMITTEE',
+            new_status='IN_REVIEW',
+        ).exists()
+
+    @property
     def can_send_to_yc(self):
         """Ελέγχει αν μπορεί να σταλεί σε Υγειονομική Επιτροπή"""
         if self.status != 'IN_REVIEW':
+            return False
+        if not self.leave_type.is_sick_leave_total:
+            return False
+        if self.has_returned_from_yc_committee:
             return False
         from leaves.utils.sick_leave_alerts import user_exceeds_sick_threshold
         return user_exceeds_sick_threshold(self.user)

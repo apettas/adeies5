@@ -495,6 +495,53 @@ class SickLeaveWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
         req.receive_from_yc_committee(self.leave_handler)
         req.refresh_from_db()
         self.assertEqual(req.status, 'IN_REVIEW')
+        self.assertTrue(req.has_returned_from_yc_committee)
+        self.assertFalse(req.can_send_to_yc)
+        self.assertTrue(req.can_create_decision())
+
+    def _seed_sick_threshold_exceeded(self):
+        """Ολοκληρωμένη αναρρωτική >8 ημερών ώστε να ενεργοποιηθεί το όριο ΥΕ."""
+        prior = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'prior sick', '2025-01-06', '2025-01-10',
+        )
+        prior.status = 'COMPLETED'
+        prior.submitted_at = timezone.now()
+        prior.save()
+
+    def test_yc_referral_only_for_sick_total_type(self):
+        """Κανονική ή βραχυχρόνια αναρρωτική δεν πηγαίνουν σε ΥΕ λόγω άλλων αιτήσεων."""
+        self._seed_sick_threshold_exceeded()
+
+        for leave_type in (self.regular_type, self.sick_yd_type):
+            with self.subTest(leave_type=leave_type.code):
+                req = create_submitted_leave_request(
+                    self.employee, leave_type, f'other {leave_type.code}', START, END,
+                )
+                req.status = 'IN_REVIEW'
+                req.submitted_at = timezone.now()
+                req.save()
+                self.assertFalse(req.can_send_to_yc)
+                self.assertTrue(req.can_create_decision())
+
+    def test_yc_round_trip_allows_decision_action(self):
+        """Μετά την επιστροφή από ΥΕ εμφανίζεται ετοιμασία απόφασης, όχι νέο διαβιβαστικό."""
+        from leaves.dashboard_utils import get_available_actions
+
+        self._seed_sick_threshold_exceeded()
+        req = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'yc decision', '2025-03-03', '2025-03-14',
+        )
+        req.status = 'IN_REVIEW'
+        req.submitted_at = timezone.now()
+        req.save()
+
+        req.send_to_yc_committee(self.leave_handler)
+        req.receive_from_yc_committee(self.leave_handler)
+        req.refresh_from_db()
+
+        codes = [code for code, _label, _url in get_available_actions(req, self.leave_handler)]
+        self.assertIn('decision', codes)
+        self.assertNotIn('yc_referral', codes)
 
 
 class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
