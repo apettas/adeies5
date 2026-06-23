@@ -256,11 +256,7 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=200,
         required=False,
         label='Υπηρεσιακή Ιδιότητα',
-        help_text='Από το Σχολικό Δίκτυο (title). Π.χ. Αναπληρωτής Εκπαιδευτικός.',
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Περιγράψτε την υπηρεσιακή σας ιδιότητα'
-        })
+        widget=forms.HiddenInput(),
     )
     
     terms_accepted = forms.BooleanField(
@@ -306,6 +302,9 @@ class CompleteSSORegistrationForm(forms.Form):
 
     def clean_sso_organizational_unit(self):
         return self._clean_psd_readonly_field('sso_organizational_unit')
+
+    def clean_role_description(self):
+        return self._clean_psd_readonly_field('role_description')
     
     def clean_first_name(self):
         value = self.cleaned_data.get('first_name', '')

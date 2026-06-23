@@ -53,6 +53,7 @@
                         {{ form.employee_number }}
                         {{ form.gsn_branch }}
                         {{ form.sso_organizational_unit }}
+                        {{ form.role_description }}
                         
                         <!-- Στοιχεία από ΠΣΔ (read-only email) -->
                         <div class="card bg-light mb-3">
@@ -123,7 +124,18 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.role_description required=False col_class='col-md-12' %}
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label fw-bold">Υπηρεσιακή Ιδιότητα</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                            <input type="text"
+                                                   class="form-control bg-white"
+                                                   value="{{ form.role_description.value|default:'—' }}"
+                                                   disabled
+                                                   readonly>
+                                        </div>
+                                        <small class="text-muted">Από το Σχολικό Δίκτυο (title)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -86,6 +86,18 @@ class EmployeeNumberReadonlyTests(TestCase):
         self.assertEqual(form.clean_gsn_branch(), 'ΠΕ02')
         self.assertEqual(form.clean_sso_organizational_unit(), '1ο Λύκειο')
 
+    def test_psd_title_not_editable(self):
+        User.objects.create(
+            email='title@sch.gr',
+            first_name='νίκος',
+            last_name='δοκιμής',
+            role_description='Εκπαιδευτικός',
+            is_active=False,
+        )
+        form = CompleteSSORegistrationForm(target_email='title@sch.gr')
+        form.cleaned_data = {'role_description': 'Διοικητικός'}
+        self.assertEqual(form.clean_role_description(), 'Εκπαιδευτικός')
+
 
 class UserNameAccusativeSaveTests(TestCase):
     def test_manual_accusative_not_overwritten(self):
