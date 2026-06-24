@@ -37,9 +37,12 @@ def fix_migrations():
             # Mark the problematic migration as applied
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO django_migrations (app, name, applied) 
-                    VALUES ('accounts', '0016_user_gender', NOW())
-                    ON CONFLICT (app, name) DO NOTHING;
+                    INSERT INTO django_migrations (app, name, applied)
+                    SELECT 'accounts', '0016_user_gender', NOW()
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM django_migrations
+                        WHERE app = 'accounts' AND name = '0016_user_gender'
+                    );
                 """)
             
             print("✅ Migration 0016_user_gender marked as applied")

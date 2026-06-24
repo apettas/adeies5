@@ -6,7 +6,7 @@ Redis, Gunicorn, and Nginx.
 ## 1. Server prerequisites
 
 - Linux VPS/VM with Docker and Docker Compose installed.
-- DNS record for the staging host, for example `staging.example.gr`.
+- DNS record for the staging host: **sadeies.pdede.gov.gr**
 - Firewall allowing only SSH, HTTP, and HTTPS:
   - `22/tcp`
   - `80/tcp`

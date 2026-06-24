@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-# Γρήγορη διάγνωση production adeies5 — τρέξτε στο VM και στείλτε το output.
+# Γρήγορη διάγνωση production adeies5 — τρέξτε στο VM (adeies.pdede.gov.gr) και στείλτε το output.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 COMPOSE=(docker compose -f docker-compose.prod.yml)
+
+# Πρώτο domain από ALLOWED_HOSTS (.env) για δοκιμές HTTP
+APP_HOST="adeies.pdede.gov.gr"
+if [[ -f .env ]]; then
+  _hosts="$(grep -E '^ALLOWED_HOSTS=' .env | cut -d= -f2- | tr -d ' ')"
+  if [[ -n "${_hosts}" ]]; then
+    APP_HOST="${_hosts%%,*}"
+  fi
+fi
 
 section() {
   echo ""
@@ -19,15 +28,18 @@ free -h || true
 section "2. Docker services"
 "${COMPOSE[@]}" ps -a 2>/dev/null || docker compose -f docker-compose.prod.yml ps -a
 
-section "3. Health endpoints (τοπικά)"
-echo -n "nginx /health/: "
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: sadeies.pdede.gov.gr" http://127.0.0.1/health/ 2>/dev/null || echo "FAIL"
+section "3. Health endpoints (τοπικά) — APP_HOST=${APP_HOST}"
+echo -n "nginx static /health/: "
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: ${APP_HOST}" http://127.0.0.1/health/ 2>/dev/null || echo "FAIL"
 
-echo -n "django /health/ (μέσω nginx /): "
-curl -s -H "Host: sadeies.pdede.gov.gr" http://127.0.0.1/health/ 2>/dev/null || echo "FAIL"
+echo -n "django μέσω nginx (/login/): "
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: ${APP_HOST}" http://127.0.0.1/login/ 2>/dev/null || echo "FAIL"
 
-echo -n "gunicorn :8000 /health/: "
-"${COMPOSE[@]}" exec -T web curl -sf -H "Host: sadeies.pdede.gov.gr" http://localhost:8000/health/ 2>/dev/null && echo "OK" || echo "FAIL"
+echo -n "gunicorn :8000 /health/ (127.0.0.1): "
+"${COMPOSE[@]}" exec -T web curl -sf http://127.0.0.1:8000/health/ 2>/dev/null && echo "OK" || echo "FAIL (προσθέστε 127.0.0.1 στο ALLOWED_HOSTS)"
+
+echo -n "gunicorn :8000 /login/ (Host=${APP_HOST}): "
+"${COMPOSE[@]}" exec -T web curl -sf -o /dev/null -w "%{http_code}\n" -H "Host: ${APP_HOST}" http://127.0.0.1:8000/login/ 2>/dev/null || echo "FAIL"
 
 section "4. Web logs (τελευταίες 40 γραμμές)"
 "${COMPOSE[@]}" logs web --tail=40 2>/dev/null || true

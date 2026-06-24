@@ -27,7 +27,7 @@ if CAS_ENABLED:
 
     # HTTPS service URL — απαιτείται από το ΠΣΔ (καταχωρημένο service με https)
     CAS_FORCE_SSL_SERVICE_URL = config('CAS_FORCE_SSL_SERVICE_URL', default=True, cast=bool)
-    # Βάση URL πίσω από reverse proxy (π.χ. https://sadeies.pdede.gov.gr)
+    # Βάση URL πίσω από reverse proxy (production: adeies / staging: sadeies)
     CAS_ROOT_PROXIED_AS = config('CAS_ROOT_PROXIED_AS', default='').rstrip('/')
 
     # Proxy-granting ticket (δεν χρειάζεται για την περίπτωσή μας)

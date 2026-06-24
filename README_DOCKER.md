@@ -119,11 +119,32 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 
 ### Production (.env)
 
+Domain: **adeies.pdede.gov.gr** — δείτε `.env.production.example`
+
 ```env
 DEBUG=False
 SECRET_KEY=your-strong-secret-key
-DB_PASSWORD=strong-database-password
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+ALLOWED_HOSTS=adeies.pdede.gov.gr,127.0.0.1,localhost
+CSRF_TRUSTED_ORIGINS=https://adeies.pdede.gov.gr
+CAS_SERVER_URL=https://sso.sch.gr
+CAS_ROOT_PROXIED_AS=https://adeies.pdede.gov.gr
+```
+
+### Staging (.env)
+
+Domain: **sadeies.pdede.gov.gr** — δείτε `.env.staging.example`
+
+```env
+DEBUG=False
+ALLOWED_HOSTS=sadeies.pdede.gov.gr,127.0.0.1,localhost
+CSRF_TRUSTED_ORIGINS=https://sadeies.pdede.gov.gr
+CAS_SERVER_URL=https://sso-01-test.sch.gr
+CAS_ROOT_PROXIED_AS=https://sadeies.pdede.gov.gr
+```
+
+### Production security cookies (legacy example)
+
+```env
 SECURE_SSL_REDIRECT=True
 SESSION_COOKIE_SECURE=True
 CSRF_COOKIE_SECURE=True
