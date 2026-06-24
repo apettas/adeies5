@@ -33,6 +33,7 @@ help:
 	@echo "  prod-migrate   - Run production database migrations"
 	@echo "  prod-backup    - Backup database (SQL only, ./backups)"
 	@echo "  prod-backup-full - Full local backup (DB + media + config)"
+	@echo "  disk-report    - Email disk usage report to ALERT_EMAIL"
 	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
 # Development commands
@@ -105,6 +106,9 @@ prod-backup:
 
 prod-backup-full:
 	@bash scripts/backup-local.sh
+
+disk-report:
+	@bash scripts/disk-report.sh
 
 # Development workflow
 dev-setup: build up migrate collectstatic
