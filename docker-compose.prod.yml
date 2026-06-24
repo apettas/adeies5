@@ -163,7 +163,7 @@ services:
     volumes:
       - uptime_kuma_data:/app/data
     ports:
-      - "127.0.0.1:${UPTIME_KUMA_PORT:-3001}:3001"
+      - "${UPTIME_KUMA_BIND:-127.0.0.1}:${UPTIME_KUMA_PORT:-3001}:3001"
     networks:
       - pdede_network
 
