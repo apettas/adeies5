@@ -29,6 +29,16 @@ fi
 
 mkdir -p "${NETDATA_DIR}"
 
+# Docker δημιουργεί directory αν λείπει το αρχείο κατά το πρώτο mount — διόρθωση
+if [[ -d "${NETDATA_DIR}/msmtprc" ]]; then
+  echo "Διόρθωση: το msmtprc ήταν directory (Docker mount) — διαγραφή..."
+  rm -rf "${NETDATA_DIR}/msmtprc"
+fi
+if [[ -d "${NETDATA_DIR}/health_alarm_notify.conf" ]]; then
+  echo "Διόρθωση: το health_alarm_notify.conf ήταν directory — διαγραφή..."
+  rm -rf "${NETDATA_DIR}/health_alarm_notify.conf"
+fi
+
 cat > "${NETDATA_DIR}/msmtprc" <<EOF
 # Αυτόματη δημιουργία από monitoring/netdata/render-config.sh — μην επεξεργαστείτε χειροκίνητα
 defaults

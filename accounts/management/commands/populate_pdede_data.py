@@ -15,6 +15,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(
+            self.style.ERROR(
+                'Η εντολή populate_pdede_data είναι παρωχημένη (department_type ως string).\n'
+                'Χρησιμοποιήστε: python manage.py andreas_static_data'
+            )
+        )
+        return
+
+        self.stdout.write(
             self.style.SUCCESS('🏛️ ΦΟΡΤΩΣΗ ΣΤΑΤΙΚΩΝ ΔΕΔΟΜΕΝΩΝ ΠΔΕΔΕ ΔΥΤΙΚΗΣ ΕΛΛΑΔΟΣ')
         )
 

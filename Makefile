@@ -31,6 +31,8 @@ help:
 	@echo "  prod-down      - Stop production services"
 	@echo "  prod-logs      - Show production logs"
 	@echo "  prod-migrate   - Run production database migrations"
+	@echo "  prod-backup    - Backup database (SQL only, ./backups)"
+	@echo "  prod-backup-full - Full local backup (DB + media + config)"
 	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
 # Development commands
@@ -100,6 +102,9 @@ monitoring-setup:
 
 prod-backup:
 	$(COMPOSE_PROD) --profile backup run backup
+
+prod-backup-full:
+	@bash scripts/backup-local.sh
 
 # Development workflow
 dev-setup: build up migrate collectstatic
