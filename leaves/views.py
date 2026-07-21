@@ -2645,7 +2645,7 @@ def receive_from_yc_committee(request, pk):
                 message=f"Η απόφαση της Υγειονομικής Επιτροπής για την αίτησή σας για {leave_request.leave_type.name} καταχωρήθηκε.",
                 related_object=leave_request
             )
-            messages.success(request, 'Η απόφαση της Υγειονομικής Επιτροπής καταχωρήθηκε. Η αίτηση είναι σε επεξεργασία.')
+            messages.success(request, 'Η απόφαση της Υγειονομικής Επιτροπής καταχωρήθηκε. Η αίτηση πήγε σε ετοιμασία απόφασης.')
             return redirect('leaves:handler_dashboard')
         except ValueError as e:
             messages.error(request, str(e))

@@ -713,7 +713,7 @@ class LeaveRequest(models.Model):
         """Έχει ήδη επιστραφεί από Υγειονομική Επιτροπή σε αυτή την αίτηση."""
         return self.action_logs.filter(
             previous_status='PENDING_YC_COMMITTEE',
-            new_status='IN_REVIEW',
+            new_status='DECISION_PREPARATION',
         ).exists()
 
     @property
@@ -740,10 +740,10 @@ class LeaveRequest(models.Model):
         return True
 
     def receive_from_yc_committee(self, handler, notes=''):
-        """Επιστροφή από Υγειονομική Επιτροπή (συνέχεια κανονικής ροής)"""
+        """Επιστροφή από Υγειονομική Επιτροπή — μετάβαση σε Ετοιμασία Απόφασης"""
         if self.status != 'PENDING_YC_COMMITTEE':
             raise ValueError("Η αίτηση δεν είναι σε αναμονή απόφασης Υγειονομικής Επιτροπής")
-        self.status = 'IN_REVIEW'
+        self.status = 'DECISION_PREPARATION'
         if notes:
             self.processing_comments = notes
         self.save()
