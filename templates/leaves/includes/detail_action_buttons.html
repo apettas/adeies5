@@ -42,6 +42,10 @@
         <a href="#exact-copy-upload" class="btn btn-sm btn-primary">
             <i class="bi bi-upload"></i> {{ label }}
         </a>
+    {% elif action_code == 'cancel' %}
+        <a href="{% url 'leaves:withdraw_leave_request' leave_request.pk %}" class="btn btn-sm btn-warning">
+            <i class="bi bi-arrow-counterclockwise"></i> {{ label }}
+        </a>
     {% elif action_code == 'edit' %}
         <a href="{% url 'leaves:edit_leave_request' leave_request.pk %}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-pencil"></i> {{ label }}
