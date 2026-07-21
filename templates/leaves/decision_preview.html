@@ -70,10 +70,10 @@
                                 </span>
                             </p>
                             <div class="d-flex flex-wrap gap-2 mt-3">
-                                <button type="button" class="btn btn-primary" onclick="previewPdf()">
+                                <button type="button" class="btn btn-primary" id="previewPdfBtn">
                                     <i class="bi bi-eye"></i> Προεπισκόπηση PDF
                                 </button>
-                                <button type="button" class="btn btn-success" onclick="finalizePdf()">
+                                <button type="button" class="btn btn-success" id="finalizePdfBtn">
                                     <i class="bi bi-file-earmark-pdf"></i> Οριστικοποίηση PDF
                                 </button>
                             </div>
@@ -283,7 +283,11 @@ document.getElementById('signee_id').addEventListener('change', function() {
     document.getElementById(id).addEventListener('input', rebuildPreview);
 });
 
-document.addEventListener('DOMContentLoaded', rebuildPreview);
+document.addEventListener('DOMContentLoaded', function() {
+    rebuildPreview();
+    document.getElementById('previewPdfBtn').addEventListener('click', previewPdf);
+    document.getElementById('finalizePdfBtn').addEventListener('click', finalizePdf);
+});
 
 function previewPdf() {
     document.getElementById('form_action').value = 'preview';
