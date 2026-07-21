@@ -55,6 +55,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'yc_committee' %}active{% endif %}" 
+           href="?tab=yc_committee{% for key, value in request.GET.items %}{% if key != 'tab' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+            Σε αναμονή ΥΕ {% if tab_counts.yc_committee %}<span class="badge bg-danger">{{ tab_counts.yc_committee }}</span>{% endif %}
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link {% if active_tab == 'signatures' %}active{% endif %}" 
            href="?tab=signatures{% for key, value in request.GET.items %}{% if key != 'tab' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
             Προς Υπογραφές {% if tab_counts.signatures %}<span class="badge bg-warning">{{ tab_counts.signatures }}</span>{% endif %}

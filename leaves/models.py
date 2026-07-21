@@ -400,7 +400,7 @@ class LeaveRequest(models.Model):
     @property
     def can_be_withdrawn(self):
         """Ελέγχει αν η αίτηση μπορεί να ανακληθεί από τον αιτούντα"""
-        return self.status in ['SUBMITTED', 'PENDING_KEDASY_PROTOCOL', 'IN_REVIEW']
+        return self.status in ['SUBMITTED', 'PENDING_KEDASY_PROTOCOL', 'WAITING_FOR_DOCUMENTS', 'IN_REVIEW', 'DECISION_PREPARATION']
     
     def get_approving_manager(self):
         """Επιστρέφει τον προϊστάμενο που πρέπει να εγκρίνει την αίτηση"""
