@@ -178,7 +178,7 @@ def _handler_actions(leave_request, actions):
         ])
         if leave_request.can_send_to_yc:
             actions.append(('yc_referral', 'ΔΙΑΒΙΒΑΣΤΙΚΟ ΥΕ', 'leaves:send_to_yc_committee'))
-        else:
+        if leave_request.can_create_decision():
             actions.append(('decision', 'ΕΤΟΙΜΑΣΙΑ ΑΠΟΦΑΣΗΣ', 'leaves:prepare_decision_preview'))
         actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', 'leaves:complete_leave_request'))
     elif status == 'WAITING_FOR_DOCUMENTS':

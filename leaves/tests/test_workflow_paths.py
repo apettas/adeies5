@@ -567,6 +567,31 @@ class SickLeaveWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
                 self.assertFalse(req.can_send_to_yc)
                 self.assertTrue(req.can_create_decision())
 
+    def test_second_sick_leave_shows_decision_while_first_pending_yc(self):
+        """Δεύτερη αναρρωτική σε IN_REVIEW: διαθέσιμα και ΥΕ και ετοιμασία απόφασης."""
+        from leaves.dashboard_utils import get_available_actions
+
+        self._seed_sick_threshold_exceeded()
+
+        first = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'first sick yc', '2025-02-03', '2025-02-07',
+        )
+        first.status = 'PENDING_YC_COMMITTEE'
+        first.submitted_at = timezone.now()
+        first.save()
+
+        second = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'second sick', '2025-03-03', '2025-03-07',
+        )
+        second.status = 'IN_REVIEW'
+        second.submitted_at = timezone.now()
+        second.save()
+
+        self.assertTrue(second.can_send_to_yc)
+        codes = [code for code, _label, _url in get_available_actions(second, self.leave_handler)]
+        self.assertIn('yc_referral', codes)
+        self.assertIn('decision', codes)
+
     def test_yc_round_trip_allows_decision_action(self):
         """Μετά την επιστροφή από ΥΕ εμφανίζεται ετοιμασία απόφασης, όχι νέο διαβιβαστικό."""
         from leaves.dashboard_utils import get_available_actions
