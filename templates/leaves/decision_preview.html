@@ -47,7 +47,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm" target="_blank">
+                    <form method="post" action="{% url 'leaves:generate_final_decision_pdf' %}" id="decisionForm">
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
                         <input type="hidden" name="action" id="form_action" value="preview">
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', rebuildPreview);
 function previewPdf() {
     document.getElementById('form_action').value = 'preview';
     var form = document.getElementById('decisionForm');
-    form.target = '_blank';
+    form.setAttribute('target', '_blank');
     form.submit();
 }
 
@@ -298,7 +298,7 @@ function finalizePdf() {
     }
     document.getElementById('form_action').value = 'finalize';
     var form = document.getElementById('decisionForm');
-    form.target = '';
+    form.removeAttribute('target');
     form.submit();
 }
 </script>
