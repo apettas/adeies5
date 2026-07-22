@@ -54,13 +54,14 @@
                                     <p><span>Επώνυμο:</span> <span class="fw-bold">{{ user.last_name }}</span></p>
                                     <p><span>Όνομα:</span> <span class="fw-bold">{{ user.first_name }}</span></p>
                                     <p><span>Πατρώνυμο:</span> <span class="fw-bold">{{ user.father_name|default:"-" }}</span></p>
-                                    <p><span>Κλάδος:</span> <span class="fw-bold">{{ user.specialty|default:"-" }}</span></p>
-                                    <p><span>Τηλέφωνο:</span> <span class="fw-bold">{{ user.phone|default:"-" }}</span></p>
+                                    <p><span>Αριθμός Μητρώου:</span> <span class="fw-bold">{{ user.employee_number|default:"-" }}</span></p>
+                                    <p><span>Κλάδος:</span> <span class="fw-bold">{% if user.gsn_branch %}{{ user.gsn_branch }}{% if user.specialty %} — {{ user.specialty }}{% endif %}{% else %}{{ user.specialty|default:"-" }}{% endif %}</span></p>
+                                    <p><span>Τηλέφωνο:</span> <span class="fw-bold">{{ user.phone1|default:"-" }}</span></p>
                                     
                                     <!-- 2 empty lines -->
                                     <div style="height: 40px;"></div>
                                     
-                                    <p><span>Οργανική Θέση:</span> <span class="fw-bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+                                    <p><span>Οργανική Μονάδα:</span> <span class="fw-bold">{{ user.sso_organizational_unit|default:user.department.name|default:"-" }}</span></p>
                                     
                                     <!-- 5 empty lines -->
                                     <div style="height: 100px;"></div>

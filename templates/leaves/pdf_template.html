@@ -82,10 +82,11 @@
             <p><span>Επώνυμο:</span> <span class="bold">{{ user.last_name }}</span></p>
             <p><span>Όνομα:</span> <span class="bold">{{ user.first_name }}</span></p>
             <p><span>Πατρώνυμο:</span> <span class="bold">{{ user.father_name|default:"-" }}</span></p>
-            <p><span>Κλάδος:</span> <span class="bold">{{ user.specialty|default:"-" }}</span></p>
-            <p><span>Τηλέφωνο:</span> <span class="bold">{{ user.phone|default:"-" }}</span></p>
+            <p><span>Αριθμός Μητρώου:</span> <span class="bold">{{ user.employee_number|default:"-" }}</span></p>
+            <p><span>Κλάδος:</span> <span class="bold">{% if user.gsn_branch %}{{ user.gsn_branch }}{% if user.specialty %} — {{ user.specialty }}{% endif %}{% else %}{{ user.specialty|default:"-" }}{% endif %}</span></p>
+            <p><span>Τηλέφωνο:</span> <span class="bold">{{ user.phone1|default:"-" }}</span></p>
             <div style="height: 15px;"></div>
-            <p><span>Οργανική Θέση:</span> <span class="bold">{{ user.department.name|default:"Δεν έχει ανατεθεί" }}</span></p>
+            <p><span>Οργανική Μονάδα:</span> <span class="bold">{{ user.sso_organizational_unit|default:user.department.name|default:"-" }}</span></p>
             <div style="height: 30px;"></div>
             <p class="bold">Θέμα: {{ leave_request.leave_type.subject_text|default:leave_request.leave_type.name }}</p>
         </div>
