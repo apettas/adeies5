@@ -183,7 +183,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 
 # Email recipient for protocol requests
-PROTOCOL_EMAIL_RECIPIENT = config('PROTOCOL_EMAIL_RECIPIENT', default='apettas@gmail.com')
+PROTOCOL_EMAIL_RECIPIENT = config('PROTOCOL_EMAIL_RECIPIENT', default='adeiespdede@sch.gr')
 
 # Email για security / monitoring alerts
 ALERT_EMAIL = config('ALERT_EMAIL', default='apettas@gmail.com')
