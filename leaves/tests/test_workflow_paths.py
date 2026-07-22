@@ -329,13 +329,19 @@ class CompletedRevocationTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase)
         self._create_leave_types()
         self._set_balances(self.employee)
 
-    def test_withdraw_completed_creates_child_request(self):
+    def test_withdraw_completed_is_disabled(self):
+        """Η ανάκληση ολοκληρωμένης άδειας δεν είναι πλέον διαθέσιμη."""
+        from leaves.dashboard_utils import get_available_actions
+
         req = create_submitted_leave_request(
             self.employee, self.regular_type, 'completed', START, END,
         )
         req.status = 'COMPLETED'
         req.completed_at = timezone.now()
         req.save()
+
+        codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
+        self.assertNotIn('cancel_completed', codes)
 
         self.client.force_login(self.employee)
         response = self.client.post(
@@ -344,13 +350,8 @@ class CompletedRevocationTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase)
         self.assertEqual(response.status_code, 302)
 
         req.refresh_from_db()
-        self.assertEqual(req.status, 'CANCELLED_BY_APPLICANT')
-
-        child = LeaveRequest.objects.filter(parent_leave=req).first()
-        self.assertIsNotNone(child)
-        self.assertEqual(child.status, 'SUBMITTED')
-        self.assertEqual(child.leave_type, self.revocation_type)
-        self.assertEqual(child.periods.count(), 1)
+        self.assertEqual(req.status, 'COMPLETED')
+        self.assertFalse(LeaveRequest.objects.filter(parent_leave=req).exists())
 
 
 class DocumentsWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
@@ -646,7 +647,7 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         req.refresh_from_db()
         self.assertEqual(req.status, 'REJECTED_BY_LEAVES_DEPT')
 
-    def test_withdraw_completed_notifies_leave_handler_and_uses_revocation_type(self):
+    def test_withdraw_completed_endpoint_disabled(self):
         req = create_submitted_leave_request(
             self.employee, self.regular_type, 'revoke notify', START, END,
         )
@@ -658,11 +659,11 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
             self.client.post(
                 reverse('leaves:withdraw_completed_leave', kwargs={'pk': req.pk}),
             )
-            notified_users = {call.kwargs['user'] for call in mock_notify.call_args_list}
-            self.assertIn(self.leave_handler, notified_users)
+            mock_notify.assert_not_called()
 
-        child = LeaveRequest.objects.filter(parent_leave=req).first()
-        self.assertEqual(child.leave_type, self.revocation_type)
+        req.refresh_from_db()
+        self.assertEqual(req.status, 'COMPLETED')
+        self.assertFalse(LeaveRequest.objects.filter(parent_leave=req).exists())
 
     def test_sick_total_counted_once_on_handler_complete(self):
         req = create_submitted_leave_request(

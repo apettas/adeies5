@@ -100,6 +100,12 @@ class DashboardActionsTests(TestDataMixin, TestCase):
         codes = self._codes(req, self.leave_handler)
         self.assertEqual(codes, ['view'])
 
+    def test_completed_owner_has_no_cancel_completed(self):
+        req = self._create_request('COMPLETED')
+        codes = self._codes(req, self.employee)
+        self.assertEqual(codes, ['view'])
+        self.assertNotIn('cancel_completed', codes)
+
     def test_list_and_detail_share_same_action_codes(self):
         req = self._create_request('IN_REVIEW')
         list_codes = self._codes(req, self.leave_handler)

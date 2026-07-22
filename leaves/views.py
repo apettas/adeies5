@@ -1480,14 +1480,11 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             cutoff = timezone.now() - timedelta(minutes=LOCK_TIMEOUT_MINUTES)
             context['lock_expired'] = leave_request.locked_at < cutoff
 
-        # Revocation eligibility
+        # Revocation eligibility (μόνο μη ολοκληρωμένες αιτήσεις)
         context['can_withdraw'] = False
         context['can_withdraw_completed'] = False
-        if user == leave_request.user:
-            if leave_request.can_be_withdrawn:
-                context['can_withdraw'] = True
-            if leave_request.status == 'COMPLETED':
-                context['can_withdraw_completed'] = True
+        if user == leave_request.user and leave_request.can_be_withdrawn:
+            context['can_withdraw'] = True
 
         all_actions = get_available_actions(leave_request, user)
         context['available_actions'] = all_actions
@@ -2877,58 +2874,9 @@ def delete_leave_request(request, pk):
 
 @login_required
 def withdraw_completed_leave(request, pk):
-    """Ανάκληση ολοκληρωμένης άδειας από τον αιτούντα"""
-    leave_request = get_object_or_404(LeaveRequest, pk=pk)
-
-    if leave_request.user != request.user:
-        raise PermissionDenied("Μόνο ο αιτούντας μπορεί να ανακαλέσει την άδεια.")
-
-    if leave_request.status != 'COMPLETED':
-        messages.error(request, 'Μπορείτε να ανακαλέσετε μόνο ολοκληρωμένες άδειες.')
-        return redirect('leaves:employee_dashboard')
-
-    if request.method == 'POST':
-        revocation_type = LeaveType.objects.filter(
-            is_revocation=True, is_active=True,
-        ).order_by('pk').first()
-
-        new_request = LeaveRequest.objects.create(
-            user=leave_request.user,
-            leave_type=revocation_type or leave_request.leave_type,
-            description=f'Ανάκληση άδειας #{leave_request.id}',
-            status='SUBMITTED',
-            parent_leave=leave_request,
-            submitted_at=timezone.now()
-        )
-
-        # Copy periods
-        for period in leave_request.periods.all():
-            LeavePeriod.objects.create(
-                leave_request=new_request,
-                start_date=period.start_date,
-                end_date=period.end_date
-            )
-
-        # Update original request
-        leave_request.status = 'CANCELLED_BY_APPLICANT'
-        leave_request.save()
-
-        # Ειδοποίηση στους χειριστές αδειών
-        leave_handlers = User.objects.filter(
-            roles__code='LEAVE_HANDLER', is_active=True,
-        ).distinct()
-        for handler in leave_handlers:
-            create_notification(
-                user=handler,
-                title="Ανάκληση Ολοκληρωμένης Άδειας",
-                message=f"Ο/Η {leave_request.user.full_name} ανέκαλε την ολοκληρωμένη άδεια #{leave_request.id}",
-                related_object=new_request
-            )
-
-        messages.success(request, 'Η άδεια ανακλήθηκε επιτυχώς. Νέα αίτηση δημιουργήθηκε.')
-        return redirect('leaves:employee_dashboard')
-
-    return render(request, 'leaves/withdraw_completed_confirm.html', {'leave_request': leave_request})
+    """Ανάκληση ολοκληρωμένης άδειας — απενεργοποιημένη."""
+    messages.error(request, 'Η ανάκληση ολοκληρωμένης άδειας δεν είναι διαθέσιμη.')
+    return redirect('leaves:employee_dashboard')
 
 
 @login_required
