@@ -3084,7 +3084,8 @@ def serve_merged_pdf(request, pk):
         
         is_download = request.GET.get('download') == '1'
         
-        filename = f"merged_{leave_request.id}_{leave_request.user.full_name.replace(' ', '_')}.pdf"
+        from leaves.utils.pdf_merger import build_merged_pdf_filename
+        filename = build_merged_pdf_filename(leave_request)
         response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = content_disposition_header(
             as_attachment=is_download, filename=filename

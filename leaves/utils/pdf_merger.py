@@ -7,6 +7,7 @@ PDF Merger — Δημιουργία ενοποιημένου PDF αίτησης 
   Σελίδα 3+: Κάθε συνημμένο σε δική του σελίδα
 """
 import os
+import re
 import base64
 from io import BytesIO
 
@@ -18,6 +19,43 @@ from weasyprint import HTML
 from pypdf import PdfWriter
 
 from leaves.crypto_utils import SecureFileHandler
+
+
+def _sanitize_filename_part(value, fallback='unknown'):
+    """Καθαρίζει τμήμα ονόματος αρχείου για filesystem/email compatibility."""
+    text = (value or '').strip()
+    text = re.sub(r'[\s/\\]+', '_', text)
+    text = re.sub(r'[^\w\-.]', '', text, flags=re.UNICODE)
+    text = re.sub(r'_+', '_', text).strip('._-')
+    return text or fallback
+
+
+def build_merged_pdf_filename(leave_request, reference_date=None):
+    """
+    Όνομα ενοποιημένου PDF: ΗμνίαΑποστολής_Ονοματεπώνυμο_ΤύποςΆδειας.pdf
+
+    Παράδειγμα: 20260722_Παπαδόπουλος_Ιωάννης_Κανονική.pdf
+    """
+    ref = (
+        reference_date
+        or leave_request.merged_pdf_sent_at
+        or leave_request.merged_pdf_created_at
+        or timezone.now()
+    )
+    if timezone.is_aware(ref):
+        date_str = timezone.localtime(ref).strftime('%Y%m%d')
+    else:
+        date_str = ref.strftime('%Y%m%d')
+
+    full_name = _sanitize_filename_part(
+        getattr(leave_request.user, 'full_name', None) or str(leave_request.user),
+        fallback='user',
+    )
+    leave_type_name = _sanitize_filename_part(
+        getattr(leave_request.leave_type, 'name', None) or getattr(leave_request.leave_type, 'code', None),
+        fallback='adidia',
+    )
+    return f'{date_str}_{full_name}_{leave_type_name}.pdf'
 
 
 def image_to_pdf_bytes(image_bytes, filename_hint=''):
@@ -144,10 +182,7 @@ def save_merged_pdf(leave_request):
     pdf_dir = os.path.join(private_media_root, 'merged_pdfs', str(leave_request.id))
     os.makedirs(pdf_dir, exist_ok=True)
 
-    # Όνομα αρχείου
-    from leaves.decision_helpers import build_decision_pdf_filename
-    from leaves.models import LeaveRequest
-    filename = f"merged_{leave_request.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = build_merged_pdf_filename(leave_request)
     pdf_path = os.path.join(pdf_dir, filename)
 
     # Κρυπτογράφηση

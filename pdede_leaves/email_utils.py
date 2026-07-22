@@ -110,8 +110,9 @@ def send_merged_pdf_email(leave_request, pdf_bytes, recipient=None, custom_subje
         to=[recipient],
     )
     
-    # Επισύναψη PDF
-    pdf_filename = f"merged_{leave_request.id}_{leave_request.user.full_name.replace(' ', '_')}.pdf"
+    # Επισύναψη PDF: ΗμνίαΑποστολής_Ονοματεπώνυμο_ΤύποςΆδειας.pdf
+    from leaves.utils.pdf_merger import build_merged_pdf_filename
+    pdf_filename = build_merged_pdf_filename(leave_request, reference_date=timezone.now())
     email.attach(pdf_filename, pdf_bytes, 'application/pdf')
     
     try:
