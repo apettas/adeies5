@@ -146,7 +146,15 @@ class LeaveRequestForm(forms.ModelForm):
             raise ValidationError(f'Οι συνολικές ημέρες άδειας ({total_days}) δεν μπορούν να υπερβαίνουν τις 365.')
 
         # Έλεγχος ότι τα διαστήματα συμφωνούν με τις δηλωμένες ημέρες
+        # (το days καθαρίζεται μετά το periods_data — διάβασμα και από raw data)
         declared_days = self.cleaned_data.get('days')
+        if declared_days is None and self.data is not None:
+            raw_days = self.data.get('days')
+            if raw_days not in (None, ''):
+                try:
+                    declared_days = int(raw_days)
+                except (TypeError, ValueError):
+                    declared_days = None
         if declared_days is not None and total_days != declared_days:
             raise ValidationError(
                 f'Οι συνολικές ημέρες των διαστημάτων ({total_days}) δεν συμφωνούν με τις '
