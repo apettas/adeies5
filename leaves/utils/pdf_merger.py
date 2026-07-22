@@ -16,7 +16,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from weasyprint import HTML
-from pypdf import PdfWriter
+from pypdf import PdfReader, PdfWriter
 
 from leaves.crypto_utils import SecureFileHandler
 
@@ -28,6 +28,16 @@ def _sanitize_filename_part(value, fallback='unknown'):
     text = re.sub(r'[^\w\-.]', '', text, flags=re.UNICODE)
     text = re.sub(r'_+', '_', text).strip('._-')
     return text or fallback
+
+
+def count_pdf_pages(pdf_bytes):
+    """Επιστρέφει τον αριθμό σελίδων ενός PDF από bytes."""
+    if not pdf_bytes:
+        return 0
+    try:
+        return len(PdfReader(BytesIO(pdf_bytes)).pages)
+    except Exception:
+        return 0
 
 
 def build_merged_pdf_filename(leave_request, reference_date=None):
@@ -79,13 +89,15 @@ def image_to_pdf_bytes(image_bytes, filename_hint=''):
     return HTML(string=html).write_pdf()
 
 
-def build_attachments_index_pdf(attachments_list):
+def build_attachments_index_pdf(attachments_list, total_attachment_pages=0):
     """
     Δημιουργεί PDF με τη σελίδα ευρετηρίου συνημμένων.
     attachments_list: list of dicts με 'filename', 'description' keys
+    total_attachment_pages: άθροισμα σελίδων όλων των συνημμένων
     """
     html = render_to_string('leaves/pdf_attachments_index.html', {
         'attachments_list': attachments_list,
+        'total_attachment_pages': total_attachment_pages,
     })
     return HTML(string=html).write_pdf()
 
@@ -143,22 +155,33 @@ def build_merged_pdf(leave_request):
     leave_pdf = build_leave_request_pdf(leave_request)
     writer.append(BytesIO(leave_pdf))
 
-    # 2. Λίστα συνημμένων (μόνο αν υπάρχουν)
+    # 2. Μετατροπή συνημμένων + μέτρηση σελίδων πριν το ευρετήριο
     attachments_qs = list(leave_request.attachments.all().order_by('uploaded_at'))
     if attachments_qs:
-        attachments_list = [
-            {'filename': att.original_filename, 'description': att.description or ''}
-            for att in attachments_qs
-        ]
-        index_pdf = build_attachments_index_pdf(attachments_list)
-        writer.append(BytesIO(index_pdf))
+        attachments_list = []
+        converted_attachments = []
+        total_attachment_pages = 0
 
-        # 3. Κάθε συνημμένο σε δική του σελίδα
         for att in attachments_qs:
+            attachments_list.append({
+                'filename': att.original_filename,
+                'description': att.description or '',
+            })
             pdf_bytes = convert_attachment_to_pdf(att, handler)
             if pdf_bytes is not None:
-                writer.append(BytesIO(pdf_bytes))
-            # Αν αποτύχει, απλά παραλείπουμε το συνημμένο
+                pages = count_pdf_pages(pdf_bytes)
+                total_attachment_pages += pages
+                converted_attachments.append(pdf_bytes)
+
+        index_pdf = build_attachments_index_pdf(
+            attachments_list,
+            total_attachment_pages=total_attachment_pages,
+        )
+        writer.append(BytesIO(index_pdf))
+
+        # 3. Κάθε συνημμένο σε δική του σελίδα/σελίδες
+        for pdf_bytes in converted_attachments:
+            writer.append(BytesIO(pdf_bytes))
 
     # Εξαγωγή
     output = BytesIO()
