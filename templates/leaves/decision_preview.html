@@ -91,7 +91,6 @@
                         {% csrf_token %}
                         <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
                         <input type="hidden" name="action" id="form_action" value="preview">
-                        <input type="hidden" id="data-notification-recipients" value="{{ notification_recipients|escape }}">
                         <input type="hidden" id="data-subject-text" value="{{ subject_text|escape }}">
 
                     <div class="row mb-4">
@@ -196,9 +195,19 @@
                                         <div class="form-text">Χρησιμοποιήστε &lt;b&gt;...&lt;/b&gt; για έντονο κείμενο.</div>
                                     </div>
 
-                                    <div class="edit-section mb-0">
-                                        <label for="signee_text" class="form-label">Υπογράφοντες</label>
-                                        <textarea name="signee_text" id="signee_text" class="form-control" rows="5">{{ default_signee.signee }}</textarea>
+                                    <div class="row g-3 mb-0">
+                                        <div class="col-md-6">
+                                            <div class="edit-section h-100">
+                                                <label for="notification_recipients_text" class="form-label">Κοινοποίηση</label>
+                                                <textarea name="notification_recipients" id="notification_recipients_text" class="form-control" rows="6">{{ notification_recipients }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="edit-section h-100">
+                                                <label for="signee_text" class="form-label">Υπογράφοντες</label>
+                                                <textarea name="signee_text" id="signee_text" class="form-control" rows="6">{{ default_signee.signee }}</textarea>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -253,7 +262,8 @@ function buildPreviewHtml() {
     var ypopsinText = document.getElementById('ypopsin_text').value;
     var signeeText = document.getElementById('signee_text').value;
     var decisionBody = document.getElementById('decision_body').value;
-    var notificationRecipients = document.getElementById('data-notification-recipients').value || '';
+    var notificationEl = document.getElementById('notification_recipients_text');
+    var notificationRecipients = notificationEl ? notificationEl.value : '';
     var subjectText = document.getElementById('data-subject-text').value || 'Χορήγηση άδειας';
 
     var html = '';
@@ -320,7 +330,7 @@ document.getElementById('signee_id').addEventListener('change', function() {
     syncTextareaFromSelect('signee_id', 'signee_text', 'data-signee-content');
 });
 
-['info_text', 'ypopsin_text', 'decision_body', 'signee_text'].forEach(function(id) {
+['info_text', 'ypopsin_text', 'decision_body', 'signee_text', 'notification_recipients_text'].forEach(function(id) {
     document.getElementById(id).addEventListener('input', rebuildPreview);
 });
 

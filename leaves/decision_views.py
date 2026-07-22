@@ -162,6 +162,7 @@ def generate_final_decision_pdf(request):
         edited_ypopsin_text = request.POST.get('ypopsin_text', '')
         edited_signee_text = request.POST.get('signee_text', '')
         edited_decision_body = request.POST.get('decision_body', '')
+        edited_notification_recipients = request.POST.get('notification_recipients', '')
         
         # Λήψη αντικειμένων
         logo = get_object_or_404(Logo, id=logo_id) if logo_id else None
@@ -192,6 +193,7 @@ def generate_final_decision_pdf(request):
             edited_ypopsin_text=edited_ypopsin_text,
             edited_signee_text=edited_signee_text,
             edited_decision_body=edited_decision_body,
+            edited_notification_recipients=edited_notification_recipients,
         )
         html_string = render_to_string('leaves/decision_pdf_template.html', context)
         

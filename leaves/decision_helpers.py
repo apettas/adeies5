@@ -226,9 +226,14 @@ def build_decision_pdf_context(
     edited_ypopsin_text='',
     edited_signee_text='',
     edited_decision_body='',
+    edited_notification_recipients=None,
 ):
     """Context για το decision_pdf_template.html."""
     user = leave_request.user
+    if edited_notification_recipients is None:
+        notification_recipients = user.notification_recipients or ''
+    else:
+        notification_recipients = edited_notification_recipients
     return {
         'leave_request': leave_request,
         'logo': logo,
@@ -237,7 +242,7 @@ def build_decision_pdf_context(
         'signee_text': edited_signee_text or (signee.signee if signee else ''),
         'signee_title': signee.signee if signee else '',
         'subject_text': leave_request.leave_type.subject_text or '',
-        'notification_recipients': user.notification_recipients or '',
+        'notification_recipients': notification_recipients,
         'ethnosimo_markup': get_ethnosimo_markup(),
         'decision_body': edited_decision_body or build_decision_body_html(leave_request),
         'decision_pdf_css': DECISION_PDF_CSS,
