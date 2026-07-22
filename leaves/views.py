@@ -1883,8 +1883,44 @@ def submit_final_request(request):
             # Generate PDF
             html_content = render_to_string('leaves/pdf_template.html', context)
             HTML(string=html_content).write_pdf(pdf_path)
-            
-            messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
+
+            # Αυτόματη δημιουργία ενοποιημένου PDF και αποστολή στο πρωτόκολλο
+            try:
+                from leaves.utils.pdf_merger import save_merged_pdf
+                from pdede_leaves.email_utils import send_merged_pdf_email
+
+                pdf_content, _, _ = save_merged_pdf(leave_request)
+                protocol_recipient = getattr(
+                    settings, 'PROTOCOL_EMAIL_RECIPIENT', 'adeiespdede@sch.gr'
+                )
+                email_sent = send_merged_pdf_email(
+                    leave_request,
+                    pdf_content,
+                    recipient=protocol_recipient,
+                )
+                if email_sent:
+                    messages.success(
+                        request,
+                        f'Η αίτηση υποβλήθηκε και το ενοποιημένο PDF στάλθηκε στο {protocol_recipient}.',
+                    )
+                else:
+                    messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
+                    messages.warning(
+                        request,
+                        'Η αποστολή του ενοποιημένου PDF στο πρωτόκολλο απέτυχε. '
+                        'Μπορείτε να το ξαναστείλετε από την προβολή αίτησης.',
+                    )
+            except Exception as email_error:
+                import logging
+                logging.getLogger(__name__).error(
+                    f"Auto protocol email failed for leave request {leave_request.id}: {email_error}"
+                )
+                messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
+                messages.warning(
+                    request,
+                    'Η αίτηση αποθηκεύτηκε, αλλά απέτυχε η αυτόματη αποστολή PDF στο πρωτόκολλο.',
+                )
+
             return redirect('leaves:leave_request_detail', leave_request.id)
             
         except LeaveRequest.DoesNotExist:
