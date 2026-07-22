@@ -739,13 +739,15 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #f5f8fc 0%, #e8eef5 50%, #dce8f4 100%);
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(61, 98, 133, 0.12), transparent 55%),
+        linear-gradient(145deg, #f5f8fc 0%, #e8eef5 50%, #dce8f4 100%);
     padding: 24px 16px;
 }
 
 .auth-card {
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-soft);
@@ -755,7 +757,7 @@ h1, h2, h3, h4, h5, h6,
 
 .auth-card-header {
     text-align: center;
-    padding: 32px 24px 16px;
+    padding: 36px 28px 12px;
 }
 
 .auth-card-header .auth-logo {
@@ -767,6 +769,7 @@ h1, h2, h3, h4, h5, h6,
 .auth-card-header h1 {
     font-size: 1.5rem;
     margin-bottom: 4px;
+    letter-spacing: 0.01em;
 }
 
 .auth-card-header p {
@@ -776,7 +779,37 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .auth-card-body {
-    padding: 8px 24px 32px;
+    padding: 8px 28px 28px;
+}
+
+.auth-card-footer {
+    text-align: center;
+    padding: 20px 28px 24px;
+    border-top: 1px solid rgba(61, 98, 133, 0.12);
+    background: linear-gradient(180deg, rgba(245, 248, 252, 0.65) 0%, rgba(236, 242, 248, 0.9) 100%);
+}
+
+.auth-card-footer .auth-pdede-logo {
+    height: 40px;
+    width: auto;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.auth-card-footer .auth-pdede-name {
+    margin: 0 0 6px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2f4f6b;
+    letter-spacing: 0.01em;
+}
+
+.auth-card-footer .auth-pdede-meta {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.45;
 }
 
 /* ── Utilities ────────────────────────────────────────── */
