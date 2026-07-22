@@ -275,10 +275,10 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Επώνυμο',
-        help_text='Γράψτε το επώνυμό σας με πεζά γράμματα (π.χ. Πεττάς).',
+        help_text='Γράψτε το επώνυμό σας με πεζά γράμματα (π.χ. Παπαδόπουλος).',
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'π.χ. Πεττάς',
+            'placeholder': 'π.χ. Παπαδόπουλος',
             'autocomplete': 'family-name',
         }),
     )
