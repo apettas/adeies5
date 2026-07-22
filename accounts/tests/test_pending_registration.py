@@ -40,6 +40,10 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
             registration_status='PENDING',
             is_active=False,
             employee_number='EMP999',
+            gsn_branch='ΠΕ02',
+            sso_organizational_unit='1ο ΓΕΛ Δοκιμής',
+            father_name='Ιωάννης',
+            role_description='Εκπαιδευτικός ΠΣΔ',
         )
         mark_registration_submitted(self.pending_user)
         self.client.force_login(self.leave_handler)
@@ -71,6 +75,24 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
         )
         self.assertContains(response, 'name="role_description"')
         self.assertContains(response, 'Αναπληρωτής')
+
+    def test_review_form_shows_readonly_sso_section(self):
+        response = self.client.get(
+            reverse('leaves:pending_user_registration_review', args=[self.pending_user.pk]),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Στοιχεία από Σχολικό Δίκτυο (SSO)')
+        self.assertContains(
+            response,
+            'δεν μπορούν να τροποποιηθούν',
+        )
+        self.assertContains(response, 'EMP999')
+        self.assertContains(response, 'ΠΕ02')
+        self.assertContains(response, '1ο ΓΕΛ Δοκιμής')
+        self.assertContains(response, 'Εκπαιδευτικός ΠΣΔ')
+        self.assertNotContains(response, 'name="employee_number"')
+        self.assertNotContains(response, 'name="gsn_branch"')
+        self.assertNotContains(response, 'name="sso_organizational_unit"')
 
     def test_review_form_defaults_to_employee_role(self):
         response = self.client.get(
@@ -112,9 +134,6 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
                     'father_name': '',
                     'gender': '',
                     'phone1': '',
-                    'employee_number': self.pending_user.employee_number,
-                    'gsn_branch': '',
-                    'sso_organizational_unit': '',
                     'role_description': 'Εκπαιδευτικός',
                     'department': self.child_department.pk,
                     'specialty': self.specialty.pk,
@@ -132,6 +151,9 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
         self.assertEqual(self.pending_user.registration_status, 'APPROVED')
         self.assertTrue(self.pending_user.is_active)
         self.assertEqual(self.pending_user.approved_by, self.leave_handler)
+        self.assertEqual(self.pending_user.employee_number, 'EMP999')
+        self.assertEqual(self.pending_user.gsn_branch, 'ΠΕ02')
+        self.assertEqual(self.pending_user.sso_organizational_unit, '1ο ΓΕΛ Δοκιμής')
         mock_email.assert_called_once()
 
         from accounts.utils.pending_registration_alerts import get_pending_registrations_queryset

@@ -2,6 +2,31 @@
 
 {% block title %}Έλεγχος Εγγραφής — {{ pending_user.get_full_name }} - Αλκίνοος{% endblock %}
 
+{% block extra_css %}
+<style>
+  .sso-readonly-card {
+    border-color: #c5c9d0;
+    background-color: #e9ecef;
+  }
+  .sso-readonly-header {
+    background-color: #dee2e6;
+    color: #495057;
+    font-weight: 600;
+  }
+  .sso-readonly-body {
+    background-color: #e9ecef;
+    color: #6c757d;
+  }
+  .sso-readonly-input,
+  .sso-readonly-card .input-group-text {
+    background-color: #dfe3e8 !important;
+    color: #6c757d !important;
+    border-color: #ced4da;
+    cursor: not-allowed;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row mt-4">
     <div class="col-12">
@@ -54,19 +79,6 @@
                         <div class="col-md-6">
                             <label class="form-label" for="{{ form.phone1.id_for_label }}">{{ form.phone1.label }}</label>
                             {{ form.phone1 }}
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="{{ form.employee_number.id_for_label }}">{{ form.employee_number.label }}</label>
-                            {{ form.employee_number }}
-                            {% if form.employee_number.errors %}<div class="text-danger small">{{ form.employee_number.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="{{ form.gsn_branch.id_for_label }}">{{ form.gsn_branch.label }}</label>
-                            {{ form.gsn_branch }}
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="{{ form.sso_organizational_unit.id_for_label }}">{{ form.sso_organizational_unit.label }}</label>
-                            {{ form.sso_organizational_unit }}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="{{ form.department.id_for_label }}">{{ form.department.label }} *</label>
@@ -146,6 +158,65 @@
                                 onclick="return confirm('Ενεργοποίηση λογαριασμού; Θα σταλεί email στον χρήστη.');">
                             <i class="bi bi-person-check"></i> Ενεργοποίηση Χρήστη
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card sso-readonly-card">
+                <div class="card-header sso-readonly-header">
+                    <i class="bi bi-shield-check me-2"></i>Στοιχεία από Σχολικό Δίκτυο (SSO)
+                </div>
+                <div class="card-body sso-readonly-body">
+                    <div class="alert alert-secondary py-2 small mb-3">
+                        <i class="bi bi-lock me-1"></i>
+                        Τα παρακάτω στοιχεία προέρχονται από το Σχολικό Δίκτυο και δεν μπορούν να τροποποιηθούν.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Email ΠΣΔ</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.email|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Αριθμός Μητρώου</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.employee_number|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">Όνομα (ΠΣΔ)</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.first_name|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">Επώνυμο (ΠΣΔ)</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.last_name|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-muted">Πατρώνυμο (ΠΣΔ)</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.father_name|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Κλάδος (Ειδικότητα)</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{% if pending_user.gsn_branch and pending_user.specialty %}{{ pending_user.gsn_branch }} — {{ pending_user.specialty.specialties_full }}{% elif pending_user.gsn_branch %}{{ pending_user.gsn_branch }}{% else %}—{% endif %}"
+                                   disabled readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-muted">Οργανική Μονάδα</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.sso_organizational_unit|default:'—' }}" disabled readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-muted">Υπηρεσιακή Ιδιότητα (ΠΣΔ)</label>
+                            <input type="text" class="form-control sso-readonly-input"
+                                   value="{{ pending_user.role_description|default:'—' }}" disabled readonly>
+                        </div>
                     </div>
                 </div>
             </div>
