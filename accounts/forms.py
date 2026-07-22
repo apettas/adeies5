@@ -317,7 +317,7 @@ class CompleteSSORegistrationForm(forms.Form):
     
     gender = forms.ChoiceField(
         choices=[('', 'Επιλέξτε Φύλο'), ('MALE', 'Άνδρας'), ('FEMALE', 'Γυναίκα'), ('OTHER', 'Άλλο')],
-        required=False,
+        required=True,
         label='Φύλο',
         widget=forms.Select(attrs={
             'class': 'form-control'

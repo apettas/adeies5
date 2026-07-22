@@ -3,6 +3,31 @@
 
 {% block title %}Ολοκλήρωση Εγγραφής - Αλκίνοος{% endblock %}
 
+{% block extra_css %}
+<style>
+  .sso-readonly-card {
+    border-color: #c5c9d0;
+    background-color: #e9ecef;
+  }
+  .sso-readonly-header {
+    background-color: #dee2e6;
+    color: #495057;
+    font-weight: 600;
+  }
+  .sso-readonly-body {
+    background-color: #e9ecef;
+    color: #6c757d;
+  }
+  .sso-readonly-input,
+  .sso-readonly-card .input-group-text {
+    background-color: #dfe3e8 !important;
+    color: #6c757d !important;
+    border-color: #ced4da;
+    cursor: not-allowed;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-shell-wide">
     <div class="page-card">
@@ -56,20 +81,25 @@
                         {{ form.role_description }}
                         
                         <!-- Στοιχεία από ΠΣΔ (read-only) -->
-                        <div class="card bg-light mb-3">
-                            <div class="card-header">
+                        <div class="card mb-3 sso-readonly-card">
+                            <div class="card-header sso-readonly-header">
                                 <i class="bi bi-shield-check me-2"></i>Στοιχεία από Σχολικό Δίκτυο
                             </div>
-                            <div class="card-body">
+                            <div class="card-body sso-readonly-body">
+                                <div class="alert alert-secondary py-2 small mb-3">
+                                    <i class="bi bi-lock me-1"></i>
+                                    Όλα τα παρακάτω στοιχεία προέρχονται από το Σχολικό Δίκτυο και δεν είναι επεξεργάσιμα.
+                                    Παρακάτω πρέπει να συμπληρώσετε επιπλέον στοιχεία.
+                                </div>
                                 <div class="row">
                                     <div class="col-md-12 mb-3">
-                                        <label class="form-label fw-bold">Email ΠΣΔ</label>
+                                        <label class="form-label fw-bold text-muted">Email ΠΣΔ</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                            <input type="email" 
-                                                   class="form-control bg-white" 
-                                                   value="{{ target_email }}" 
-                                                   disabled 
+                                            <input type="email"
+                                                   class="form-control sso-readonly-input"
+                                                   value="{{ target_email }}"
+                                                   disabled
                                                    readonly>
                                         </div>
                                         <small class="text-muted">Το email σας από το Σχολικό Δίκτυο</small>
@@ -77,33 +107,28 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-bold">Όνομα (ΠΣΔ)</label>
-                                        <input type="text" class="form-control bg-white"
+                                        <label class="form-label fw-bold text-muted">Όνομα (ΠΣΔ)</label>
+                                        <input type="text" class="form-control sso-readonly-input"
                                                value="{{ sso_first_name|default:'—' }}" disabled readonly>
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-bold">Επώνυμο (ΠΣΔ)</label>
-                                        <input type="text" class="form-control bg-white"
+                                        <label class="form-label fw-bold text-muted">Επώνυμο (ΠΣΔ)</label>
+                                        <input type="text" class="form-control sso-readonly-input"
                                                value="{{ sso_last_name|default:'—' }}" disabled readonly>
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label class="form-label fw-bold">Πατρώνυμο (ΠΣΔ)</label>
-                                        <input type="text" class="form-control bg-white"
+                                        <label class="form-label fw-bold text-muted">Πατρώνυμο (ΠΣΔ)</label>
+                                        <input type="text" class="form-control sso-readonly-input"
                                                value="{{ sso_father_name|default:'—' }}" disabled readonly>
                                     </div>
                                 </div>
-                                <div class="alert alert-warning py-2 small mb-3">
-                                    <i class="bi bi-pencil-square me-1"></i>
-                                    Τα ονόματα από το ΠΣΔ έρχονται με κεφαλαία. Παρακάτω πρέπει να τα
-                                    συμπληρώσετε εσείς με πεζά γράμματα (π.χ. Ανδρέας, όχι ΑΝΔΡΕΑΣ).
-                                </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-bold">Αριθμός Μητρώου</label>
+                                        <label class="form-label fw-bold text-muted">Αριθμός Μητρώου</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-hash"></i></span>
                                             <input type="text"
-                                                   class="form-control bg-white"
+                                                   class="form-control sso-readonly-input"
                                                    value="{{ form.employee_number.value|default:'—' }}"
                                                    disabled
                                                    readonly>
@@ -111,11 +136,11 @@
                                         <small class="text-muted">Από το Σχολικό Δίκτυο</small>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-bold">Κλάδος (Ειδικότητα)</label>
+                                        <label class="form-label fw-bold text-muted">Κλάδος (Ειδικότητα)</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-mortarboard"></i></span>
                                             <input type="text"
-                                                   class="form-control bg-white"
+                                                   class="form-control sso-readonly-input"
                                                    value="{% if sso_specialty %}{{ form.gsn_branch.value }} — {{ sso_specialty.specialties_full }}{% else %}{{ form.gsn_branch.value|default:'—' }}{% endif %}"
                                                    disabled
                                                    readonly>
@@ -125,11 +150,11 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-bold">Οργανική Μονάδα</label>
+                                        <label class="form-label fw-bold text-muted">Οργανική Μονάδα</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-building"></i></span>
                                             <input type="text"
-                                                   class="form-control bg-white"
+                                                   class="form-control sso-readonly-input"
                                                    value="{{ form.sso_organizational_unit.value|default:'—' }}"
                                                    disabled
                                                    readonly>
@@ -137,11 +162,11 @@
                                         <small class="text-muted">Από το Σχολικό Δίκτυο</small>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-bold">Υπηρεσιακή Ιδιότητα</label>
+                                        <label class="form-label fw-bold text-muted">Υπηρεσιακή Ιδιότητα</label>
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
                                             <input type="text"
-                                                   class="form-control bg-white"
+                                                   class="form-control sso-readonly-input"
                                                    value="{{ form.role_description.value|default:'—' }}"
                                                    disabled
                                                    readonly>
@@ -173,7 +198,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    {% include 'accounts/includes/sso_form_field.html' with field=form.gender required=False %}
+                                    {% include 'accounts/includes/sso_form_field.html' with field=form.gender required=True %}
                                     {% include 'accounts/includes/sso_form_field.html' with field=form.phone required=False %}
                                 </div>
                             </div>
