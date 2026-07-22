@@ -971,24 +971,49 @@
                     <div class="col-12">
                         <div class="alert alert-info">
                             <h6><i class="bi bi-heart-pulse"></i> Σύνολο Αναρρωτικών Αδειών (τελευταία 5 έτη + τρέχον)</h6>
-                            <table class="table table-sm table-borderless mb-0">
-                                <thead>
-                                    <tr>
-                                        {% for yt in yearly_sick_leave_totals %}
-                                        <th class="text-center">{{ yt.year }}</th>
-                                        {% endfor %}
-                                        <th class="text-center"><strong>Σύνολο</strong></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        {% for yt in yearly_sick_leave_totals %}
-                                        <td class="text-center">{{ yt.total_days }} ημ.</td>
-                                        {% endfor %}
-                                        <td class="text-center"><strong>{{ yearly_sick_leave_sum }} ημ.</strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <form method="post" action="{% url 'leaves:update_yearly_sick_leave_totals' leave_request.pk %}">
+                                {% csrf_token %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-borderless mb-2 align-middle">
+                                        <thead>
+                                            <tr>
+                                                {% for yt in yearly_sick_leave_totals %}
+                                                <th class="text-center">{{ yt.year }}</th>
+                                                {% endfor %}
+                                                <th class="text-center"><strong>Σύνολο</strong></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                {% for yt in yearly_sick_leave_totals %}
+                                                <td class="text-center">
+                                                    <div class="input-group input-group-sm justify-content-center" style="max-width: 7.5rem; margin: 0 auto;">
+                                                        <input type="number"
+                                                               name="sick_days_{{ yt.year }}"
+                                                               value="{{ yt.total_days }}"
+                                                               min="0"
+                                                               step="1"
+                                                               class="form-control form-control-sm text-center"
+                                                               required>
+                                                        <span class="input-group-text">ημ.</span>
+                                                    </div>
+                                                </td>
+                                                {% endfor %}
+                                                <td class="text-center"><strong>{{ yearly_sick_leave_sum }} ημ.</strong></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <small class="text-muted mb-0">
+                                        <i class="bi bi-info-circle"></i>
+                                        Μπορείτε να διορθώσετε τις ημέρες ανά έτος και να αποθηκεύσετε.
+                                    </small>
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-save"></i> Αποθήκευση Συνόλων
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

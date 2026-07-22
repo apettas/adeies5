@@ -3079,3 +3079,73 @@ def serve_merged_pdf(request, pk):
     except Exception as e:
         messages.error(request, f'Σφάλμα κατά τη φόρτωση του PDF: {str(e)}')
         return redirect('leaves:leave_request_detail', pk=leave_request.id)
+
+
+@login_required
+def update_yearly_sick_leave_totals(request, pk):
+    """Επεξεργασία ετήσιων συνόλων αναρρωτικών από χειριστή (σε leave detail)."""
+    from django.db import transaction
+    from leaves.models import YearlySickLeaveTotal, LeaveActionLog
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Μόνο χειριστές αδειών μπορούν να επεξεργαστούν τα σύνολα αναρρωτικών.")
+
+    if request.method != 'POST':
+        return redirect('leaves:leave_request_detail', pk=pk)
+
+    employee = leave_request.user
+    current_year = timezone.now().year
+    five_years_ago = current_year - 5
+    year_range = list(range(five_years_ago, current_year + 1))
+
+    parsed_days = {}
+    for year in year_range:
+        raw = (request.POST.get(f'sick_days_{year}') or '').strip()
+        if raw == '':
+            messages.error(request, f'Συμπληρώστε τις ημέρες για το έτος {year}.')
+            return redirect('leaves:leave_request_detail', pk=pk)
+        try:
+            days = int(raw)
+        except (TypeError, ValueError):
+            messages.error(request, f'Μη έγκυρη τιμή ημερών για το έτος {year}.')
+            return redirect('leaves:leave_request_detail', pk=pk)
+        if days < 0:
+            messages.error(request, f'Οι ημέρες για το έτος {year} δεν μπορούν να είναι αρνητικές.')
+            return redirect('leaves:leave_request_detail', pk=pk)
+        parsed_days[year] = days
+
+    with transaction.atomic():
+        for year, days in parsed_days.items():
+            YearlySickLeaveTotal.objects.update_or_create(
+                employee=employee,
+                year=year,
+                defaults={'total_days': days},
+            )
+
+        current_days = parsed_days.get(current_year, 0)
+        last_5_sum = sum(parsed_days.values())
+        employee.sick_days_current_year = current_days
+        employee.total_sick_leave_last_5_years = last_5_sum
+        employee.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
+
+        notes_parts = [f'{year}: {days}' for year, days in sorted(parsed_days.items())]
+        LeaveActionLog.objects.create(
+            leave_request=leave_request,
+            user=request.user,
+            action='UPDATE_SICK_LEAVE_TOTALS',
+            previous_status=leave_request.status,
+            new_status=leave_request.status,
+            notes=(
+                f'Ενημέρωση συνόλων αναρρωτικών για {employee.get_full_name()} '
+                f'({employee.email}): ' + ', '.join(notes_parts)
+            ),
+            ip_address=request.META.get('REMOTE_ADDR'),
+        )
+
+    messages.success(
+        request,
+        f'Τα σύνολα αναρρωτικών ενημερώθηκαν επιτυχώς (σύνολο {last_5_sum} ημ.).',
+    )
+    return redirect('leaves:leave_request_detail', pk=pk)

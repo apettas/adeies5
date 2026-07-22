@@ -134,3 +134,55 @@ class SickLeaveAlertTests(TestDataMixin, TestCase):
                 title__contains='Υπέρβαση Αναρρωτικών',
             ).exists()
         )
+
+
+class UpdateYearlySickLeaveTotalsTests(TestDataMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+        self.leave_type = LeaveType.objects.create(
+            name='Κανονική',
+            code='TEST_REGULAR_FOR_SICK_EDIT',
+            requires_approval=True,
+        )
+        self.req = create_submitted_leave_request(
+            self.employee, self.leave_type, 'regular', '2026-01-12', '2026-01-16',
+        )
+
+    def test_handler_can_update_yearly_sick_totals(self):
+        from leaves.models import YearlySickLeaveTotal
+
+        current_year = timezone.now().year
+        years = list(range(current_year - 5, current_year + 1))
+        post_data = {f'sick_days_{year}': str(year - (current_year - 5)) for year in years}
+
+        self.client.force_login(self.leave_handler)
+        response = self.client.post(
+            reverse('leaves:update_yearly_sick_leave_totals', kwargs={'pk': self.req.pk}),
+            data=post_data,
+        )
+        self.assertRedirects(
+            response,
+            reverse('leaves:leave_request_detail', kwargs={'pk': self.req.pk}),
+        )
+
+        for year in years:
+            yt = YearlySickLeaveTotal.objects.get(employee=self.employee, year=year)
+            self.assertEqual(yt.total_days, year - (current_year - 5))
+
+        self.employee.refresh_from_db()
+        expected_sum = sum(year - (current_year - 5) for year in years)
+        self.assertEqual(self.employee.sick_days_current_year, 5)
+        self.assertEqual(self.employee.total_sick_leave_last_5_years, expected_sum)
+
+    def test_non_handler_cannot_update_yearly_sick_totals(self):
+        current_year = timezone.now().year
+        years = list(range(current_year - 5, current_year + 1))
+        post_data = {f'sick_days_{year}': '1' for year in years}
+
+        self.client.force_login(self.employee)
+        response = self.client.post(
+            reverse('leaves:update_yearly_sick_leave_totals', kwargs={'pk': self.req.pk}),
+            data=post_data,
+        )
+        self.assertEqual(response.status_code, 403)

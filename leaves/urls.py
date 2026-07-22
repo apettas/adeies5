@@ -49,6 +49,11 @@ urlpatterns = [
     path('provide-documents/<int:pk>/', views.provide_documents, name='provide_documents'),
     path('return-to-employee/<int:pk>/', views.return_leave_to_employee, name='return_leave_to_employee'),
     path('handler-upload-attachment/<int:pk>/', views.handler_upload_attachment, name='handler_upload_attachment'),
+    path(
+        'update-yearly-sick-totals/<int:pk>/',
+        views.update_yearly_sick_leave_totals,
+        name='update_yearly_sick_leave_totals',
+    ),
     path('users/', views.UsersListView.as_view(), name='users_list'),
     path('pending-registrations/', PendingUserRegistrationsListView.as_view(), name='pending_user_registrations'),
     path(
