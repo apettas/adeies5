@@ -215,6 +215,13 @@ class HandlerUserActivationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['phone1'].label = 'Τηλέφωνο'
+        self.fields['role_description'].label = (
+            'Υπηρεσιακή Ιδιότητα που μπαίνει στην απόφαση. '
+            'π.χ. Σχολικό σύμβουλο Ειδικής Αγωγής κλάδου ΠΕ02'
+        )
+        self.fields['notification_recipients'].label = (
+            'Κοινοποίηση Απόφασης. Οι υπηρεσίες που θα κοινοποιηθεί η απόφαση.'
+        )
         self.fields['department'].queryset = Department.objects.filter(is_active=True).order_by('name')
         self.fields['specialty'].queryset = Specialty.objects.filter(is_active=True).order_by(
             'specialties_short', 'specialties_full',

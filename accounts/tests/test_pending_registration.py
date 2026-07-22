@@ -57,7 +57,18 @@ class PendingRegistrationWorkflowTests(TestDataMixin, TestCase):
             reverse('leaves:pending_user_registration_review', args=[self.pending_user.pk]),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Υπηρεσιακή Ιδιότητα')
+        self.assertContains(
+            response,
+            'Υπηρεσιακή Ιδιότητα που μπαίνει στην απόφαση.',
+        )
+        self.assertContains(
+            response,
+            'Κοινοποίηση Απόφασης. Οι υπηρεσίες που θα κοινοποιηθεί η απόφαση.',
+        )
+        self.assertContains(
+            response,
+            'Για ανάθεση περισσότερων ρόλων πατήστε το Ctrl όταν επιλέγετε.',
+        )
         self.assertContains(response, 'name="role_description"')
         self.assertContains(response, 'Αναπληρωτής')
 
