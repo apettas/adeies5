@@ -1,7 +1,8 @@
 """Tests για SSO registration form και σχετική λογική."""
+from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase
 
-from accounts.forms import CompleteSSORegistrationForm
+from accounts.forms import CompleteSSORegistrationForm, validate_name_not_all_caps
 from accounts.models import (
     User,
     Specialty,
@@ -10,24 +11,51 @@ from accounts.models import (
 )
 
 
+class NameNotAllCapsValidationTests(SimpleTestCase):
+    def test_rejects_all_caps(self):
+        with self.assertRaises(ValidationError):
+            validate_name_not_all_caps('ΑΝΔΡΕΑΣ', 'Όνομα')
+
+    def test_accepts_proper_case(self):
+        self.assertEqual(validate_name_not_all_caps('Ανδρέας', 'Όνομα'), 'Ανδρέας')
+
+
 class CompleteSSORegistrationFormTests(TestCase):
-    def test_psd_names_read_from_user_record(self):
+    def test_user_can_enter_manual_names(self):
         User.objects.create(
             email='names@sch.gr',
-            first_name='Γεώργιος',
-            last_name='Νικολάου',
-            father_name='Ιωάννης',
+            first_name='ΓΕΩΡΓΙΟΣ',
+            last_name='ΝΙΚΟΛΑΟΥ',
+            father_name='ΙΩΑΝΝΗΣ',
             is_active=False,
+            registration_status='PENDING',
         )
-        form = CompleteSSORegistrationForm(target_email='names@sch.gr')
+        form = CompleteSSORegistrationForm(
+            data={
+                'email': 'names@sch.gr',
+                'first_name': 'Γεώργιος',
+                'last_name': 'Νικολάου',
+                'father_name': 'Ιωάννης',
+                'department': '',
+                'terms_accepted': True,
+            },
+            target_email='names@sch.gr',
+        )
+        # Μόνο έλεγχος clean των ονομάτων (χωρίς department)
         form.cleaned_data = {
-            'first_name': 'άλλο',
-            'last_name': 'όνομα',
-            'father_name': 'τεστ',
+            'first_name': 'Γεώργιος',
+            'last_name': 'Νικολάου',
+            'father_name': 'Ιωάννης',
         }
         self.assertEqual(form.clean_first_name(), 'Γεώργιος')
         self.assertEqual(form.clean_last_name(), 'Νικολάου')
         self.assertEqual(form.clean_father_name(), 'Ιωάννης')
+
+    def test_rejects_all_caps_names(self):
+        form = CompleteSSORegistrationForm(target_email='x@sch.gr')
+        form.cleaned_data = {'first_name': 'ΑΝΔΡΕΑΣ'}
+        with self.assertRaises(ValidationError):
+            form.clean_first_name()
 
 
 class EmployeeNumberReadonlyTests(TestCase):
@@ -90,6 +118,17 @@ class UserNameAccusativeSaveTests(TestCase):
             email='autoacc@sch.gr',
             first_name='Νίκος',
             last_name='Παπαδόπουλος',
+            is_active=False,
+        )
+        user.refresh_from_db()
+        self.assertEqual(user.name_accusative, 'Νίκο Παπαδόπουλο')
+
+    def test_all_caps_accusative_regenerated(self):
+        user = User.objects.create(
+            email='capsacc@sch.gr',
+            first_name='Νίκος',
+            last_name='Παπαδόπουλος',
+            name_accusative='ΝΙΚΟΣ ΠΑΠΑΔΟΠΟΥΛΟΣ',
             is_active=False,
         )
         user.refresh_from_db()

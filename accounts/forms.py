@@ -11,6 +11,18 @@ from .models import (
 )
 
 
+def validate_name_not_all_caps(value, field_label):
+    """Απαγορεύει ονόματα αποκλειστικά με κεφαλαία (όπως έρχονται από ΠΣΔ)."""
+    text = (value or '').strip()
+    letters = [c for c in text if c.isalpha()]
+    if letters and all(c.isupper() for c in letters):
+        raise ValidationError(
+            f'Το πεδίο «{field_label}» δεν πρέπει να είναι με κεφαλαία γράμματα. '
+            f'Παρακαλώ γράψτε το με πεζά (π.χ. Ανδρέας, όχι ΑΝΔΡΕΑΣ).'
+        )
+    return text
+
+
 class UserRegistrationForm(UserCreationForm):
     """Form για εγγραφή νέων χρηστών"""
     
@@ -225,6 +237,18 @@ class HandlerUserActivationForm(forms.ModelForm):
                     self.instance.annual_leave_entitlement or 25
                 )
 
+    def clean_first_name(self):
+        return validate_name_not_all_caps(self.cleaned_data.get('first_name'), 'Όνομα')
+
+    def clean_last_name(self):
+        return validate_name_not_all_caps(self.cleaned_data.get('last_name'), 'Επώνυμο')
+
+    def clean_father_name(self):
+        value = self.cleaned_data.get('father_name') or ''
+        if not value.strip():
+            return ''
+        return validate_name_not_all_caps(value, 'Πατρώνυμο')
+
 
 class CompleteSSORegistrationForm(forms.Form):
     """Form για συμπλήρωση στοιχείων από νέο CAS (SSO) χρήστη"""
@@ -239,21 +263,35 @@ class CompleteSSORegistrationForm(forms.Form):
         max_length=50,
         required=True,
         label='Όνομα',
-        widget=forms.HiddenInput(),
+        help_text='Γράψτε το όνομά σας με πεζά γράμματα (π.χ. Ανδρέας).',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. Ανδρέας',
+            'autocomplete': 'given-name',
+        }),
     )
-    
+
     last_name = forms.CharField(
         max_length=50,
         required=True,
         label='Επώνυμο',
-        widget=forms.HiddenInput(),
+        help_text='Γράψτε το επώνυμό σας με πεζά γράμματα (π.χ. Πεττάς).',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. Πεττάς',
+            'autocomplete': 'family-name',
+        }),
     )
-    
+
     father_name = forms.CharField(
         max_length=50,
-        required=False,
+        required=True,
         label='Πατρώνυμο',
-        widget=forms.HiddenInput(),
+        help_text='Γράψτε το πατρώνυμο με πεζά γράμματα (π.χ. Ιωάννης).',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'π.χ. Ιωάννης',
+        }),
     )
 
     employee_number = forms.CharField(
@@ -362,13 +400,13 @@ class CompleteSSORegistrationForm(forms.Form):
         return self._clean_psd_readonly_field('role_description')
 
     def clean_first_name(self):
-        return self._clean_psd_readonly_field('first_name')
+        return validate_name_not_all_caps(self.cleaned_data.get('first_name'), 'Όνομα')
 
     def clean_last_name(self):
-        return self._clean_psd_readonly_field('last_name')
+        return validate_name_not_all_caps(self.cleaned_data.get('last_name'), 'Επώνυμο')
 
     def clean_father_name(self):
-        return self._clean_psd_readonly_field('father_name')
+        return validate_name_not_all_caps(self.cleaned_data.get('father_name'), 'Πατρώνυμο')
     
     def clean(self):
         cleaned_data = super().clean()

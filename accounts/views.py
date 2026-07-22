@@ -48,8 +48,14 @@ class CompleteSSORegistrationView(FormView):
             context['sso_specialty'] = (
                 user.specialty or resolve_specialty_from_gsn_branch(user.gsn_branch)
             )
+            context['sso_first_name'] = user.first_name
+            context['sso_last_name'] = user.last_name
+            context['sso_father_name'] = user.father_name
         except User.DoesNotExist:
             context['sso_specialty'] = None
+            context['sso_first_name'] = ''
+            context['sso_last_name'] = ''
+            context['sso_father_name'] = ''
         return context
 
     def get_initial(self):
@@ -57,9 +63,10 @@ class CompleteSSORegistrationView(FormView):
         try:
             user = User.objects.get(email=self.target_email)
             initial['email'] = user.email
-            initial['first_name'] = user.first_name
-            initial['last_name'] = user.last_name
-            initial['father_name'] = user.father_name
+            # Ονόματα: κενά ώστε να τα συμπληρώσει χειροκίνητα με πεζά
+            initial['first_name'] = ''
+            initial['last_name'] = ''
+            initial['father_name'] = ''
             initial['employee_number'] = user.employee_number
             initial['gsn_branch'] = user.gsn_branch
             initial['sso_organizational_unit'] = user.sso_organizational_unit
@@ -86,6 +93,8 @@ class CompleteSSORegistrationView(FormView):
             user.sso_organizational_unit = form.cleaned_data.get('sso_organizational_unit', '')
             user.gender = form.cleaned_data.get('gender', '')
             user.role_description = form.cleaned_data.get('role_description', '')
+            # Ανανέωση αιτιατικής από τα χειροκίνητα ονόματα
+            user.name_accusative = ''
             apply_gsn_branch_specialty(user)
             # Παραμένει PENDING — θα το εγκρίνει ο χειριστής
             user.save()

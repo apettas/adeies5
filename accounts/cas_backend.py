@@ -149,8 +149,17 @@ class PdedeCASBackend(CASBackend):
                 if field.get_internal_type() == 'BooleanField' and field.name in attributes:
                     attributes[field.name] = attributes[field.name] == 'True'
 
+            # Μην αντικαθιστάς ονόματα που έχει ήδη δηλώσει/διορθώσει ο χρήστης ή χειριστής
+            protect_names = bool(
+                user.registration_submitted_at
+                or user.registration_status == 'APPROVED'
+            )
+            protected_fields = {'first_name', 'last_name', 'father_name', 'name_accusative'}
+
             for key, value in attributes.items():
                 if key != 'username' and key in user_model_fields:
+                    if protect_names and key in protected_fields:
+                        continue
                     setattr(user, key, value)
 
             apply_gsn_branch_specialty(user)

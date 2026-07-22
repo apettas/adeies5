@@ -298,10 +298,15 @@ class User(AbstractUser):
         help_text='Αυτόματα δημιουργείται από το Όνομα και Επίθετο, π.χ. "Γεώργιο Νικολόπουλο"')
 
     def save(self, *args, **kwargs):
-        if self.first_name and self.last_name and not (self.name_accusative or '').strip():
-            first = convert_first_name_to_accusative(self.first_name)
-            last = convert_last_name_to_accusative(self.last_name)
-            self.name_accusative = f"{first} {last}"
+        if self.first_name and self.last_name:
+            acc = (self.name_accusative or '').strip()
+            letters = [c for c in acc if c.isalpha()]
+            # Ανανέωση αν κενό ή όλα κεφαλαία (π.χ. από ΠΣΔ)
+            needs_regen = (not acc) or (bool(letters) and all(c.isupper() for c in letters))
+            if needs_regen:
+                first = convert_first_name_to_accusative(self.first_name)
+                last = convert_last_name_to_accusative(self.last_name)
+                self.name_accusative = f"{first} {last}"
         super().save(*args, **kwargs)
 
     email = models.EmailField('Email', unique=True)
