@@ -7,25 +7,65 @@
 {% block extra_css %}
 <style>
   {{ decision_pdf_css|safe }}
+  .decision-workspace {
+    align-items: stretch;
+  }
+  .decision-workspace > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+  }
+  .decision-editor-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 24cm;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: #f8f9fa;
+  }
+  .decision-editor-panel .form-control,
+  .decision-editor-panel .form-select {
+    width: 100%;
+  }
+  .decision-editor-panel .edit-section {
+    width: 100%;
+  }
+  .decision-editor-panel .edit-section textarea {
+    font-family: "DejaVu Sans", "Arial", sans-serif;
+    font-size: 11pt;
+    width: 100%;
+    resize: vertical;
+  }
+  .decision-editor-panel .ypopsin-section {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .decision-editor-panel .ypopsin-section textarea {
+    flex: 1 1 auto;
+    min-height: 22rem;
+    width: 100%;
+  }
+  .decision-preview-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 24cm;
+  }
   .decision-preview-panel {
     background: #fff;
     border: 1px solid #ccc;
     padding: 0.4cm;
     width: 100%;
-    max-width: 21cm;
+    max-width: 100%;
+    flex: 1 1 auto;
     min-height: 24cm;
-    margin: 0 auto 1rem;
+    margin: 0 0 1rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
-  .sidebar-card {
-    position: sticky;
-    top: 20px;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-  }
-  .edit-section textarea {
-    font-family: "DejaVu Sans", "Arial", sans-serif;
-    font-size: 10pt;
+    overflow: auto;
   }
 </style>
 {% endblock %}
@@ -80,61 +120,60 @@
                         </div>
                     </div>
 
-                        <div class="row g-3">
-                            <div class="col-lg-4">
-                                <div class="sidebar-card">
+                        <div class="row g-3 decision-workspace">
+                            <div class="col-lg-8">
+                                <div class="decision-editor-panel">
                                     <h5>Επιλογές Στοιχείων</h5>
 
-                                    <div class="mb-3">
-                                        <label for="logo_id">Λογότυπο:</label>
-                                        <select name="logo_id" id="logo_id" class="form-control form-control-sm">
-                                            {% for logo in logos %}
-                                                <option value="{{ logo.id }}"
-                                                        {% if logo == default_logo %}selected{% endif %}
-                                                        data-logo-full="{{ logo.logo|escape }}">
-                                                    {{ logo.logo_short }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="info_id">Πληροφορίες:</label>
-                                        <select name="info_id" id="info_id" class="form-control form-control-sm">
-                                            {% for info in infos %}
-                                                <option value="{{ info.id }}"
-                                                        {% if info == default_info %}selected{% endif %}
-                                                        data-info-content="{{ info.info|escape }}">
-                                                    {{ info.info_short }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="ypopsin_id">Έχοντας Υπόψη:</label>
-                                        <select name="ypopsin_id" id="ypopsin_id" class="form-control form-control-sm">
-                                            {% for ypopsin in ypopsins %}
-                                                <option value="{{ ypopsin.id }}"
-                                                        {% if ypopsin == default_ypopsin %}selected{% endif %}
-                                                        data-ypopsin-content="{{ ypopsin.ypopsin|escape }}">
-                                                    {{ ypopsin.ypopsin_short }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="signee_id">Υπογράφων:</label>
-                                        <select name="signee_id" id="signee_id" class="form-control form-control-sm">
-                                            {% for signee in signees %}
-                                                <option value="{{ signee.id }}"
-                                                        {% if signee == default_signee %}selected{% endif %}
-                                                        data-signee-content="{{ signee.signee|escape }}">
-                                                    {{ signee.signee_name }}
-                                                </option>
-                                            {% endfor %}
-                                        </select>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="logo_id" class="form-label">Λογότυπο</label>
+                                            <select name="logo_id" id="logo_id" class="form-select">
+                                                {% for logo in logos %}
+                                                    <option value="{{ logo.id }}"
+                                                            {% if logo == default_logo %}selected{% endif %}
+                                                            data-logo-full="{{ logo.logo|escape }}">
+                                                        {{ logo.logo_short }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="info_id" class="form-label">Πληροφορίες</label>
+                                            <select name="info_id" id="info_id" class="form-select">
+                                                {% for info in infos %}
+                                                    <option value="{{ info.id }}"
+                                                            {% if info == default_info %}selected{% endif %}
+                                                            data-info-content="{{ info.info|escape }}">
+                                                        {{ info.info_short }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="ypopsin_id" class="form-label">Έχοντας Υπόψη</label>
+                                            <select name="ypopsin_id" id="ypopsin_id" class="form-select">
+                                                {% for ypopsin in ypopsins %}
+                                                    <option value="{{ ypopsin.id }}"
+                                                            {% if ypopsin == default_ypopsin %}selected{% endif %}
+                                                            data-ypopsin-content="{{ ypopsin.ypopsin|escape }}">
+                                                        {{ ypopsin.ypopsin_short }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="signee_id" class="form-label">Υπογράφων</label>
+                                            <select name="signee_id" id="signee_id" class="form-select">
+                                                {% for signee in signees %}
+                                                    <option value="{{ signee.id }}"
+                                                            {% if signee == default_signee %}selected{% endif %}
+                                                            data-signee-content="{{ signee.signee|escape }}">
+                                                        {{ signee.signee_name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <hr>
@@ -143,33 +182,35 @@
 
                                     <div class="edit-section mb-3">
                                         <label for="info_text" class="form-label">Πληροφορίες</label>
-                                        <textarea name="info_text" id="info_text" class="form-control form-control-sm" rows="4">{{ default_info.info }}</textarea>
+                                        <textarea name="info_text" id="info_text" class="form-control" rows="5">{{ default_info.info }}</textarea>
                                     </div>
 
-                                    <div class="edit-section mb-3">
+                                    <div class="edit-section ypopsin-section mb-3">
                                         <label for="ypopsin_text" class="form-label">Έχοντας υπόψη</label>
-                                        <textarea name="ypopsin_text" id="ypopsin_text" class="form-control form-control-sm" rows="5">{{ default_ypopsin.ypopsin }}</textarea>
+                                        <textarea name="ypopsin_text" id="ypopsin_text" class="form-control" rows="18">{{ default_ypopsin.ypopsin }}</textarea>
                                     </div>
 
                                     <div class="edit-section mb-3">
                                         <label for="decision_body" class="form-label">Κείμενο απόφασης</label>
-                                        <textarea name="decision_body" id="decision_body" class="form-control form-control-sm" rows="4">{% autoescape off %}{{ default_decision_body }}{% endautoescape %}</textarea>
+                                        <textarea name="decision_body" id="decision_body" class="form-control" rows="6">{% autoescape off %}{{ default_decision_body }}{% endautoescape %}</textarea>
                                         <div class="form-text">Χρησιμοποιήστε &lt;b&gt;...&lt;/b&gt; για έντονο κείμενο.</div>
                                     </div>
 
-                                    <div class="edit-section mb-3">
+                                    <div class="edit-section mb-0">
                                         <label for="signee_text" class="form-label">Υπογράφοντες</label>
-                                        <textarea name="signee_text" id="signee_text" class="form-control form-control-sm" rows="4">{{ default_signee.signee }}</textarea>
+                                        <textarea name="signee_text" id="signee_text" class="form-control" rows="5">{{ default_signee.signee }}</textarea>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-lg-8">
-                                <h5>Προεπισκόπηση Διάταξης</h5>
-                                <p class="text-muted small mb-3">
-                                    Η διάταξη ενημερώνεται αυτόματα καθώς επεξεργάζεστε τα πεδία αριστερά.
-                                </p>
-                                <div id="decision-preview" class="decision-preview-panel"></div>
+                            <div class="col-lg-4">
+                                <div class="decision-preview-column">
+                                    <h5>Προεπισκόπηση Διάταξης</h5>
+                                    <p class="text-muted small mb-3">
+                                        Η διάταξη ενημερώνεται αυτόματα καθώς επεξεργάζεστε τα πεδία αριστερά.
+                                    </p>
+                                    <div id="decision-preview" class="decision-preview-panel"></div>
+                                </div>
                             </div>
                         </div>
                     </form>
