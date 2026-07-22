@@ -13,7 +13,6 @@ DEFAULT_REGISTRATION_APPROVAL_BODY = """Αγαπητέ/ή {full_name},
 
 Μπορείτε πλέον να συνδεθείτε στο σύστημα:
   - Μέσω ΠΣΔ (Σχολικό Δίκτυο): {login_psd_url}
-  - Μέσω email και κωδικού: {login_alt_url}
 
 Παρακαλούμε να αλλάξετε τον κωδικό πρόσβασής σας με την πρώτη σύνδεση.
 
@@ -25,7 +24,6 @@ REGISTRATION_EMAIL_PLACEHOLDERS = (
     ('{full_name}', 'Ονοματεπώνυμο χρήστη'),
     ('{email}', 'Email χρήστη'),
     ('{login_psd_url}', 'Σύνδεσμος σύνδεσης μέσω ΠΣΔ'),
-    ('{login_alt_url}', 'Σύνδεσμος σύνδεσης με email/κωδικό'),
 )
 
 
@@ -67,7 +65,7 @@ def build_registration_approval_email(user, template=None):
         'full_name': user.full_name,
         'email': user.email,
         'login_psd_url': login_psd_url,
-        'login_alt_url': login_alt_url,
+        'login_alt_url': login_alt_url,  # διατηρείται για παλιά πρότυπα στη ΒΔ
     }
     subject = _apply_placeholders(template.subject, context)
     message = _apply_placeholders(template.body, context)
