@@ -92,7 +92,10 @@ class LeaveRequestForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['leave_type'].queryset = get_ordered_active_leave_types()
+        # Οι άτυπες (is_simple) υποβάλλονται μόνο από /leaves/create-atypical/
+        self.fields['leave_type'].queryset = get_ordered_active_leave_types(
+            LeaveType.objects.filter(is_active=True, is_simple=False)
+        )
     
     def clean_periods_data(self):
         """Επικύρωση των διαστημάτων άδειας"""

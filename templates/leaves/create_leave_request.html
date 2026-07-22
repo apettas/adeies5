@@ -80,7 +80,46 @@
                                 <h5><i class="bi bi-calendar-range"></i> Διαστήματα Άδειας</h5>
                             </div>
                             
-                            <div id="periods-container"></div>
+                            <div id="periods-container">
+                                <!-- Αρχικό διάστημα (server-side fallback αν αποτύχει το JS) -->
+                                <div class="card mb-3 period-card" data-period-id="1">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="mb-0"><i class="bi bi-calendar-range"></i> Διάστημα <span class="period-number">1</span></h6>
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-period-btn">
+                                                <i class="bi bi-trash"></i> Αφαίρεση
+                                            </button>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-5">
+                                                <label class="form-label">
+                                                    <i class="bi bi-calendar"></i> Ημερομηνία Έναρξης
+                                                </label>
+                                                <input type="date" class="form-control period-start-date" required>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label">
+                                                    <i class="bi bi-calendar-check"></i> Ημερομηνία Λήξης
+                                                </label>
+                                                <input type="date" class="form-control period-end-date" required>
+                                                <div class="date-error-end alert alert-warning mt-2" style="display: none;">
+                                                    <small><i class="bi bi-exclamation-circle"></i> Η ημερομηνία πρέπει να είναι μελλοντική</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label">Ημέρες</label>
+                                                <input type="text" class="form-control period-days" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="date-range-error alert alert-danger mt-2" style="display: none;">
+                                            <small><i class="bi bi-exclamation-circle"></i> Η Ημερομηνία Λήξης δεν μπορεί να είναι πριν από την Ημερομηνία Έναρξης</small>
+                                        </div>
+                                        <div class="overlap-warning alert alert-danger mt-2" style="display: none;">
+                                            <small><i class="bi bi-exclamation-circle"></i> <span class="overlap-message"></span></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Total Days Display -->
                             <div id="days-calculation" class="alert alert-info mt-3" style="display: none;">
@@ -110,24 +149,26 @@
                             <label class="form-label">
                                 <i class="bi bi-paperclip"></i> Επισύναψη Αρχείων (Προαιρετικό)
                             </label>
-                            <div class="attachment-group mb-3" data-index="1">
-                                <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.jpg,.jpeg,.png">
-                                <div class="form-text">
-                                    Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, JPG, PNG
+                            <div id="attachment-groups">
+                                <div class="attachment-group mb-3" data-index="1">
+                                    <input type="file" name="attachment_1" id="attachment_1" class="form-control attachment-input" accept=".pdf,.jpg,.jpeg,.png">
+                                    <div class="form-text">
+                                        Μέγιστο μέγεθος: 10MB. Επιτρεπόμενοι τύποι: PDF, JPG, PNG
+                                    </div>
+                                    <div class="file-error alert alert-danger mt-2" style="display: none;">
+                                        <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label for="attachment_description_1" class="form-label">
+                                            <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1 (Υποχρεωτικό εάν υπάρχει αρχείο)
+                                        </label>
+                                        <textarea name="attachment_description_1" id="attachment_description_1" class="form-control attachment-description" rows="2" placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
+                                        <div class="form-text">Παρακαλώ περιγράψτε το περιεχόμενο του συνημμένου αρχείου.</div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
+                                        <i class="bi bi-trash"></i> Αφαίρεση Συνημμένου
+                                    </button>
                                 </div>
-                                <div class="file-error alert alert-danger mt-2" style="display: none;">
-                                    <small><i class="bi bi-exclamation-circle"></i> <span class="error-message"></span></small>
-                                </div>
-                                <div class="mt-2">
-                                    <label for="attachment_description_1" class="form-label">
-                                        <i class="bi bi-chat-left-text"></i> Περιγραφή Συνημμένου 1 (Υποχρεωτικό εάν υπάρχει αρχείο)
-                                    </label>
-                                    <textarea name="attachment_description_1" id="attachment_description_1" class="form-control attachment-description" rows="2" placeholder="Περιγράψτε τι είναι το συνημμένο αρχείο"></textarea>
-                                    <div class="form-text">Παρακαλώ περιγράψτε το περιεχόμενο του συνημμένου αρχείου.</div>
-                                </div>
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-attachment-btn mt-2" style="display: none;">
-                                    <i class="bi bi-trash"></i> Αφαίρεση Συνημμένου
-                                </button>
                             </div>
                             
                             <!-- File Preview -->
@@ -292,11 +333,18 @@
 {% endblock %}
 
 {% block extra_js %}
-<script nonce="{{ csp_nonce }}">
+<script data-cfasync="false" nonce="{{ csp_nonce }}">
+(function () {
+    if (typeof window.jQuery === 'undefined') {
+        console.error('jQuery is required for the leave request form');
+        return;
+    }
+    var $ = window.jQuery;
+
 $(document).ready(function() {
     console.log('Initializing leave request form...');
     
-    let periodCounter = 0;
+    let periodCounter = $('#periods-container .period-card').length || 0;
     const periodsContainer = $('#periods-container');
     const periodsDataField = $('#{{ form.periods_data.id_for_label }}');
     const totalDaysSpan = $('#total-days');
@@ -308,11 +356,19 @@ $(document).ready(function() {
     let hasFileErrors = false;
     let hasDaysMismatch = false;
     
-    // Leave type instructions from server
-    const leaveTypeInstructions = {{ leave_type_instructions|safe }};
-    
-    // Revocation type IDs from server
-    const revocationTypeIds = {{ revocation_type_ids|safe }};
+    // Leave type instructions / revocation IDs (ασφαλές JSON από json.dumps)
+    let leaveTypeInstructions = {};
+    let revocationTypeIds = [];
+    try {
+        leaveTypeInstructions = {{ leave_type_instructions_json|default:"{}"|safe }};
+    } catch (e) {
+        console.warn('leaveTypeInstructions parse error', e);
+    }
+    try {
+        revocationTypeIds = {{ revocation_type_ids_json|default:"[]"|safe }};
+    } catch (e) {
+        console.warn('revocationTypeIds parse error', e);
+    }
     
     function toggleLeaveInstructions() {
         const selectedId = parseInt($('#{{ form.leave_type.id_for_label }}').val());
@@ -368,7 +424,7 @@ $(document).ready(function() {
     // Function to check if there are any date errors in all periods
     function checkOverallDateErrors() {
         hasDateErrors = false;
-        $('.period-card').each(function() {
+        $('#periods-container .period-card').each(function() {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             
@@ -404,7 +460,7 @@ $(document).ready(function() {
         const declaredDays = parseInt($('#{{ form.days.id_for_label }}').val());
         let totalPeriodDays = 0;
         let hasAnyPeriod = false;
-        $('.period-card').each(function() {
+        $('#periods-container .period-card').each(function() {
             const daysValue = $(this).find('.period-days').val();
             if (daysValue && !isNaN(daysValue) && daysValue !== 'Μη έγκυρο') {
                 totalPeriodDays += parseInt(daysValue);
@@ -544,7 +600,7 @@ $(document).ready(function() {
     // Function to remove a period
     function removePeriod(periodElement) {
         // Don't allow removing the last period
-        if ($('.period-card').length <= 1) {
+        if ($('#periods-container .period-card').length <= 1) {
             alert('Πρέπει να υπάρχει τουλάχιστον ένα διάστημα άδειας.');
             return;
         }
@@ -559,7 +615,7 @@ $(document).ready(function() {
     
     // Function to update period numbers
     function updatePeriodNumbers() {
-        $('.period-card').each(function(index) {
+        $('#periods-container .period-card').each(function(index) {
             $(this).find('.period-number').text(index + 1);
         });
     }
@@ -589,7 +645,7 @@ $(document).ready(function() {
         const periodElements = [];
         
         // Collect all periods with valid dates
-        $('.period-card').each(function(index) {
+        $('#periods-container .period-card').each(function(index) {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             if (startDate && endDate) {
@@ -659,7 +715,7 @@ $(document).ready(function() {
         let validPeriods = 0;
         const lines = [];
         
-        $('.period-card').each(function(index) {
+        $('#periods-container .period-card').each(function(index) {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             const daysValue = $(this).find('.period-days').val();
@@ -710,7 +766,7 @@ $(document).ready(function() {
     function updatePeriodsData() {
         const periods = [];
         
-        $('.period-card').each(function() {
+        $('#periods-container .period-card').each(function() {
             const startDate = $(this).find('.period-start-date').val();
             const endDate = $(this).find('.period-end-date').val();
             
@@ -726,9 +782,24 @@ $(document).ready(function() {
         periodsDataField.val(JSON.stringify(periods));
     }
     
-    // Add period button click handler
-    $('#add-period-btn').on('click', function() {
+    // Add period button click handler (event delegation)
+    $(document).on('click', '#add-period-btn', function(e) {
+        e.preventDefault();
         addPeriod();
+    });
+
+    // Bind remove on existing server-rendered period
+    periodsContainer.find('.remove-period-btn').on('click', function() {
+        removePeriod($(this).closest('.period-card'));
+    });
+    periodsContainer.find('.period-start-date, .period-end-date').on('change', function() {
+        const periodCard = $(this).closest('.period-card');
+        validateDateRange(periodCard);
+        updatePeriodDays(periodCard);
+        updatePeriodsData();
+        calculateTotalDays();
+        validateDaysMismatch();
+        checkOverloaps();
     });
     
     // File upload preview functionality for multiple attachments
@@ -789,8 +860,9 @@ $(document).ready(function() {
     }
     
     // Add attachment functionality
-    let attachmentCounter = 1;
-    $('#add-attachment-btn').on('click', function() {
+    let attachmentCounter = $('#attachment-groups .attachment-group').length || 1;
+    $(document).on('click', '#add-attachment-btn', function(e) {
+        e.preventDefault();
         attachmentCounter++;
         const newAttachmentGroup = `
             <div class="attachment-group mb-3" data-index="${attachmentCounter}">
@@ -814,7 +886,7 @@ $(document).ready(function() {
             </div>
         `;
         
-        $('#attachments-container').append(newAttachmentGroup);
+        $('#attachment-groups').append(newAttachmentGroup);
         updateRemoveButtons();
     });
     
@@ -856,7 +928,7 @@ $(document).ready(function() {
                 
                 periods.forEach(function(period) {
                     addPeriod();
-                    const lastPeriod = $('.period-card').last();
+                    const lastPeriod = $('#periods-container .period-card').last();
                     
                     // HTML5 date input uses ISO format (yyyy-mm-dd) - use directly
                     lastPeriod.find('.period-start-date').val(period.start_date);
@@ -872,9 +944,12 @@ $(document).ready(function() {
         } catch (e) {
             console.log('Error parsing existing periods data:', e);
         }
-    } else {
-        // Add the first period automatically
+    } else if ($('#periods-container .period-card').length === 0) {
+        // Add the first period automatically only if none was rendered server-side
         addPeriod();
+    } else {
+        periodCounter = $('#periods-container .period-card').length;
+        updatePeriodsData();
     }
 
     // Initial days mismatch validation
@@ -907,5 +982,6 @@ $(document).ready(function() {
     checkOverallDateErrors();
     checkOverallFileErrors();
 });
+})();
 </script>
 {% endblock %}

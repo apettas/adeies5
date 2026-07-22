@@ -130,12 +130,13 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        import json
         instructions = {}
         for lt in LeaveType.objects.filter(is_active=True).exclude(instructions=''):
-            instructions[lt.id] = lt.instructions
-        context['leave_type_instructions'] = instructions
-        context['revocation_type_ids'] = list(
-            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+            instructions[str(lt.id)] = lt.instructions
+        context['leave_type_instructions_json'] = json.dumps(instructions, ensure_ascii=False)
+        context['revocation_type_ids_json'] = json.dumps(
+            list(LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True))
         )
         return context
 
@@ -321,13 +322,18 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
 
 
 class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
-    """Δημιουργία άτυπης άδειας (is_simple=True) — χωρίς PDF"""
+    """Δημιουργία άτυπης άδειας (is_simple=True) — χωρίς PDF / χωρίς auto-email"""
     model = LeaveRequest
     template_name = 'leaves/create_leave_request.html'
     form_class = None  # Set in dispatch
 
     def dispatch(self, request, *args, **kwargs):
-        if not request.user.department or not request.user.department.has_atypical_leaves:
+        # LoginRequiredMixin πρέπει να τρέξει πριν το department check
+        # (το AnonymousUser δεν έχει .department)
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        department = getattr(request.user, 'department', None)
+        if not department or not department.has_atypical_leaves:
             raise PermissionDenied("Δεν έχετε δικαίωμα δημιουργίας άτυπης άδειας.")
         from .forms import AtypicalLeaveForm
         self.form_class = AtypicalLeaveForm
@@ -342,12 +348,13 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['is_atypical'] = True
+        import json
         instructions = {}
-        for lt in LeaveType.objects.filter(is_active=True).exclude(instructions=''):
-            instructions[lt.id] = lt.instructions
-        context['leave_type_instructions'] = instructions
-        context['revocation_type_ids'] = list(
-            LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+        for lt in LeaveType.objects.filter(is_active=True, is_simple=True).exclude(instructions=''):
+            instructions[str(lt.id)] = lt.instructions
+        context['leave_type_instructions_json'] = json.dumps(instructions, ensure_ascii=False)
+        context['revocation_type_ids_json'] = json.dumps(
+            list(LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True))
         )
         return context
 
@@ -1882,6 +1889,11 @@ def submit_final_request(request):
             HTML(string=html_content).write_pdf(pdf_path)
 
             # Αυτόματη δημιουργία ενοποιημένου PDF και αποστολή στο πρωτόκολλο
+            # (όχι για άτυπες / is_simple άδειες)
+            if leave_request.leave_type.is_simple:
+                messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
+                return redirect('leaves:leave_request_detail', leave_request.id)
+
             try:
                 from leaves.utils.pdf_merger import save_merged_pdf
                 from pdede_leaves.email_utils import send_merged_pdf_email
