@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from decouple import config
-from accounts.views import PdedeCASLoginView, logout_view, alt_login_view
+from accounts.views import PdedeCASLoginView, logout_view, alt_login_view, privacy_policy_view
 from django_cas_ng import views as cas_views
 from django.views.generic import RedirectView
 
@@ -28,6 +28,7 @@ urlpatterns = [
     path('', home_redirect, name='home'),
     path('logout/', logout_view, name='root_logout'),
     path('alt/', alt_login_view, name='alt_login'),
+    path('privacy-policy/', privacy_policy_view, name='privacy_policy'),
     path('login/', include('accounts.urls')),
     path('leaves/', include('leaves.urls')),
     path('notifications/', include('notifications.urls')),

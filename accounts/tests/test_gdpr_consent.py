@@ -77,7 +77,7 @@ class GDPRConsentTests(TestDataMixin, TestCase):
         self.assertNotContains(page, 'gdprConsentModal')
 
     def test_privacy_policy_page_is_public(self):
-        response = self.client.get(reverse('accounts:privacy_policy'))
+        response = self.client.get(reverse('privacy_policy'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Πολιτική Απορρήτου')
         self.assertContains(response, 'Υπεύθυνος Επεξεργασίας')
@@ -86,4 +86,4 @@ class GDPRConsentTests(TestDataMixin, TestCase):
     def test_modal_includes_privacy_policy_link(self):
         self.client.force_login(self.employee)
         response = self.client.get(reverse('leaves:employee_dashboard'))
-        self.assertContains(response, reverse('accounts:privacy_policy'))
+        self.assertContains(response, reverse('privacy_policy'))

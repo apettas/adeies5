@@ -22,5 +22,4 @@ urlpatterns = [
     path('assign-role/', views.assign_role, name='assign_role'),
     path('update-department/', views.update_user_department, name='update_department'),
     path('gdpr-consent/', views.accept_gdpr_consent, name='accept_gdpr_consent'),
-    path('privacy-policy/', views.privacy_policy_view, name='privacy_policy'),
 ]
