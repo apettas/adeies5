@@ -211,24 +211,66 @@
                                 <span class="badge bg-warning fs-6">Προς Υπογραφές</span>
                             {% elif leave_request.status == 'COMPLETED' %}
                                 <span class="badge bg-success fs-6">Ολοκληρώθηκε</span>
+                                {% if leave_request.revoked_days %}
+                                <span class="badge bg-dark ms-1">Μερική ανάκληση: {{ leave_request.revoked_days }} ημ.</span>
+                                {% endif %}
+                            {% elif leave_request.status == 'REVOKED_BY_REQUEST' %}
+                                <span class="badge bg-dark fs-6">ΑΝΑΚΛΗΣΗ ΑΔΕΙΑΣ ΑΠΟ ΑΙΤΗΣΗ</span>
                             {% elif leave_request.status == 'SUPERVISOR_REJECTED' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Προϊστάμενο</span>
                             {% elif leave_request.status == 'REJECTED_BY_LEAVES_DEPT' %}
                                 <span class="badge bg-danger fs-6">Απορρίφθηκε από Χειριστή</span>
                             {% elif leave_request.status == 'CANCELLED_BY_APPLICANT' %}
-                                <span class="badge bg-warning fs-6">Ανάκληση</span>
+                                <span class="badge bg-warning fs-6">Ανάκληση αίτησης</span>
                             {% endif %}
                         </p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <strong>Συνολικές Ημέρες:</strong>
-                        <p><span class="badge bg-info fs-6">{{ leave_request.total_days }} ημέρες</span></p>
+                        <p><span class="badge bg-info fs-6">{{ leave_request.total_days }} ημέρες</span>
+                        {% if leave_request.revoked_days and not leave_request.leave_type.is_revocation %}
+                        <span class="badge bg-secondary">ενεργές: {{ leave_request.effective_days_used }}</span>
+                        {% endif %}
+                        </p>
                     </div>
+                    {% if leave_request.parent_leave %}
+                    <div class="col-md-6 mb-3">
+                        <strong>Αρχική άδεια (ανάκληση):</strong>
+                        <p>
+                            <a href="{% url 'leaves:leave_request_detail' leave_request.parent_leave.pk %}">
+                                #{{ leave_request.parent_leave.id }} — {{ leave_request.parent_leave.leave_type.name }}
+                            </a>
+                            {% if leave_request.revocation_scope %}
+                            <span class="badge bg-warning text-dark">{{ leave_request.get_revocation_scope_display }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
                     <div class="col-md-6 mb-3">
                         <strong>Ημερομηνία Υποβολής:</strong>
                         <p class="date-greek">{{ leave_request.submitted_at|date:"d/m/Y H:i" }}</p>
                     </div>
                 </div>
+
+                {% if leave_request.child_requests.exists %}
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <strong>Αιτήσεις ανάκλησης:</strong>
+                        <ul class="mb-0 mt-1">
+                            {% for child in leave_request.child_requests.all %}
+                                {% if child.leave_type.is_revocation %}
+                                <li>
+                                    <a href="{% url 'leaves:leave_request_detail' child.pk %}">#{{ child.id }}</a>
+                                    — {{ child.get_status_display }}
+                                    {% if child.revocation_scope %}({{ child.get_revocation_scope_display }}){% endif %}
+                                    · {{ child.total_days }} ημ.
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
                 
                 {% if leave_request.description %}
                 <div class="row">

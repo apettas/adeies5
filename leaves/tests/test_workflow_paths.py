@@ -321,7 +321,7 @@ class ApplicantWithdrawTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
 
 
 class CompletedRevocationTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
-    """Ανάκληση ολοκληρωμένης άδειας."""
+    """Ανάκληση ολοκληρωμένης άδειας (ολική / μερική) με ledger."""
 
     def setUp(self):
         super().setUp()
@@ -329,29 +329,153 @@ class CompletedRevocationTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase)
         self._create_leave_types()
         self._set_balances(self.employee)
 
-    def test_withdraw_completed_is_disabled(self):
-        """Η ανάκληση ολοκληρωμένης άδειας δεν είναι πλέον διαθέσιμη."""
-        from leaves.dashboard_utils import get_available_actions
-
+    def _completed_regular(self, days=5):
+        from datetime import date, timedelta
+        start = date(2025, 3, 3)
+        end = start + timedelta(days=days - 1)
         req = create_submitted_leave_request(
-            self.employee, self.regular_type, 'completed', START, END,
+            self.employee, self.regular_type, 'completed for revoke', start, end,
         )
         req.status = 'COMPLETED'
         req.completed_at = timezone.now()
+        req.pdede_protocol_number = 'PDEDE-REV-1'
         req.save()
+        from leaves.utils.balance_ledger import deduct_leave_days
+        deduct_leave_days(
+            employee=self.employee,
+            days_used=days,
+            leave_request=req,
+            description='test deduct',
+        )
+        self.employee.refresh_from_db()
+        return req
 
+    def test_revoke_action_visible_on_completed(self):
+        from leaves.dashboard_utils import get_available_actions
+
+        req = self._completed_regular()
         codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
-        self.assertNotIn('cancel_completed', codes)
+        self.assertIn('revoke_leave', codes)
+
+    def test_revocation_type_hidden_from_create_form(self):
+        from leaves.forms import LeaveRequestForm
+
+        form = LeaveRequestForm()
+        ids = list(form.fields['leave_type'].queryset.values_list('id', flat=True))
+        self.assertNotIn(self.revocation_type.id, ids)
+
+    def test_create_total_revocation_and_complete_restores_balance(self):
+        import json
+        parent = self._completed_regular(days=5)
+        balance_before = self.employee.current_regular_leave_balance
+
+        self.client.force_login(self.employee)
+        periods = [
+            {
+                'start_date': p.start_date.isoformat(),
+                'end_date': p.end_date.isoformat(),
+                'days': p.days,
+            }
+            for p in parent.periods.all()
+        ]
+        response = self.client.post(
+            reverse('leaves:create_leave_revocation', kwargs={'pk': parent.pk}),
+            {
+                'revocation_scope': 'TOTAL',
+                'days': 5,
+                'periods_data': json.dumps(periods),
+                'description': 'Ολική ανάκληση τεστ',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        child = LeaveRequest.objects.filter(parent_leave=parent, leave_type__is_revocation=True).latest('id')
+        self.assertEqual(child.status, 'DRAFT')
+        self.assertEqual(child.revocation_scope, 'TOTAL')
+        self.assertEqual(child.total_days, 5)
+
+        child.status = 'IN_REVIEW'
+        child.save(update_fields=['status'])
+        self.assertTrue(child.complete_by_handler(self.leave_handler))
+
+        child.refresh_from_db()
+        parent.refresh_from_db()
+        self.employee.refresh_from_db()
+
+        self.assertEqual(child.status, 'COMPLETED')
+        self.assertEqual(parent.status, 'REVOKED_BY_REQUEST')
+        self.assertEqual(parent.revoked_days, 5)
+        self.assertEqual(self.employee.current_regular_leave_balance, balance_before + 5)
+
+        entry = RegularLeaveBalanceEntry.objects.filter(
+            leave_request=child, entry_type='LEAVE_REVOKED',
+        ).first()
+        self.assertIsNotNone(entry)
+        self.assertEqual(entry.days_delta, 5)
+
+    def test_partial_revocation_keeps_parent_completed(self):
+        import json
+        from datetime import date, timedelta
+        parent = self._completed_regular(days=5)
+        balance_before = self.employee.current_regular_leave_balance
+        start = date(2025, 3, 3)
+        partial_end = start + timedelta(days=1)  # 2 days
 
         self.client.force_login(self.employee)
         response = self.client.post(
-            reverse('leaves:withdraw_completed_leave', kwargs={'pk': req.pk}),
+            reverse('leaves:create_leave_revocation', kwargs={'pk': parent.pk}),
+            {
+                'revocation_scope': 'PARTIAL',
+                'days': 2,
+                'periods_data': json.dumps([{
+                    'start_date': start.isoformat(),
+                    'end_date': partial_end.isoformat(),
+                    'days': 2,
+                }]),
+                'description': 'Μερική ανάκληση τεστ',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        child = LeaveRequest.objects.filter(parent_leave=parent).latest('id')
+        child.status = 'IN_REVIEW'
+        child.save(update_fields=['status'])
+        self.assertTrue(child.complete_by_handler(self.leave_handler))
+
+        parent.refresh_from_db()
+        self.employee.refresh_from_db()
+        self.assertEqual(parent.status, 'COMPLETED')
+        self.assertEqual(parent.revoked_days, 2)
+        self.assertEqual(parent.remaining_revocable_days, 3)
+        self.assertEqual(self.employee.current_regular_leave_balance, balance_before + 2)
+
+    def test_open_revocation_blocks_second(self):
+        import json
+        parent = self._completed_regular(days=3)
+        self.client.force_login(self.employee)
+        periods = [{
+            'start_date': p.start_date.isoformat(),
+            'end_date': p.end_date.isoformat(),
+            'days': p.days,
+        } for p in parent.periods.all()]
+        self.client.post(
+            reverse('leaves:create_leave_revocation', kwargs={'pk': parent.pk}),
+            {
+                'revocation_scope': 'TOTAL',
+                'days': 3,
+                'periods_data': json.dumps(periods),
+                'description': 'first',
+            },
+        )
+        parent.refresh_from_db()
+        self.assertFalse(parent.can_request_leave_revocation(self.employee))
+
+    def test_withdraw_completed_redirects_to_revoke(self):
+        parent = self._completed_regular()
+        self.client.force_login(self.employee)
+        response = self.client.get(
+            reverse('leaves:withdraw_completed_leave', kwargs={'pk': parent.pk}),
         )
         self.assertEqual(response.status_code, 302)
-
-        req.refresh_from_db()
-        self.assertEqual(req.status, 'COMPLETED')
-        self.assertFalse(LeaveRequest.objects.filter(parent_leave=req).exists())
+        self.assertIn('/revoke/', response.url)
 
 
 class DocumentsWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
@@ -647,23 +771,21 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         req.refresh_from_db()
         self.assertEqual(req.status, 'REJECTED_BY_LEAVES_DEPT')
 
-    def test_withdraw_completed_endpoint_disabled(self):
+    def test_withdraw_completed_redirects_to_revoke_flow(self):
         req = create_submitted_leave_request(
             self.employee, self.regular_type, 'revoke notify', START, END,
         )
         req.status = 'COMPLETED'
         req.save()
 
-        with patch('leaves.views.create_notification') as mock_notify:
-            self.client.force_login(self.employee)
-            self.client.post(
-                reverse('leaves:withdraw_completed_leave', kwargs={'pk': req.pk}),
-            )
-            mock_notify.assert_not_called()
-
+        self.client.force_login(self.employee)
+        response = self.client.get(
+            reverse('leaves:withdraw_completed_leave', kwargs={'pk': req.pk}),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(f'/revoke/{req.pk}/', response.url)
         req.refresh_from_db()
         self.assertEqual(req.status, 'COMPLETED')
-        self.assertFalse(LeaveRequest.objects.filter(parent_leave=req).exists())
 
     def test_sick_total_counted_once_on_handler_complete(self):
         req = create_submitted_leave_request(

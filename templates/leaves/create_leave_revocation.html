@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Ανάκληση Άδειας - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="bi bi-arrow-counterclockwise"></i> Ανάκληση Άδειας</h4>
+                </div>
+                <div class="card-body">
+                    {% if target_user %}
+                    <div class="alert alert-info">
+                        Δημιουργία ανάκλησης για: <strong>{{ target_user.full_name }}</strong>
+                    </div>
+                    {% endif %}
+
+                    <div class="alert alert-secondary">
+                        <h6 class="mb-2"><i class="bi bi-link-45deg"></i> Αρχική άδεια προς ανάκληση</h6>
+                        <div class="row small">
+                            <div class="col-md-6"><strong>Αίτηση:</strong> #{{ parent_leave.id }}</div>
+                            <div class="col-md-6"><strong>Είδος:</strong> {{ parent_leave.leave_type.name }}</div>
+                            <div class="col-md-6"><strong>Διαστήματα:</strong>
+                                {% for p in parent_leave.periods.all %}
+                                    {{ p.start_date|date:"d/m/Y" }}–{{ p.end_date|date:"d/m/Y" }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}—{% endfor %}
+                            </div>
+                            <div class="col-md-6"><strong>Ημέρες:</strong> {{ parent_leave.total_days }}
+                                {% if parent_leave.revoked_days %}
+                                    (ανακληθείσες: {{ parent_leave.revoked_days }}, υπόλοιπο: {{ remaining_days }})
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6"><strong>Αρ. πρωτ. ΠΔΕΔΕ:</strong>
+                                {{ parent_leave.pdede_protocol_number|default:parent_leave.protocol_number|default:"—" }}
+                            </div>
+                            <div class="col-md-6"><strong>Κατάσταση:</strong> {{ parent_leave.get_status_display }}</div>
+                        </div>
+                        <a href="{% url 'leaves:leave_request_detail' parent_leave.pk %}" class="btn btn-sm btn-outline-secondary mt-2">
+                            Προβολή αρχικής
+                        </a>
+                    </div>
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <h6 class="mb-2"><i class="bi bi-exclamation-triangle"></i> Σφάλματα:</h6>
+                        <ul class="mb-0">
+                            {% for field, errors in form.errors.items %}
+                                {% for error in errors %}
+                                    <li>{% if field != '__all__' %}<strong>{{ field }}:</strong> {% endif %}{{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" id="leave-revocation-form">
+                        {% csrf_token %}
+                        {{ form.periods_data }}
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.revocation_scope.id_for_label }}" class="form-label">
+                                    {{ form.revocation_scope.label }} *
+                                </label>
+                                {{ form.revocation_scope }}
+                                {% if form.revocation_scope.help_text %}
+                                <div class="form-text">{{ form.revocation_scope.help_text }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.days.id_for_label }}" class="form-label">
+                                    {{ form.days.label }} *
+                                </label>
+                                {{ form.days }}
+                                <div class="form-text">Μέγιστο υπόλοιπο προς ανάκληση: {{ remaining_days }}</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                {{ form.description.label }}
+                            </label>
+                            {{ form.description }}
+                        </div>
+
+                        <div class="alert alert-info" id="scope-help">
+                            <span id="scope-help-total" {% if not can_total %}style="display:none"{% endif %}>
+                                Για <strong>ολική</strong> ανάκληση τα διαστήματα συμπληρώνονται αυτόματα από την αρχική άδεια.
+                            </span>
+                            <span id="scope-help-partial">
+                                Για <strong>μερική</strong> ανάκληση δηλώστε τα διαστήματα που επιθυμείτε (εντός της αρχικής άδειας).
+                            </span>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="bi bi-calendar-range"></i> Διαστήματα Ανάκλησης</h5>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="add-period-btn">
+                                    <i class="bi bi-plus"></i> Προσθήκη διαστήματος
+                                </button>
+                            </div>
+                            <div id="periods-container"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h5><i class="bi bi-paperclip"></i> Συνημμένα (προαιρετικά)</h5>
+                            <div id="attachment-groups">
+                                <div class="attachment-group mb-2">
+                                    <input type="file" name="attachment_1" class="form-control mb-1"
+                                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                                    <textarea name="attachment_description_1" class="form-control" rows="2"
+                                              placeholder="Περιγραφή συνημμένου"></textarea>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-attachment-btn">
+                                <i class="bi bi-plus"></i> Άλλο συνημμένο
+                            </button>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'leaves:leave_request_detail' parent_leave.pk %}" class="btn btn-outline-secondary">
+                                Ακύρωση
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-eye"></i> Προεπισκόπηση
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script data-cfasync="false" nonce="{{ csp_nonce }}">
+(function () {
+  'use strict';
+  var parentPeriods = {{ initial_periods_json|safe }};
+  var canTotal = {{ can_total|yesno:"true,false" }};
+
+  function qs(sel, root) { return (root || document).querySelector(sel); }
+  function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  function periodCards() { return qsa('#periods-container .period-card'); }
+
+  function syncPeriodsField() {
+    var data = periodCards().map(function (card) {
+      var s = qs('.period-start-date', card);
+      var e = qs('.period-end-date', card);
+      if (!s || !e || !s.value || !e.value) return null;
+      var start = new Date(s.value + 'T00:00:00');
+      var end = new Date(e.value + 'T00:00:00');
+      var days = Math.floor((end - start) / 86400000) + 1;
+      return { start_date: s.value, end_date: e.value, days: days > 0 ? days : 0 };
+    }).filter(Boolean);
+    qs('#id_periods_data').value = JSON.stringify(data);
+    var total = data.reduce(function (a, p) { return a + p.days; }, 0);
+    var daysInput = qs('#id_days');
+    if (daysInput && data.length) daysInput.value = total || daysInput.value;
+  }
+
+  function bindCard(card) {
+    qsa('input', card).forEach(function (inp) {
+      inp.addEventListener('change', syncPeriodsField);
+      inp.addEventListener('input', syncPeriodsField);
+    });
+    var removeBtn = qs('.remove-period-btn', card);
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (periodCards().length > 1) {
+          card.remove();
+          renumber();
+          syncPeriodsField();
+        }
+      });
+    }
+  }
+
+  function renumber() {
+    periodCards().forEach(function (card, idx) {
+      var n = qs('.period-number', card);
+      if (n) n.textContent = String(idx + 1);
+    });
+  }
+
+  function addPeriod(start, end, locked) {
+    var container = qs('#periods-container');
+    var idx = periodCards().length + 1;
+    var card = document.createElement('div');
+    card.className = 'card mb-3 period-card';
+    card.innerHTML =
+      '<div class="card-body">' +
+      '<div class="d-flex justify-content-between align-items-center mb-3">' +
+      '<h6 class="mb-0">Διάστημα <span class="period-number">' + idx + '</span></h6>' +
+      (locked ? '' : '<button type="button" class="btn btn-outline-danger btn-sm remove-period-btn"><i class="bi bi-trash"></i></button>') +
+      '</div>' +
+      '<div class="row">' +
+      '<div class="col-md-5"><label class="form-label">Έναρξη</label>' +
+      '<input type="date" class="form-control period-start-date" ' + (locked ? 'readonly' : '') + ' required></div>' +
+      '<div class="col-md-5"><label class="form-label">Λήξη</label>' +
+      '<input type="date" class="form-control period-end-date" ' + (locked ? 'readonly' : '') + ' required></div>' +
+      '</div></div>';
+    container.appendChild(card);
+    if (start) qs('.period-start-date', card).value = start;
+    if (end) qs('.period-end-date', card).value = end;
+    bindCard(card);
+    syncPeriodsField();
+  }
+
+  function applyScope() {
+    var scope = qs('#id_revocation_scope');
+    var isTotal = scope && scope.value === 'TOTAL';
+    var helpTotal = qs('#scope-help-total');
+    var helpPartial = qs('#scope-help-partial');
+    var addBtn = qs('#add-period-btn');
+    if (helpTotal) helpTotal.style.display = (isTotal && canTotal) ? '' : 'none';
+    if (helpPartial) helpPartial.style.display = isTotal ? 'none' : '';
+    if (addBtn) addBtn.style.display = isTotal ? 'none' : '';
+
+    qs('#periods-container').innerHTML = '';
+    if (isTotal && canTotal) {
+      parentPeriods.forEach(function (p) {
+        addPeriod(p.start_date, p.end_date, true);
+      });
+    } else if (!periodCards().length) {
+      addPeriod('', '', false);
+    }
+    syncPeriodsField();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var scope = qs('#id_revocation_scope');
+    if (scope) scope.addEventListener('change', applyScope);
+    applyScope();
+
+    var addPeriodBtn = qs('#add-period-btn');
+    if (addPeriodBtn) {
+      addPeriodBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        addPeriod('', '', false);
+      });
+    }
+
+    var attachIdx = 1;
+    var addAtt = qs('#add-attachment-btn');
+    if (addAtt) {
+      addAtt.addEventListener('click', function (e) {
+        e.preventDefault();
+        attachIdx += 1;
+        var root = qs('#attachment-groups');
+        var wrap = document.createElement('div');
+        wrap.className = 'attachment-group mb-2';
+        wrap.innerHTML =
+          '<input type="file" name="attachment_' + attachIdx + '" class="form-control mb-1" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">' +
+          '<textarea name="attachment_description_' + attachIdx + '" class="form-control" rows="2" placeholder="Περιγραφή συνημμένου"></textarea>';
+        root.appendChild(wrap);
+      });
+    }
+
+    qs('#leave-revocation-form').addEventListener('submit', function () {
+      syncPeriodsField();
+    });
+  });
+})();
+</script>
+{% endblock %}

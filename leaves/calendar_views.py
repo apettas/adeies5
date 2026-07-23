@@ -64,8 +64,9 @@ def leave_calendar_view(request, year=None, month=None):
     
     leave_requests = LeaveRequest.objects.filter(
         user__in=employees_to_include,
-        status__in=approved_statuses
-    ).select_related('user', 'leave_type').prefetch_related('periods')
+        status__in=approved_statuses,
+        leave_type__is_revocation=False,
+    ).exclude(status='REVOKED_BY_REQUEST').select_related('user', 'leave_type').prefetch_related('periods')
     
     # Φιλτράρω τις περιόδους που τέμνουν με τον τρέχοντα μήνα
     month_periods = []

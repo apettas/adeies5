@@ -1105,7 +1105,13 @@ class UserLeaveHistoryView(LoginRequiredMixin, ListView):
             'completed_requests': all_requests.filter(status='COMPLETED').count(),
             'pending_requests': all_requests.filter(status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW']).count(),
             'rejected_requests': all_requests.filter(status__in=['SUPERVISOR_REJECTED', 'REJECTED_BY_LEAVES_DEPT']).count(),
-            'total_days_used': sum(req.total_days for req in all_requests.filter(status='COMPLETED')),
+            'total_days_used': sum(
+                req.effective_days_used
+                for req in all_requests.filter(
+                    status='COMPLETED',
+                    leave_type__is_revocation=False,
+                )
+            ),
             'user_role': 'handler' if self.request.user.is_leave_handler else 'manager'
         })
         
@@ -3016,10 +3022,136 @@ def delete_leave_request(request, pk):
 
 
 @login_required
+def create_leave_revocation(request, pk):
+    """Δημιουργία αίτησης ανάκλησης ολοκληρωμένης άδειας (ολική / μερική)."""
+    import json
+    from .forms import LeaveRevocationForm
+    from .utils.leave_revocation import (
+        build_revocation_request_body_text,
+        get_or_create_revocation_leave_type,
+    )
+
+    parent = get_object_or_404(
+        LeaveRequest.objects.select_related('leave_type', 'user').prefetch_related('periods'),
+        pk=pk,
+    )
+
+    if not parent.can_request_leave_revocation(request.user):
+        if parent.user_id != request.user.id and not request.user.is_leave_handler:
+            raise PermissionDenied('Δεν έχετε δικαίωμα ανάκλησης αυτής της άδειας.')
+        messages.error(
+            request,
+            'Δεν είναι δυνατή η ανάκληση αυτής της άδειας '
+            '(μη ολοκληρωμένη, χωρίς υπόλοιπο ημερών ή υπάρχει ήδη ανοιχτή αίτηση ανάκλησης).',
+        )
+        return redirect('leaves:leave_request_detail', pk=parent.pk)
+
+    target_user = parent.user
+    if not target_user.has_leave_request_permission():
+        messages.error(request, 'Ο χρήστης δεν έχει δικαίωμα υποβολής αιτήσεων αυτή τη στιγμή.')
+        return redirect('leaves:leave_request_detail', pk=parent.pk)
+
+    initial_periods = [
+        {
+            'start_date': p.start_date.isoformat(),
+            'end_date': p.end_date.isoformat(),
+            'days': p.days,
+        }
+        for p in parent.periods.all().order_by('start_date')
+    ]
+    default_days = parent.remaining_revocable_days
+    can_total = not parent.revoked_days and default_days == parent.total_days
+
+    if request.method == 'POST':
+        form = LeaveRevocationForm(request.POST, request.FILES, parent_leave=parent)
+        if form.is_valid():
+            revocation_type = get_or_create_revocation_leave_type()
+            scope = form.cleaned_data['revocation_scope']
+            days = form.cleaned_data['days']
+            periods_data = form.cleaned_data['periods_data']
+            description = (form.cleaned_data.get('description') or '').strip()
+            if not description:
+                description = build_revocation_request_body_text(parent, scope, days)
+
+            leave_request = LeaveRequest(
+                user=target_user,
+                leave_type=revocation_type,
+                description=description,
+                days=days,
+                requested_days=days,
+                status='DRAFT',
+                parent_leave=parent,
+                revocation_scope=scope,
+                revoked_days=days,
+            )
+            leave_request.save()
+
+            for period_data in periods_data:
+                LeavePeriod.objects.create(
+                    leave_request=leave_request,
+                    start_date=period_data['start_date'],
+                    end_date=period_data['end_date'],
+                )
+
+            save_leave_request_attachments_from_request(
+                request, leave_request, request.user,
+            )
+            leave_request.refresh_from_db()
+            periods = [
+                {
+                    'start_date': p.start_date,
+                    'end_date': p.end_date,
+                    'days': p.days,
+                }
+                for p in leave_request.periods.all()
+            ]
+            return render(request, 'leaves/preview_request.html', {
+                'form_data': {
+                    'leave_type': leave_request.leave_type,
+                    'description': leave_request.description,
+                    'days': days,
+                },
+                'user': target_user,
+                'leave_request': leave_request,
+                'periods': periods,
+                'total_days': days,
+                'attachments': leave_request.attachments.all(),
+                'parent_leave': parent,
+                'is_revocation': True,
+            })
+    else:
+        form = LeaveRevocationForm(
+            parent_leave=parent,
+            initial={
+                'revocation_scope': 'TOTAL' if can_total else 'PARTIAL',
+                'days': default_days if can_total else 1,
+                'periods_data': json.dumps(initial_periods) if can_total else '[]',
+                'description': build_revocation_request_body_text(
+                    parent,
+                    'TOTAL' if can_total else 'PARTIAL',
+                    default_days if can_total else 1,
+                ),
+            },
+        )
+
+    return render(request, 'leaves/create_leave_revocation.html', {
+        'form': form,
+        'parent_leave': parent,
+        'initial_periods_json': json.dumps(initial_periods, ensure_ascii=False),
+        'remaining_days': default_days,
+        'can_total': can_total,
+        'target_user': (
+            target_user
+            if request.user.is_leave_handler and request.user != target_user
+            else None
+        ),
+    })
+
+
+@login_required
 def withdraw_completed_leave(request, pk):
-    """Ανάκληση ολοκληρωμένης άδειας — απενεργοποιημένη."""
-    messages.error(request, 'Η ανάκληση ολοκληρωμένης άδειας δεν είναι διαθέσιμη.')
-    return redirect('leaves:employee_dashboard')
+    """Παλιό endpoint — ανακατεύθυνση στη νέα ροή ανάκλησης άδειας."""
+    return redirect('leaves:create_leave_revocation', pk=pk)
 
 
 @login_required

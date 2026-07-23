@@ -250,3 +250,33 @@ def deduct_leave_days(employee, days_used, leave_request=None, created_by=None,
         carryover_after=new_carry,
         current_after=new_current,
     )
+
+
+def credit_revoked_leave_days(employee, days, leave_request=None, created_by=None,
+                              description=None, notes=''):
+    """
+    Πίστωση ημερών λόγω ανάκλησης άδειας (LEAVE_REVOKED).
+    Οι ημέρες προστίθενται στον κουβά τρέχοντος δικαιώματος.
+    """
+    days = max(0, int(days))
+    if days <= 0:
+        return None
+
+    prev_carry, prev_current = get_last_buckets(employee)
+    new_carry = prev_carry
+    new_current = prev_current + days
+    full_notes = notes
+    credit_note = f'Πίστωση τρέχοντος +{days}'
+    full_notes = f'{notes}\n{credit_note}'.strip() if notes else credit_note
+
+    return create_balance_entry(
+        employee=employee,
+        entry_type='LEAVE_REVOKED',
+        description=description or 'Ανάκληση κανονικής άδειας',
+        leave_request=leave_request,
+        days_delta=days,
+        notes=full_notes,
+        created_by=created_by,
+        carryover_after=new_carry,
+        current_after=new_current,
+    )

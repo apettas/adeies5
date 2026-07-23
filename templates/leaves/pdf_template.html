@@ -89,6 +89,17 @@
             <p><span>Οργανική Μονάδα:</span> <span class="bold">{{ user.sso_organizational_unit|default:user.department.name|default:"-" }}</span></p>
             <div style="height: 30px;"></div>
             <p class="bold">Θέμα: {{ leave_request.leave_type.subject_text|default:leave_request.leave_type.name }}</p>
+            {% if leave_request.parent_leave %}
+            <div style="height: 12px;"></div>
+            <p><span>Αναφορά αρχικής άδειας:</span></p>
+            <p class="bold">#{{ leave_request.parent_leave.id }} — {{ leave_request.parent_leave.leave_type.name }}</p>
+            <p><span>Αρ. πρωτ. ΠΔΕΔΕ:</span>
+                <span class="bold">{{ leave_request.parent_leave.pdede_protocol_number|default:leave_request.parent_leave.protocol_number|default:"-" }}</span>
+            </p>
+            <p><span>Είδος ανάκλησης:</span>
+                <span class="bold">{{ leave_request.get_revocation_scope_display|default:"-" }}</span>
+            </p>
+            {% endif %}
         </div>
         
         <div class="right-column">

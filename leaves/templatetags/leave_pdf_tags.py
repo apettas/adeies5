@@ -7,6 +7,14 @@ register = template.Library()
 
 def build_default_request_body_text(leave_request):
     leave_type = leave_request.leave_type
+    if leave_type.is_revocation and leave_request.parent_leave_id:
+        from leaves.utils.leave_revocation import build_revocation_request_body_text
+
+        return build_revocation_request_body_text(
+            leave_request.parent_leave,
+            leave_request.revocation_scope or 'PARTIAL',
+            leave_request.total_days or leave_request.days or 0,
+        )
     phrase = (leave_type.decision_text or leave_type.name or '').strip()
     return f'Παρακαλώ να μου χορηγήσετε {phrase} για τα κάτωθι χρονικά διαστήματα:'
 

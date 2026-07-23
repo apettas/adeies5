@@ -60,6 +60,7 @@ def create_status_change_log(sender, instance, created, **kwargs):
             'DECISION_PREPARATION': 'START_DECISION',
             'PENDING_SIGNATURES': 'SEND_TO_SIGNATURES',
             'COMPLETED': 'COMPLETE',
+            'REVOKED_BY_REQUEST': 'LEAVE_REVOKED',
             'REJECTED_BY_LEAVES_DEPT': 'OPERATOR_REJECT',
             'CANCELLED_BY_APPLICANT': 'WITHDRAW',
         }

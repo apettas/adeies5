@@ -144,7 +144,13 @@ def _owner_actions(leave_request, user, actions):
         ])
     elif leave_request.can_be_withdrawn:
         _append_view(actions)
-        actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ', 'leaves:withdraw_leave_request'))
+        actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ ΑΙΤΗΣΗΣ', 'leaves:withdraw_leave_request'))
+    elif status == 'COMPLETED':
+        _append_view(actions)
+        if leave_request.can_request_leave_revocation(user):
+            actions.append(
+                ('revoke_leave', 'ΑΝΑΚΛΗΣΗ ΑΔΕΙΑΣ', 'leaves:create_leave_revocation'),
+            )
     elif status == 'WAITING_FOR_DOCUMENTS':
         _append_view(actions)
         actions.append(('upload_attachment', 'ΑΝΕΒΑΣΜΑ ΔΙΚ/ΚΩΝ', 'leaves:leave_request_detail'))
@@ -206,7 +212,13 @@ def _handler_actions(leave_request, actions):
         if leave_request.can_complete_request():
             actions.append(('complete', 'ΟΛΟΚΛΗΡΩΣΗ', 'leaves:complete_leave_request_final'))
         actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
-    elif status in ['COMPLETED', 'REJECTED_BY_LEAVES_DEPT', 'SUPERVISOR_REJECTED', 'CANCELLED_BY_APPLICANT']:
+    elif status in [
+        'COMPLETED',
+        'REVOKED_BY_REQUEST',
+        'REJECTED_BY_LEAVES_DEPT',
+        'SUPERVISOR_REJECTED',
+        'CANCELLED_BY_APPLICANT',
+    ]:
         _append_view(actions)
     else:
         _append_view(actions)

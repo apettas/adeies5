@@ -154,10 +154,25 @@ class LeaveRequest(models.Model):
         ('PENDING_YC_COMMITTEE', 'Αναμονή απόφασης Υγειονομικής Επιτροπής'),
         ('PENDING_SIGNATURES', 'ΣΗΔΕ - προς υπογραφές'),
         ('COMPLETED', 'Ολοκληρώθηκε'),
+        ('REVOKED_BY_REQUEST', 'ΑΝΑΚΛΗΣΗ ΑΔΕΙΑΣ ΑΠΟ ΑΙΤΗΣΗ'),
         ('SUPERVISOR_REJECTED', 'Αρνητική έγκριση προϊσταμένου'),
         ('REJECTED_BY_LEAVES_DEPT', 'Απόρριψη από τμήμα αδειών'),
         ('CANCELLED_BY_APPLICANT', 'Ανάκληση από αιτούντα'),
     ]
+
+    REVOCATION_SCOPE_CHOICES = [
+        ('TOTAL', 'Ολική'),
+        ('PARTIAL', 'Μερική'),
+    ]
+
+    # Καταστάσεις αίτησης ανάκλησης που θεωρούνται «κλειστές»
+    REVOCATION_TERMINAL_STATUSES = (
+        'COMPLETED',
+        'REJECTED_BY_LEAVES_DEPT',
+        'SUPERVISOR_REJECTED',
+        'CANCELLED_BY_APPLICANT',
+        'REVOKED_BY_REQUEST',
+    )
     
     # Βασικά πεδία
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='leave_requests', verbose_name='Χρήστης')
@@ -296,6 +311,13 @@ class LeaveRequest(models.Model):
                                      help_text='Για ανάκληση/μερική ανάκληση - συνδέει με την αρχική αίτηση')
     revoked_days = models.IntegerField('Ανακληθείσες Ημέρες', default=0,
                                        help_text='Ημέρες που ανακλήθηκαν από την αρχική αίτηση')
+    revocation_scope = models.CharField(
+        'Εύρος Ανάκλησης',
+        max_length=10,
+        choices=REVOCATION_SCOPE_CHOICES,
+        blank=True,
+        help_text='Ολική ή μερική — μόνο για αιτήσεις τύπου ανάκλησης',
+    )
     locking_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                      related_name='locked_leaves', verbose_name='Κλειδωμένο από Χειριστή')
     locked_at = models.DateTimeField('Ώρα Κλειδώματος', null=True, blank=True)
@@ -318,6 +340,55 @@ class LeaveRequest(models.Model):
     def total_days(self):
         """Υπολογισμός συνολικών ημερών άδειας από όλα τα διαστήματα"""
         return sum(period.days for period in self.periods.all())
+
+    @property
+    def remaining_revocable_days(self):
+        """Ημέρες που απομένουν προς ανάκληση στην αρχική άδεια."""
+        return max(0, (self.total_days or 0) - (self.revoked_days or 0))
+
+    @property
+    def effective_days_used(self):
+        """Ημέρες που «μετράνε» μετά από μερικές ανακλήσεις."""
+        return max(0, (self.total_days or 0) - (self.revoked_days or 0))
+
+    @property
+    def is_fully_revoked(self):
+        return self.status == 'REVOKED_BY_REQUEST'
+
+    @property
+    def is_partially_revoked(self):
+        return (
+            self.status == 'COMPLETED'
+            and (self.revoked_days or 0) > 0
+            and self.remaining_revocable_days > 0
+        )
+
+    def get_open_revocation_requests(self):
+        """Ενεργές (μη τερματικές) αιτήσεις ανάκλησης για αυτή την άδεια."""
+        return self.child_requests.filter(
+            leave_type__is_revocation=True,
+        ).exclude(status__in=self.REVOCATION_TERMINAL_STATUSES)
+
+    def can_request_leave_revocation(self, user):
+        """Ελέγχει αν ο χρήστης μπορεί να ξεκινήσει ανάκληση ολοκληρωμένης άδειας."""
+        if not user or not user.is_authenticated:
+            return False
+        if self.status != 'COMPLETED':
+            return False
+        if self.remaining_revocable_days <= 0:
+            return False
+        if self.user_id != user.id and not getattr(user, 'is_leave_handler', False):
+            return False
+        if self.get_open_revocation_requests().exists():
+            return False
+        return True
+
+    def date_covered_by_parent_periods(self, check_date):
+        """True αν η ημερομηνία ανήκει σε κάποιο διάστημα της αίτησης."""
+        return self.periods.filter(
+            start_date__lte=check_date,
+            end_date__gte=check_date,
+        ).exists()
 
     @property
     def start_date(self):
@@ -544,40 +615,125 @@ class LeaveRequest(models.Model):
         import logging
         logger = logging.getLogger(__name__)
 
-        if self.status == 'COMPLETED':
-            if self.leave_type.affects_regular_leave_balance:
-                days_used = self.total_days
-                if days_used > 0:
-                    from leaves.utils.balance_ledger import deduct_leave_days
+        if self.status != 'COMPLETED':
+            return
 
-                    deduct_leave_days(
-                        employee=self.user,
-                        days_used=days_used,
-                        leave_request=self,
-                        created_by=created_by,
-                        description=(
-                            f'Ολοκλήρωση άδειας #{self.id} — {self.leave_type.name}'
-                        ),
-                        notes=f'Ημερομηνίες: {self.start_date} - {self.end_date}',
-                        balance_after=balance_after,
-                    )
-                    logger.info(
-                        f"Deducted {days_used} leave days for user {self.user} "
-                        f"on completion of request {self.id} (FIFO buckets)"
-                    )
+        # Αίτηση ανάκλησης ολοκληρωμένης άδειας → πίστωση + ενημέρωση γονικής
+        if self.leave_type.is_revocation and self.parent_leave_id:
+            self._apply_revocation_on_completion(created_by=created_by)
+            return
 
-            if self.leave_type.is_sick_leave_total:
-                current_year = timezone.now().year
-                yearly_total, _ = YearlySickLeaveTotal.objects.get_or_create(
+        if self.leave_type.affects_regular_leave_balance:
+            days_used = self.total_days
+            if days_used > 0:
+                from leaves.utils.balance_ledger import deduct_leave_days
+
+                deduct_leave_days(
                     employee=self.user,
-                    year=current_year,
-                    defaults={'total_days': 0}
+                    days_used=days_used,
+                    leave_request=self,
+                    created_by=created_by,
+                    description=(
+                        f'Ολοκλήρωση άδειας #{self.id} — {self.leave_type.name}'
+                    ),
+                    notes=f'Ημερομηνίες: {self.start_date} - {self.end_date}',
+                    balance_after=balance_after,
                 )
-                yearly_total.total_days += self.total_days
-                yearly_total.save()
-                self.user.sick_days_current_year = yearly_total.total_days
-                self.user.save(update_fields=['sick_days_current_year'])
-    
+                logger.info(
+                    f"Deducted {days_used} leave days for user {self.user} "
+                    f"on completion of request {self.id} (FIFO buckets)"
+                )
+
+        if self.leave_type.is_sick_leave_total:
+            current_year = timezone.now().year
+            yearly_total, _ = YearlySickLeaveTotal.objects.get_or_create(
+                employee=self.user,
+                year=current_year,
+                defaults={'total_days': 0}
+            )
+            yearly_total.total_days += self.total_days
+            yearly_total.save()
+            self.user.sick_days_current_year = yearly_total.total_days
+            self.user.save(update_fields=['sick_days_current_year'])
+
+    def _apply_revocation_on_completion(self, created_by=None):
+        """Ολοκλήρωση αίτησης ανάκλησης: ledger + ενημέρωση αρχικής άδειας."""
+        import logging
+        logger = logging.getLogger(__name__)
+
+        parent = self.parent_leave
+        if not parent:
+            return
+
+        days = self.total_days or self.days or 0
+        if days <= 0:
+            return
+
+        remaining = parent.remaining_revocable_days
+        if days > remaining:
+            days = remaining
+
+        if days <= 0:
+            return
+
+        if parent.leave_type.affects_regular_leave_balance:
+            from leaves.utils.balance_ledger import credit_revoked_leave_days
+
+            credit_revoked_leave_days(
+                employee=self.user,
+                days=days,
+                leave_request=self,
+                created_by=created_by,
+                description=(
+                    f'Ανάκληση άδειας #{parent.id} μέσω αίτησης #{self.id}'
+                ),
+                notes=(
+                    f'Εύρος: {self.get_revocation_scope_display() or "—"} · '
+                    f'Ημερομηνίες ανάκλησης: {self.start_date} - {self.end_date}'
+                ),
+            )
+            logger.info(
+                f"Credited {days} leave days for user {self.user} "
+                f"on revocation request {self.id} (parent {parent.id})"
+            )
+
+        parent.revoked_days = (parent.revoked_days or 0) + days
+        if parent.revoked_days >= parent.total_days:
+            parent.status = 'REVOKED_BY_REQUEST'
+            parent.revoked_days = parent.total_days
+        parent.save(update_fields=['revoked_days', 'status', 'updated_at'])
+
+        self.revoked_days = days
+        self.save(update_fields=['revoked_days', 'updated_at'])
+
+        from notifications.utils import create_notification
+
+        scope_label = self.get_revocation_scope_display() or 'ανάκληση'
+        create_notification(
+            user=self.user,
+            title='Ολοκληρώθηκε ανάκληση άδειας',
+            message=(
+                f'Η {scope_label.lower()} ανάκληση της άδειας #{parent.id} ολοκληρώθηκε. '
+                f'Επιστράφηκαν {days} ημέρες.'
+            ),
+            notification_type='success',
+            related_object=self,
+        )
+        handlers = User.objects.filter(
+            roles__code='LEAVE_HANDLER',
+            is_active=True,
+        ).distinct()
+        for handler in handlers:
+            create_notification(
+                user=handler,
+                title='Ολοκληρώθηκε ανάκληση άδειας',
+                message=(
+                    f'Ο/Η {self.user.full_name}: {scope_label.lower()} ανάκληση '
+                    f'άδειας #{parent.id} ({days} ημέρες).'
+                ),
+                notification_type='info',
+                related_object=self,
+            )    
     def reject_by_operator(self, operator, reason):
         """Απόρριψη από χειριστή"""
         if self.status in ['PENDING_PROTOCOL', 'IN_REVIEW']:
@@ -910,6 +1066,7 @@ class LeaveRequest(models.Model):
             'PENDING_YC_COMMITTEE': 'danger',
             'PENDING_SIGNATURES': 'warning',
             'COMPLETED': 'success',
+            'REVOKED_BY_REQUEST': 'dark',
             'SUPERVISOR_REJECTED': 'danger',
             'REJECTED_BY_LEAVES_DEPT': 'danger',
             'CANCELLED_BY_APPLICANT': 'warning',

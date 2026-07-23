@@ -127,6 +127,7 @@ urlpatterns = [
 
     # Withdraw completed leave
     path('withdraw-completed/<int:pk>/', views.withdraw_completed_leave, name='withdraw_completed_leave'),
+    path('revoke/<int:pk>/', views.create_leave_revocation, name='create_leave_revocation'),
 
     # Merged PDF & Send to Protocol (email)
     path('send-to-protocol-email/<int:pk>/', views.send_to_protocol_view, name='send_to_protocol'),

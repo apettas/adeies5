@@ -191,7 +191,7 @@ def format_decision_dates_compact(leave_request):
 def build_decision_body_html(leave_request):
     """
     Κείμενο σώματος απόφασης (Access formula + επίσημο δείγμα):
-    Χορηγούμε στο(ν)/στη(ν) <όνομα>, <ρόλος>, <κείμενο> <ημέρες> <ημερομηνίες>.
+    Χορηγούμε / Ανακαλούμε στο(ν)/στη(ν) <όνομα>, <ρόλος>, <κείμενο> <ημέρες> <ημερομηνίες>.
     """
     user = leave_request.user
     name = (user.name_accusative or user.full_name or '').strip()
@@ -201,12 +201,21 @@ def build_decision_body_html(leave_request):
     days_phrase = format_decision_days_phrase(leave_request.total_days)
     dates_phrase = format_decision_dates_compact(leave_request)
 
-    parts = [f'Χορηγούμε {article}']
+    verb = 'Ανακαλούμε' if leave_request.leave_type.is_revocation else 'Χορηγούμε'
+    parts = [f'{verb} {article}']
     if name:
         parts.append(f'<b>{name}</b>,')
     if role:
         parts.append(f'{role},')
-    if decision_text:
+    if leave_request.leave_type.is_revocation and leave_request.parent_leave_id:
+        parent = leave_request.parent_leave
+        protocol = parent.pdede_protocol_number or parent.protocol_number or '—'
+        scope = leave_request.get_revocation_scope_display() or 'ανάκληση'
+        parts.append(
+            f'{scope.lower()} ανάκληση της άδειας «{parent.leave_type.name}» '
+            f'(αρ. πρωτ. ΠΔΕΔΕ {protocol}),'
+        )
+    elif decision_text:
         parts.append(decision_text)
     if days_phrase:
         parts.append(f'{days_phrase},')
