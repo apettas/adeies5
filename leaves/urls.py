@@ -7,6 +7,14 @@ from .decision_views import (
 )
 from .calendar_views import leave_calendar_view
 from .balance_views import balance_ledger_view, manual_balance_adjustment
+from .balance_renewal_views import (
+    balance_renewal_view,
+    balance_renewal_refresh,
+    balance_renewal_notify,
+    balance_renewal_apply,
+    balance_renewal_settings_save,
+    change_entitlement_view,
+)
 from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordDataView
 from accounts.handler_registration_views import (
     PendingUserRegistrationsListView,
@@ -134,6 +142,12 @@ urlpatterns = [
     # Balance Ledger
     path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),
     path('balance-adjustment/<int:user_id>/', manual_balance_adjustment, name='manual_balance_adjustment'),
+    path('change-entitlement/<int:user_id>/', change_entitlement_view, name='change_entitlement'),
+    path('balance-renewal/', balance_renewal_view, name='balance_renewal'),
+    path('balance-renewal/refresh/', balance_renewal_refresh, name='balance_renewal_refresh'),
+    path('balance-renewal/notify/', balance_renewal_notify, name='balance_renewal_notify'),
+    path('balance-renewal/apply/', balance_renewal_apply, name='balance_renewal_apply'),
+    path('balance-renewal/settings/', balance_renewal_settings_save, name='balance_renewal_settings'),
     
     # Base Data Management
     path('base-data/', BaseDataIndexView.as_view(), name='base_data_index'),

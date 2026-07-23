@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Αλλαγή Δικαιούμενων Ημερών - {{ target_user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-badge"></i> Αλλαγή Δικαιούμενων Ημερών</h2>
+            <a href="{% url 'leaves:balance_ledger' target_user.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή
+            </a>
+        </div>
+
+        <div class="alert alert-info">
+            Η αλλαγή δικαιούμενων <strong>δεν</strong> μεταβάλλει αυτόματα το υπόλοιπο.
+            Αν χρειάζεται διόρθωση υπολοίπου, χρησιμοποιήστε ξεχωριστή διοικητική διόρθωση.
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="mb-1">{{ target_user.get_full_name }}</h5>
+                <p class="mb-0 text-muted">{{ target_user.department.name|default:"—" }} · {{ target_user.email }}</p>
+                <p class="mt-2 mb-0">Τρέχουσες δικαιούμενες: <strong>{{ current_entitlement }}</strong></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="new_entitlement" class="form-label">Νέες δικαιούμενες ημέρες <span class="text-danger">*</span></label>
+                        <input type="number" min="0" class="form-control" id="new_entitlement"
+                               name="new_entitlement" value="{{ current_entitlement }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Σχόλιο / αιτιολογία <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" required
+                                  placeholder="Π.χ. Αλλαγή λόγω προϋπηρεσίας / απόσπασης / διόρθωσης καρτέλας"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg"></i> Αποθήκευση
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

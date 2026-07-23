@@ -3,6 +3,7 @@ from .models import (
     LeaveType, LeaveRequest, LeavePeriod, SecureFile,
     Logo, Info, Ypopsin, Signee,
     PublicHoliday, LeaveActionLog, LeaveAccessLog, RegularLeaveBalanceEntry,
+    BalanceRenewalSettings, BalanceRenewalSeason, BalanceRenewalUserStatus,
     YCCommitteeAcknowledgment,
     DocumentUploadAcknowledgment,
     ApplicantDocumentsSubmissionAcknowledgment,
@@ -225,10 +226,34 @@ class LeaveAccessLogAdmin(admin.ModelAdmin):
 
 @admin.register(RegularLeaveBalanceEntry)
 class RegularLeaveBalanceEntryAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'entry_type', 'entry_date', 'days_delta', 'balance_after', 'leave_request', 'created_by')
+    list_display = (
+        'employee', 'entry_type', 'entry_date', 'days_delta', 'balance_after',
+        'carryover_after', 'current_after', 'leave_request', 'created_by',
+    )
     list_filter = ('entry_type', 'entry_date', 'is_locked')
     search_fields = ('employee__email', 'employee__first_name', 'employee__last_name', 'description', 'notes')
     readonly_fields = ('created_at', 'created_by', 'is_locked')
+
+
+@admin.register(BalanceRenewalSettings)
+class BalanceRenewalSettingsAdmin(admin.ModelAdmin):
+    list_display = ('warning_month', 'warning_day', 'apply_month', 'apply_day', 'target_type_codes', 'updated_at')
+
+
+@admin.register(BalanceRenewalSeason)
+class BalanceRenewalSeasonAdmin(admin.ModelAdmin):
+    list_display = ('closing_year', 'warning_opened_at', 'handlers_notified_at', 'applied_at', 'applied_by')
+    list_filter = ('closing_year',)
+
+
+@admin.register(BalanceRenewalUserStatus)
+class BalanceRenewalUserStatusAdmin(admin.ModelAdmin):
+    list_display = (
+        'season', 'user', 'expiring_days', 'carryover_days', 'entitlement_days',
+        'notified_at', 'applied_at',
+    )
+    list_filter = ('season__closing_year',)
+    search_fields = ('user__email', 'user__last_name', 'user__first_name')
 
 
 @admin.register(YearlySickLeaveTotal)

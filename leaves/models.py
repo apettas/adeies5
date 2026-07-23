@@ -528,7 +528,7 @@ class LeaveRequest(models.Model):
         return True
     
     def _update_leave_balance_on_completion(self, created_by=None, balance_after=None):
-        """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται"""
+        """Ενημερώνει το leave balance όταν η αίτηση ολοκληρώνεται (FIFO κουβάδων)."""
         import logging
         logger = logging.getLogger(__name__)
 
@@ -536,31 +536,22 @@ class LeaveRequest(models.Model):
             if self.leave_type.affects_regular_leave_balance:
                 days_used = self.total_days
                 if days_used > 0:
-                    from leaves.utils.balance_ledger import create_balance_entry, get_last_balance
+                    from leaves.utils.balance_ledger import deduct_leave_days
 
-                    last_balance = get_last_balance(self.user)
-                    if last_balance is None:
-                        last_balance = self.user.current_regular_leave_balance
-
-                    if balance_after is None:
-                        balance_after = max(0, last_balance - days_used)
-
-                    days_delta = balance_after - last_balance if last_balance is not None else -days_used
-                    create_balance_entry(
+                    deduct_leave_days(
                         employee=self.user,
-                        entry_type='LEAVE_GRANTED',
+                        days_used=days_used,
+                        leave_request=self,
+                        created_by=created_by,
                         description=(
                             f'Ολοκλήρωση άδειας #{self.id} — {self.leave_type.name}'
                         ),
-                        balance_after=balance_after,
-                        leave_request=self,
-                        days_delta=days_delta,
                         notes=f'Ημερομηνίες: {self.start_date} - {self.end_date}',
-                        created_by=created_by,
+                        balance_after=balance_after,
                     )
                     logger.info(
                         f"Deducted {days_used} leave days for user {self.user} "
-                        f"on completion of request {self.id} (balance_after={balance_after})"
+                        f"on completion of request {self.id} (FIFO buckets)"
                     )
 
             if self.leave_type.is_sick_leave_total:
@@ -1230,6 +1221,7 @@ class RegularLeaveBalanceEntry(models.Model):
     """
     Καρτέλα/Ιστορικό Υπολοίπου Κανονικών Αδειών
     Append-only ledger — κάθε εγγραφή είναι γεγονός που επηρεάζει ή επιβεβαιώνει το υπόλοιπο.
+    Κουβάδες: carryover_after (μεταφερόμενο) + current_after (τρέχον) = balance_after.
     """
     ENTRY_TYPES = [
         ('INITIAL_BALANCE', 'Αρχικό Υπόλοιπο'),
@@ -1239,6 +1231,9 @@ class RegularLeaveBalanceEntry(models.Model):
         ('CARRYOVER_IMPORT', 'Μεταφορά Υπολοίπου'),
         ('PREVIOUS_YEAR_CORRECTION', 'Διόρθωση Προηγούμενου Έτους'),
         ('ADMIN_CORRECTION', 'Διόρθωση Χειριστή'),
+        ('ENTITLEMENT_CHANGE', 'Αλλαγή Δικαιούμενων Ημερών'),
+        ('ANNUAL_GRANT', 'Ετήσια Χορήγηση Δικαιώματος'),
+        ('CARRYOVER_EXPIRE', 'Λήξη Παλαιού Υπολοίπου'),
     ]
 
     employee = models.ForeignKey(User, on_delete=models.CASCADE,
@@ -1257,6 +1252,20 @@ class RegularLeaveBalanceEntry(models.Model):
                                          help_text='Υπόλοιπο πριν από την κίνηση')
     balance_after = models.IntegerField('Υπόλοιπο Μετά',
                                         help_text='Υπόλοιπο μετά την κίνηση (source of truth)')
+    carryover_after = models.IntegerField(
+        'Μεταφερόμενο Υπόλοιπο Μετά',
+        null=True,
+        blank=True,
+        help_text='Κουβάς προηγούμενου έτους μετά την κίνηση',
+    )
+    current_after = models.IntegerField(
+        'Τρέχον Υπόλοιπο Μετά',
+        null=True,
+        blank=True,
+        help_text='Κουβάς τρέχοντος έτους μετά την κίνηση',
+    )
+    old_entitlement = models.IntegerField('Παλιές Δικαιούμενες', null=True, blank=True)
+    new_entitlement = models.IntegerField('Νέες Δικαιούμενες', null=True, blank=True)
     notes = models.TextField('Σημειώσεις', blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='created_balance_entries',
@@ -1281,6 +1290,113 @@ class RegularLeaveBalanceEntry(models.Model):
         if self.days_delta > 0:
             return f'+{self.days_delta}'
         return str(self.days_delta)
+
+
+class BalanceRenewalSettings(models.Model):
+    """Ρυθμίσεις ετήσιας ανανέωσης κανονικών αδειών (singleton)."""
+    warning_month = models.PositiveSmallIntegerField('Μήνας προειδοποίησης', default=12)
+    warning_day = models.PositiveSmallIntegerField('Ημέρα προειδοποίησης', default=15)
+    apply_month = models.PositiveSmallIntegerField('Μήνας εφαρμογής', default=1)
+    apply_day = models.PositiveSmallIntegerField('Ημέρα εφαρμογής', default=1)
+    reminder_enabled = models.BooleanField('Υπενθυμίσεις χειριστή', default=True)
+    reminder_interval_days = models.PositiveSmallIntegerField('Διάστημα υπενθύμισης (ημέρες)', default=3)
+    target_type_codes = models.CharField(
+        'Κωδικοί τύπων υπαλλήλων',
+        max_length=255,
+        default='ADMINISTRATIVE,EDUCATIONAL',
+        help_text='Διαχωρισμός με κόμμα, π.χ. ADMINISTRATIVE,EDUCATIONAL',
+    )
+    user_message_template = models.TextField(
+        'Πρότυπο μηνύματος χρηστών',
+        default=(
+            'Αγαπητέ/ή {full_name},\n\n'
+            'Σας ενημερώνουμε ότι κατά την ετήσια ανανέωση κανονικών αδειών ({apply_date}) '
+            'θα λήξουν {expiring_days} ημέρες που προέρχονται από παλαιότερα έτη ({expiring_years}).\n'
+            'Το υπόλοιπο του αμέσως προηγούμενου έτους ({carryover_days} ημέρες), εφόσον υπάρχει, '
+            'θα μεταφερθεί.\n\n'
+            'Για διευκρινίσεις επικοινωνήστε με το Τμήμα Αδειών.'
+        ),
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name='Ενημερώθηκε από',
+    )
+
+    class Meta:
+        verbose_name = 'Ρυθμίσεις Ετήσιας Ανανέωσης'
+        verbose_name_plural = 'Ρυθμίσεις Ετήσιας Ανανέωσης'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return 'Ρυθμίσεις ετήσιας ανανέωσης κανονικών'
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def get_target_codes(self):
+        return [c.strip() for c in (self.target_type_codes or '').split(',') if c.strip()]
+
+
+class BalanceRenewalSeason(models.Model):
+    """Σεζόν ετήσιας ανανέωσης για το έτος που κλείνει."""
+    closing_year = models.PositiveIntegerField('Έτος που κλείνει', unique=True)
+    warning_opened_at = models.DateTimeField('Άνοιγμα προειδοποίησης', null=True, blank=True)
+    handlers_notified_at = models.DateTimeField('Ειδοποίηση χειριστών', null=True, blank=True)
+    applied_at = models.DateTimeField('Εφαρμογή', null=True, blank=True)
+    applied_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='applied_balance_renewals', verbose_name='Εφαρμόστηκε από',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Σεζόν Ετήσιας Ανανέωσης'
+        verbose_name_plural = 'Σεζόνες Ετήσιας Ανανέωσης'
+        ordering = ['-closing_year']
+
+    def __str__(self):
+        return f'Ανανέωση έτους {self.closing_year} → {self.closing_year + 1}'
+
+    @property
+    def new_year(self):
+        return self.closing_year + 1
+
+
+class BalanceRenewalUserStatus(models.Model):
+    """Κατάσταση χρήστη μέσα σε σεζόν ανανέωσης."""
+    season = models.ForeignKey(
+        BalanceRenewalSeason, on_delete=models.CASCADE,
+        related_name='user_statuses', verbose_name='Σεζόν',
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='balance_renewal_statuses', verbose_name='Υπάλληλος',
+    )
+    expiring_days = models.PositiveIntegerField('Ημέρες προς λήξη', default=0)
+    carryover_days = models.PositiveIntegerField('Υπόλοιπο προηγ. έτους', default=0)
+    entitlement_days = models.PositiveIntegerField('Νέο δικαίωμα', default=0)
+    notified_at = models.DateTimeField('Ενημερώθηκε', null=True, blank=True)
+    notified_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sent_balance_renewal_notices', verbose_name='Ενημερώθηκε από',
+    )
+    applied_at = models.DateTimeField('Εφαρμόστηκε', null=True, blank=True)
+    apply_error = models.TextField('Σφάλμα εφαρμογής', blank=True)
+
+    class Meta:
+        verbose_name = 'Κατάσταση Ανανέωσης Χρήστη'
+        verbose_name_plural = 'Καταστάσεις Ανανέωσης Χρηστών'
+        unique_together = [('season', 'user')]
+        ordering = ['user__last_name', 'user__first_name']
+
+    def __str__(self):
+        return f'{self.user} @ {self.season.closing_year}'
 
 
 class YearlySickLeaveTotal(models.Model):

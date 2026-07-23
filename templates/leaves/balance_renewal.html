@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block title %}Ετήσια Ανανέωση Κανονικών Αδειών{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h2 class="mb-1"><i class="bi bi-arrow-repeat"></i> Ετήσια Ανανέωση Κανονικών</h2>
+                <p class="text-muted mb-0">
+                    Σεζόν {{ closing_year }} → {{ new_year }}
+                    {% if season.applied_at %}
+                    <span class="badge bg-success">Εφαρμόστηκε {{ season.applied_at|date:"d/m/Y H:i" }}</span>
+                    {% elif apply_allowed %}
+                    <span class="badge bg-warning text-dark">Έτοιμη για εφαρμογή</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Περίοδος προειδοποίησης</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <form method="post" action="{% url 'leaves:balance_renewal_refresh' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-clockwise"></i> Ανανέωση λίστας
+                    </button>
+                </form>
+                <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Επιστροφή
+                </a>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'expiring' %}active{% endif %}"
+                   href="?tab=expiring">Προς λήξη
+                    <span class="badge bg-danger">{{ expiring_list|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'unused' %}active{% endif %}"
+                   href="?tab=unused">Μη εξαντλημένες προηγ. έτους
+                    <span class="badge bg-info text-dark">{{ unused_prior_list|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'preview' %}active{% endif %}"
+                   href="?tab=preview">Προεπισκόπηση 1/1</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'history' %}active{% endif %}"
+                   href="?tab=history">Ιστορικό</a>
+            </li>
+            {% if is_admin %}
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'settings' %}active{% endif %}"
+                   href="?tab=settings">Ρυθμίσεις</a>
+            </li>
+            {% endif %}
+        </ul>
+
+        {% if tab == 'expiring' %}
+        <form method="post" action="{% url 'leaves:balance_renewal_notify' %}">
+            {% csrf_token %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Χρήστες με μεταφερόμενο υπόλοιπο προς λήξη</span>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-send"></i> Αποστολή ενημέρωσης σε επιλεγμένους
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Μήνυμα (κενό = πρότυπο ρυθμίσεων)</label>
+                        <textarea name="message" class="form-control" rows="4"
+                                  placeholder="{{ message_template }}"></textarea>
+                    </div>
+                    {% include 'leaves/includes/balance_renewal_table.html' with rows=expiring_list show_check=True show_expiring=True %}
+                </div>
+            </div>
+        </form>
+
+        {% elif tab == 'unused' %}
+        <div class="card">
+            <div class="card-header">Υπόλοιπο τρέχοντος έτους που θα μεταφερθεί την 1/1</div>
+            <div class="card-body">
+                {% include 'leaves/includes/balance_renewal_table.html' with rows=unused_prior_list show_check=False show_carry=True %}
+            </div>
+        </div>
+
+        {% elif tab == 'preview' %}
+        <div class="card mb-3">
+            <div class="card-header">Προεπισκόπηση εφαρμογής ανανέωσης</div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Για κάθε χρήστη: λήξη παλαιού μεταφερόμενου → μεταφορά υπολοίπου {{ closing_year }} →
+                    χορήγηση δικαιώματος {{ new_year }}.
+                </p>
+                {% include 'leaves/includes/balance_renewal_table.html' with rows=preview_list show_check=False show_all=True %}
+            </div>
+        </div>
+        <form method="post" action="{% url 'leaves:balance_renewal_apply' %}" class="card">
+            {% csrf_token %}
+            <div class="card-body">
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="skip_notify_check" value="1" id="skipNotify">
+                    <label class="form-check-label" for="skipNotify">
+                        Εφαρμογή ακόμα κι αν υπάρχουν χρήστες προς λήξη χωρίς ενημέρωση
+                    </label>
+                </div>
+                {% if is_admin %}
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="force" value="1" id="forceApply">
+                    <label class="form-check-label" for="forceApply">
+                        Override διαχειριστή (αγνόηση ημερομηνίας εφαρμογής / επανεκτέλεση)
+                    </label>
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-danger"
+                        {% if season.applied_at and not is_admin %}disabled{% endif %}
+                        onclick="return confirm('Επιβεβαίωση εφαρμογής ετήσιας ανανέωσης για όλους;');">
+                    <i class="bi bi-check2-circle"></i> Εφαρμογή ανανέωσης
+                </button>
+                {% if not apply_allowed %}
+                <p class="text-muted small mt-2 mb-0">
+                    Η κανονική εφαρμογή επιτρέπεται από
+                    {{ settings.apply_day|stringformat:"02d" }}/{{ settings.apply_month|stringformat:"02d" }}/{{ new_year }}.
+                </p>
+                {% endif %}
+            </div>
+        </form>
+
+        {% elif tab == 'history' %}
+        <div class="card">
+            <div class="card-header">Ιστορικό ενημερώσεων / εφαρμογών</div>
+            <div class="card-body">
+                {% include 'leaves/includes/balance_renewal_table.html' with rows=history_list show_check=False show_history=True %}
+            </div>
+        </div>
+
+        {% elif tab == 'settings' and is_admin %}
+        <form method="post" action="{% url 'leaves:balance_renewal_settings' %}" class="card">
+            {% csrf_token %}
+            <div class="card-header">Ρυθμίσεις ετήσιας ανανέωσης</div>
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Μήνας προειδοποίησης</label>
+                    <input type="number" min="1" max="12" class="form-control" name="warning_month"
+                           value="{{ settings.warning_month }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ημέρα προειδοποίησης</label>
+                    <input type="number" min="1" max="31" class="form-control" name="warning_day"
+                           value="{{ settings.warning_day }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Μήνας εφαρμογής</label>
+                    <input type="number" min="1" max="12" class="form-control" name="apply_month"
+                           value="{{ settings.apply_month }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ημέρα εφαρμογής</label>
+                    <input type="number" min="1" max="31" class="form-control" name="apply_day"
+                           value="{{ settings.apply_day }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Κωδικοί τύπων υπαλλήλων</label>
+                    <input type="text" class="form-control" name="target_type_codes"
+                           value="{{ settings.target_type_codes }}">
+                    <small class="text-muted">π.χ. ADMINISTRATIVE,EDUCATIONAL</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Διάστημα υπενθύμισης (ημέρες)</label>
+                    <input type="number" min="1" class="form-control" name="reminder_interval_days"
+                           value="{{ settings.reminder_interval_days }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="reminder_enabled" id="remEn"
+                               {% if settings.reminder_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="remEn">Υπενθυμίσεις χειριστή</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Πρότυπο μηνύματος χρηστών</label>
+                    <textarea class="form-control" name="user_message_template" rows="8">{{ settings.user_message_template }}</textarea>
+                    <small class="text-muted">
+                        Placeholders: {full_name}, {expiring_days}, {expiring_years}, {carryover_days}, {apply_date}
+                    </small>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Αποθήκευση ρυθμίσεων</button>
+                </div>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

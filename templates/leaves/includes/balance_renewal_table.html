@@ -1,0 +1,73 @@
+{% if rows %}
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                {% if show_check %}<th style="width:2rem"></th>{% endif %}
+                <th>Ονοματεπώνυμο</th>
+                <th>Τμήμα</th>
+                <th>Τύπος</th>
+                {% if show_expiring or show_all %}<th class="text-end">Προς λήξη</th>{% endif %}
+                {% if show_carry or show_all %}<th class="text-end">Προς μεταφορά</th>{% endif %}
+                {% if show_all %}<th class="text-end">Νέο δικαίωμα</th>{% endif %}
+                {% if show_all or show_history %}<th class="text-end">Νέο σύνολο*</th>{% endif %}
+                {% if show_history or show_all %}<th>Ενημέρωση</th><th>Εφαρμογή</th>{% endif %}
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                {% if show_check %}
+                <td>
+                    <input type="checkbox" class="form-check-input" name="user_ids" value="{{ row.user_id }}"
+                           {% if row.expiring_days > 0 and not row.notified_at %}checked{% endif %}>
+                </td>
+                {% endif %}
+                <td>{{ row.user.last_name }} {{ row.user.first_name }}</td>
+                <td><small>{{ row.user.department.name|default:"—" }}</small></td>
+                <td><small>{{ row.user.employee_type.name|default:"—" }}</small></td>
+                {% if show_expiring or show_all %}
+                <td class="text-end {% if row.expiring_days %}text-danger fw-semibold{% endif %}">{{ row.expiring_days }}</td>
+                {% endif %}
+                {% if show_carry or show_all %}
+                <td class="text-end">{{ row.carryover_days }}</td>
+                {% endif %}
+                {% if show_all %}
+                <td class="text-end">{{ row.entitlement_days }}</td>
+                {% endif %}
+                {% if show_all or show_history %}
+                <td class="text-end">{{ row.carryover_days|add:row.entitlement_days }}</td>
+                {% endif %}
+                {% if show_history or show_all %}
+                <td>
+                    {% if row.notified_at %}
+                    <small>{{ row.notified_at|date:"d/m/Y H:i" }}</small>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.applied_at %}
+                    <small class="text-success">{{ row.applied_at|date:"d/m/Y H:i" }}</small>
+                    {% elif row.apply_error %}
+                    <small class="text-danger">{{ row.apply_error|truncatechars:40 }}</small>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td>
+                    <a href="{% url 'leaves:balance_ledger' row.user_id %}" class="btn btn-sm btn-outline-secondary">
+                        Καρτέλα
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="small text-muted mb-0">* Νέο σύνολο = υπόλοιπο προς μεταφορά + νέο δικαίωμα (μετά τη λήξη παλαιού μεταφερόμενου).</p>
+{% else %}
+<p class="text-muted mb-0">Δεν υπάρχουν εγγραφές.</p>
+{% endif %}
