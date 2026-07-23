@@ -100,7 +100,7 @@ class UserRegistrationForm(UserCreationForm):
     
     terms_accepted = forms.BooleanField(
         required=True,
-        label='Αποδέχομαι τους όρους χρήσης',
+        label='Συναινώ στην επεξεργασία των προσωπικών μου δεδομένων',
         widget=forms.CheckboxInput(attrs={
             'class': 'form-check-input'
         })
@@ -355,7 +355,7 @@ class CompleteSSORegistrationForm(forms.Form):
     
     terms_accepted = forms.BooleanField(
         required=True,
-        label='Αποδέχομαι τους όρους χρήσης',
+        label='Συναινώ στην επεξεργασία των προσωπικών μου δεδομένων',
         widget=forms.CheckboxInput(attrs={
             'class': 'form-check-input'
         })

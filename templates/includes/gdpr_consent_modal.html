@@ -9,7 +9,15 @@
                 </h5>
             </div>
             <div class="modal-body">
-                <div class="gdpr-consent-text mb-4" style="white-space: pre-line; line-height: 1.55;">{{ gdpr_consent_text }}</div>
+                <div class="gdpr-consent-text mb-3" style="white-space: pre-line; line-height: 1.55;">{{ gdpr_consent_text }}</div>
+
+                <p class="mb-4">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Διαβάστε την
+                    <a href="{% url 'accounts:privacy_policy' %}" target="_blank" rel="noopener noreferrer">
+                        Πολιτική Απορρήτου &amp; Προστασίας Προσωπικών Δεδομένων (GDPR)
+                    </a>.
+                </p>
 
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="gdprConsentCheckbox" required>

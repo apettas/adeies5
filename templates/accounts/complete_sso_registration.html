@@ -216,7 +216,7 @@
                             </div>
                         </div>
 
-                        <!-- Όροι Χρήσης -->
+                        <!-- Όροι / Συγκατάθεση δεδομένων -->
                         <div class="card bg-light mb-3">
                             <div class="card-body">
                                 <div class="form-check">
@@ -225,6 +225,12 @@
                                         {{ form.terms_accepted.label }}
                                         <span class="text-danger" title="Υποχρεωτικό">*</span>
                                     </label>
+                                </div>
+                                <div class="small text-muted mt-2">
+                                    Διαβάστε την
+                                    <a href="{% url 'accounts:privacy_policy' %}" target="_blank" rel="noopener noreferrer">
+                                        Πολιτική Απορρήτου &amp; Προστασίας Προσωπικών Δεδομένων (GDPR)
+                                    </a>.
                                 </div>
                             </div>
                         </div>

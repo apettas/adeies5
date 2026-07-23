@@ -15,8 +15,13 @@ def gdpr_consent(request):
         user_needs_gdpr_consent,
     )
 
-    user = getattr(request, 'user', None)
-    needs = user_needs_gdpr_consent(user)
+    # Μην εμποδίζεις την ανάγνωση της Πολιτικής Απορρήτου
+    path = getattr(request, 'path', '') or ''
+    if path.rstrip('/').endswith('/privacy-policy'):
+        needs = False
+    else:
+        user = getattr(request, 'user', None)
+        needs = user_needs_gdpr_consent(user)
     return {
         'needs_gdpr_consent': needs,
         'gdpr_consent_title': GDPR_CONSENT_TITLE,

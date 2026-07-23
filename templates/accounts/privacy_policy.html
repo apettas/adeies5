@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ privacy_policy_title }} - {{ block.super }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.privacy-policy-page {
+    max-width: 860px;
+    margin: 0 auto;
+}
+.privacy-policy-page h1 {
+    font-size: 1.6rem;
+}
+.privacy-section {
+    margin-bottom: 1.75rem;
+}
+.privacy-section h2 {
+    font-size: 1.15rem;
+    margin-bottom: 0.35rem;
+}
+.privacy-legal-ref {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="privacy-policy-page">
+        <div class="mb-4">
+            <h1 class="mb-2">
+                <i class="bi bi-shield-lock text-primary"></i>
+                {{ privacy_policy_title }}
+            </h1>
+            <p class="lead text-muted mb-1">{{ privacy_policy_subtitle }}</p>
+            <p class="small text-muted mb-0">Έκδοση πολιτικής: {{ privacy_policy_version }}</p>
+        </div>
+
+        {% for section in privacy_policy_sections %}
+        <section class="privacy-section" id="section-{{ section.number }}">
+            <h2>{{ section.number }}. {{ section.title }}</h2>
+            {% if section.legal_ref %}
+            <div class="privacy-legal-ref">{{ section.legal_ref }}</div>
+            {% endif %}
+            {% for paragraph in section.paragraphs %}
+            <p class="{% if forloop.last and not section.bullets %}mb-0{% endif %}">{{ paragraph }}</p>
+            {% endfor %}
+            {% if section.bullets %}
+            <ul>
+                {% for item in section.bullets %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% for paragraph in section.paragraphs_after %}
+            <p>{{ paragraph }}</p>
+            {% endfor %}
+            {% if section.bullets_after %}
+            <ul>
+                {% for item in section.bullets_after %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if section.closing %}
+            <p class="mb-0">{{ section.closing }}</p>
+            {% endif %}
+        </section>
+        {% endfor %}
+
+        <div class="mt-4">
+            {% if user.is_authenticated %}
+            <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή
+            </a>
+            {% else %}
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή στη σύνδεση
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -534,3 +534,19 @@ def accept_gdpr_consent(request):
 
     return JsonResponse({'success': True})
 
+
+def privacy_policy_view(request):
+    """Δημόσια σελίδα Πολιτικής Απορρήτου & Προστασίας Προσωπικών Δεδομένων."""
+    from .privacy_policy import (
+        PRIVACY_POLICY_SECTIONS,
+        PRIVACY_POLICY_SUBTITLE,
+        PRIVACY_POLICY_TITLE,
+        PRIVACY_POLICY_VERSION,
+    )
+    return render(request, 'accounts/privacy_policy.html', {
+        'privacy_policy_title': PRIVACY_POLICY_TITLE,
+        'privacy_policy_subtitle': PRIVACY_POLICY_SUBTITLE,
+        'privacy_policy_sections': PRIVACY_POLICY_SECTIONS,
+        'privacy_policy_version': PRIVACY_POLICY_VERSION,
+    })
+
