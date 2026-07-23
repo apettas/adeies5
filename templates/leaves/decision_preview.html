@@ -94,14 +94,29 @@
                         <input type="hidden" id="data-subject-text" value="{{ subject_text|escape }}">
 
                     <div class="row mb-4">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <h5>Στοιχεία Αίτησης</h5>
                             <p><strong>Αιτών:</strong> {{ leave_request.user.full_name }}</p>
                             <p><strong>Τύπος Άδειας:</strong> {{ leave_request.leave_type.name }}</p>
                             <p><strong>Διάρκεια:</strong> {{ leave_request.total_days }} ημέρες</p>
                             <p><strong>Περίοδος:</strong> {{ leave_request|format_leave_dates }}</p>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <h5>Στοιχεία Υπαλλήλου</h5>
+                            <div class="d-flex flex-column gap-2 mt-2">
+                                <a href="{% url 'leaves:user_leave_history' leave_request.user.pk %}"
+                                   class="btn btn-outline-primary btn-sm text-start"
+                                   target="_blank" rel="noopener noreferrer">
+                                    <i class="bi bi-clock-history"></i> Ιστορικό Αδειών
+                                </a>
+                                <a href="{% url 'leaves:balance_ledger' leave_request.user.pk %}"
+                                   class="btn btn-outline-primary btn-sm text-start"
+                                   target="_blank" rel="noopener noreferrer">
+                                    <i class="bi bi-calendar-check"></i> Καρτέλα Υπολοίπου Κανονικών Αδειών
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <h5>Κατάσταση</h5>
                             <p><strong>Στάτους:</strong>
                                 <span class="badge bg-{{ leave_request.get_status_display_class }}">
