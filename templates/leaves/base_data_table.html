@@ -104,16 +104,14 @@
                                 </button>
                                 {% endif %}
                                 {% if can_delete %}
-                                <form method="post" action="{% url 'leaves:base_data_table' table_key %}"
-                                      style="display:inline;"
-                                      onsubmit="return confirm('Είστε σίγουρος/η;');">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="record_id" value="{{ record.pk }}">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Διαγραφή">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="btn btn-sm btn-danger base-data-delete-btn"
+                                        title="Διαγραφή"
+                                        data-record-id="{{ record.pk }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteConfirmModal">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -205,6 +203,35 @@
             </div>
         </div>
     </div>
+
+    {% if can_delete %}
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">
+                        <i class="bi bi-exclamation-triangle text-danger"></i> Επιβεβαίωση διαγραφής
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Κλείσιμο"></button>
+                </div>
+                <div class="modal-body">
+                    Είστε σίγουρος/η ότι θέλετε να διαγράψετε αυτή την εγγραφή;
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ακύρωση</button>
+                    <form method="post" action="{% url 'leaves:base_data_table' table_key %}" id="deleteConfirmForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="record_id" id="delete_record_id" value="">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Διαγραφή
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -287,6 +314,15 @@ $(document).ready(function() {
         $('#editFormLoading').show();
         $('#editFormFields').hide();
         $('#edit_record_id').val('');
+    });
+
+    // Διαγραφή: CSP μπλοκάρει inline onsubmit — επιβεβαίωση μέσω modal + nonce script
+    $(document).on('click', '.base-data-delete-btn', function() {
+        $('#delete_record_id').val($(this).data('record-id'));
+    });
+
+    $('#deleteConfirmModal').on('hidden.bs.modal', function() {
+        $('#delete_record_id').val('');
     });
 });
 </script>
