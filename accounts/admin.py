@@ -157,11 +157,13 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(EmployeeType)
 class EmployeeTypeAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'description', 'is_active', 'created_at')
-    list_filter = ('is_active', 'created_at')
-    search_fields = ('name', 'description')
+    list_display = ('code', 'name', 'description', 'is_permanent_dy', 'is_active', 'created_at')
+    list_filter = ('is_permanent_dy', 'is_active', 'created_at')
+    search_fields = ('name', 'description', 'code')
     ordering = ('name',)
     readonly_fields = ('created_at',)
+    list_editable = ('is_permanent_dy', 'is_active')
+    fields = ('code', 'name', 'description', 'is_permanent_dy', 'is_active', 'created_at')
 
 
 @admin.register(PendingRegistrationAcknowledgment)

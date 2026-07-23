@@ -753,6 +753,11 @@ class EmployeeType(models.Model):
     code = models.CharField('Κωδικός', max_length=30, unique=True)
     name = models.CharField('Όνομα Τύπου', max_length=100, unique=True)
     description = models.TextField('Περιγραφή', blank=True)
+    is_permanent_dy = models.BooleanField(
+        'Μόνιμοι ΔΥ',
+        default=False,
+        help_text='Αν ο τύπος αφορά μόνιμους δημόσιους υπαλλήλους (ΔΥ)',
+    )
     is_active = models.BooleanField('Ενεργός', default=True)
     created_at = models.DateTimeField('Ημερομηνία Δημιουργίας', auto_now_add=True)
 
