@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Αναφορές{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="bi bi-bar-chart-line"></i> Αναφορές</h2>
+        <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Επιστροφή
+        </a>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="col">
+            <a href="{% url 'leaves:report_department_managers' %}" class="text-decoration-none">
+                <div class="card h-100 border-primary">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-people display-3 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title text-dark">Προϊστάμενοι ανά Τμήμα</h5>
+                        <p class="text-muted mb-0 small">Έλεγχος ορισμού προϊσταμένου σε κάθε τμήμα</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col">
+            <a href="{% url 'leaves:attendance_sheet' %}" class="text-decoration-none">
+                <div class="card h-100 border-primary">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-clock-history display-3 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title text-dark">Παρουσιολόγιο</h5>
+                        <p class="text-muted mb-0 small">PDF παρουσιολογίου Αυτοτελούς Διεύθυνσης</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -106,7 +106,7 @@
                                 {% if can_delete %}
                                 <form method="post" action="{% url 'leaves:base_data_table' table_key %}"
                                       style="display:inline;"
-                                      onsubmit="return confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την εγγραφή;');">
+                                      onsubmit="return confirm('Είστε σίγουρος/η;');">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="record_id" value="{{ record.pk }}">

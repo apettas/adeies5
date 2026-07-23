@@ -105,6 +105,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:reports_index' %}">
+                            <i class="bi bi-bar-chart-line"></i> Αναφορές
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link position-relative" href="{% url 'leaves:pending_user_registrations' %}">
                             <i class="bi bi-person-plus"></i> Νέες Εγγραφές Χρηστών
                             {% if pending_registration_count %}

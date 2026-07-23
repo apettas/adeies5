@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Προϊστάμενοι ανά Τμήμα{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'leaves:reports_index' %}">Αναφορές</a></li>
+            <li class="breadcrumb-item active">Προϊστάμενοι ανά Τμήμα</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-people"></i> Προϊστάμενοι ανά Τμήμα</h2>
+            <p class="text-muted mb-0">Κάθε τμήμα πρέπει να έχει ορισμένο προϊστάμενο (FK manager).</p>
+        </div>
+        <a href="{% url 'leaves:reports_index' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Αναφορές
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold">{{ total_count }}</div>
+                    <div class="text-muted">Σύνολο τμημάτων</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center border-success">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold text-success">{{ with_manager_count }}</div>
+                    <div class="text-muted">Με προϊστάμενο</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center {% if missing_count %}border-danger{% endif %}">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold {% if missing_count %}text-danger{% endif %}">{{ missing_count }}</div>
+                    <div class="text-muted">Χωρίς προϊστάμενο</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if missing_count %}
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Υπάρχουν <strong>{{ missing_count }}</strong> τμήματα χωρίς προϊστάμενο. Ορίστε manager από τα Στοιχεία Βάσης / χρήστες.
+    </div>
+    {% else %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        Όλα τα τμήματα έχουν ορισμένο προϊστάμενο.
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body table-responsive p-0">
+            <table class="table table-hover table-striped mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Τμήμα</th>
+                        <th>Κωδικός</th>
+                        <th>Τύπος</th>
+                        <th>Γονικό</th>
+                        <th>Προϊστάμενος</th>
+                        <th>Email</th>
+                        <th class="text-center">Κατάσταση</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr class="{% if not row.has_manager %}table-danger{% endif %}">
+                        <td>{{ row.department.name }}</td>
+                        <td><code>{{ row.department.code }}</code></td>
+                        <td><small>{{ row.department.department_type.name|default:"—" }}</small></td>
+                        <td><small>{{ row.department.parent_department.name|default:"—" }}</small></td>
+                        <td>
+                            {% if row.manager %}
+                                {{ row.manager.last_name }} {{ row.manager.first_name }}
+                            {% else %}
+                                <span class="text-danger fw-semibold">— Δεν έχει οριστεί —</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ row.manager.email|default:"—" }}</small></td>
+                        <td class="text-center">
+                            {% if row.has_manager %}
+                            <span class="badge bg-success">OK</span>
+                            {% else %}
+                            <span class="badge bg-danger">Χωρίς προϊστάμενο</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-muted text-center py-4">Δεν υπάρχουν τμήματα.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
