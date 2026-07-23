@@ -20,7 +20,6 @@ from leaves.utils.substitute_contracts import (
     substitute_users_qs,
     users_pending_contract,
     users_reappeared,
-    users_with_active_contracts_ending_on_or_before,
 )
 
 User = get_user_model()
@@ -44,15 +43,11 @@ def substitute_contracts_view(request):
     tab = request.GET.get('tab', 'ending')
     end_date = default_contract_end_for_year()
 
-    ending = users_with_active_contracts_ending_on_or_before(end_date)
-    # Για "προς λήξη" δείχνουμε και ενεργές συμβάσεις με λήξη στο μέλλον κοντά / όλες ACTIVE με σύμβαση
+    ending_list = []
     if tab == 'ending':
-        ending_list = []
         for u in substitute_users_qs(settings).filter(substitute_leave_status='ACTIVE'):
             c = get_active_contract(u)
             ending_list.append({'user': u, 'contract': c})
-    else:
-        ending_list = []
 
     pending = users_pending_contract(settings)
     reappeared = users_reappeared(settings)
