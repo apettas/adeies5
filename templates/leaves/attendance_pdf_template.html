@@ -3,18 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  @page { size: A4 landscape; margin: 1.5cm; }
-  body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; }
-  h1 { text-align: center; font-size: 14pt; margin-bottom: 5px; }
-  .subtitle { text-align: center; font-size: 11pt; color: #555; margin-bottom: 15px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid #333; padding: 5px 6px; text-align: left; }
-  th { background: #e0e0e0; font-size: 9pt; text-align: center; }
-  td { font-size: 8.5pt; }
+  @page { size: A4 portrait; margin: 0.8cm 0.7cm; }
+  body { font-family: 'DejaVu Sans', sans-serif; font-size: 7.5pt; margin: 0; }
+  h1 { text-align: center; font-size: 11pt; margin: 0 0 2px 0; }
+  .subtitle { text-align: center; font-size: 9pt; color: #555; margin: 0 0 6px 0; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid #333; padding: 2px 3px; text-align: left; vertical-align: middle; }
+  th { background: #e8e8e8; font-size: 7pt; text-align: center; font-weight: bold; }
+  td { font-size: 7pt; line-height: 1.15; }
   .center { text-align: center; }
-  .leave-type { color: #c00; font-weight: bold; font-size: 7.5pt; }
-  .footer { margin-top: 10px; font-size: 8pt; color: #888; text-align: center; }
-  td.signature { min-width: 80px; }
+  .leave-type { color: #b00; font-weight: bold; font-size: 6.5pt; }
+  .footer { margin-top: 4px; font-size: 6.5pt; color: #888; text-align: center; }
+  td.signature { height: 14px; }
+  tr { page-break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -24,14 +25,13 @@
 <table>
 <thead>
 <tr>
-  <th style="width:5%">Α/Α</th>
-  <th style="width:25%">Ονοματεπώνυμο</th>
-  <th style="width:15%">Τμήμα</th>
-  <th style="width:8%">Άδεια</th>
-  <th style="width:17%">Ώρα Άφιξης</th>
-  <th style="width:15%">Υπογραφή</th>
-  <th style="width:17%">Ώρα Αναχώρησης</th>
-  <th style="width:15%">Υπογραφή</th>
+  <th style="width:6%">Α/Α</th>
+  <th style="width:34%">Ονοματεπώνυμο</th>
+  <th style="width:16%">Άδεια</th>
+  <th style="width:11%">Άφιξη</th>
+  <th style="width:11%">Υπογραφή</th>
+  <th style="width:11%">Αναχώρ.</th>
+  <th style="width:11%">Υπογραφή</th>
 </tr>
 </thead>
 <tbody>
@@ -39,10 +39,9 @@
 <tr>
   <td class="center">{{ forloop.counter }}</td>
   <td>{{ r.emp.last_name }} {{ r.emp.first_name }}</td>
-  <td>{{ r.emp.department.name|default:"—" }}</td>
   <td class="center">
     {% if r.leave_type %}
-    <span class="leave-badge">{{ r.leave_type }}</span>
+    <span class="leave-type">{{ r.leave_type }}</span>
     {% else %}
     —
     {% endif %}
