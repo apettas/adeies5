@@ -4,6 +4,7 @@ from .models import (
     Logo, Info, Ypopsin, Signee,
     PublicHoliday, LeaveActionLog, LeaveAccessLog, RegularLeaveBalanceEntry,
     BalanceRenewalSettings, BalanceRenewalSeason, BalanceRenewalUserStatus,
+    SubstituteContractSettings, SubstituteContract,
     YCCommitteeAcknowledgment,
     DocumentUploadAcknowledgment,
     ApplicantDocumentsSubmissionAcknowledgment,
@@ -254,6 +255,18 @@ class BalanceRenewalUserStatusAdmin(admin.ModelAdmin):
     )
     list_filter = ('season__closing_year',)
     search_fields = ('user__email', 'user__last_name', 'user__first_name')
+
+
+@admin.register(SubstituteContractSettings)
+class SubstituteContractSettingsAdmin(admin.ModelAdmin):
+    list_display = ('default_end_month', 'default_end_day', 'target_type_codes', 'opening_balance_policy', 'updated_at')
+
+
+@admin.register(SubstituteContract)
+class SubstituteContractAdmin(admin.ModelAdmin):
+    list_display = ('user', 'contract_start', 'contract_end', 'entitled_days', 'opening_balance', 'status', 'created_by')
+    list_filter = ('status', 'contract_end')
+    search_fields = ('user__email', 'user__last_name', 'user__first_name', 'notes')
 
 
 @admin.register(YearlySickLeaveTotal)

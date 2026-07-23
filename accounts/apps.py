@@ -8,3 +8,4 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         import pdede_leaves.security_alerts  # noqa: F401
+        import accounts.signals  # noqa: F401

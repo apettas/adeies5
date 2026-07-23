@@ -15,4 +15,9 @@ def role_switcher(request):
     if request.user.is_leave_handler:
         from accounts.utils.pending_registration_alerts import get_pending_registrations_queryset
         ctx['pending_registration_count'] = get_pending_registrations_queryset().count()
+    # Banner αναπληρωτή σε αναμονή σύμβασης
+    try:
+        ctx['substitute_pending_contract'] = request.user.is_substitute_contract_blocked()
+    except Exception:
+        ctx['substitute_pending_contract'] = False
     return ctx

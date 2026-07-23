@@ -15,6 +15,13 @@ from .balance_renewal_views import (
     balance_renewal_settings_save,
     change_entitlement_view,
 )
+from .substitute_contract_views import (
+    substitute_contracts_view,
+    substitute_contract_end_view,
+    substitute_contract_new_view,
+    substitute_contracts_bulk_end,
+    substitute_contracts_settings_save,
+)
 from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordDataView
 from accounts.handler_registration_views import (
     PendingUserRegistrationsListView,
@@ -148,6 +155,13 @@ urlpatterns = [
     path('balance-renewal/notify/', balance_renewal_notify, name='balance_renewal_notify'),
     path('balance-renewal/apply/', balance_renewal_apply, name='balance_renewal_apply'),
     path('balance-renewal/settings/', balance_renewal_settings_save, name='balance_renewal_settings'),
+
+    # Substitute contracts
+    path('substitute-contracts/', substitute_contracts_view, name='substitute_contracts'),
+    path('substitute-contracts/bulk-end/', substitute_contracts_bulk_end, name='substitute_contracts_bulk_end'),
+    path('substitute-contracts/settings/', substitute_contracts_settings_save, name='substitute_contracts_settings'),
+    path('substitute-contracts/<int:user_id>/end/', substitute_contract_end_view, name='substitute_contract_end'),
+    path('substitute-contracts/<int:user_id>/new/', substitute_contract_new_view, name='substitute_contract_new'),
     
     # Base Data Management
     path('base-data/', BaseDataIndexView.as_view(), name='base_data_index'),

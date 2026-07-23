@@ -401,6 +401,13 @@ def create_leave_for_user(request, user_id):
     if not request.user.is_leave_handler:
         raise PermissionDenied("Μόνο χειριστές αδειών μπορούν να δημιουργήσουν άδεια για άλλον χρήστη.")
     target_user = get_object_or_404(get_user_model(), pk=user_id)
+    if target_user.is_substitute_contract_blocked():
+        messages.error(
+            request,
+            f'Ο/Η {target_user.full_name} είναι σε αναμονή νέας σύμβασης. '
+            'Καταχωρήστε σύμβαση πριν δημιουργήσετε αίτηση.',
+        )
+        return redirect('leaves:substitute_contract_new', user_id=target_user.pk)
 
     from .forms import LeaveRequestForm
     if request.method == 'POST':
@@ -1718,6 +1725,14 @@ def submit_final_request(request):
         try:
             # Βρίσκουμε την αίτηση που δημιουργήθηκε ως DRAFT
             leave_request = LeaveRequest.objects.get(id=leave_request_id, user=request.user, status='DRAFT')
+
+            if not request.user.has_leave_request_permission():
+                messages.error(
+                    request,
+                    'Δεν μπορείτε να υποβάλετε αίτηση άδειας. '
+                    'Εάν είστε αναπληρωτής, εκκρεμεί καταχώρηση νέας σύμβασης από το Τμήμα Αδειών.',
+                )
+                return redirect('leaves:employee_dashboard')
             
             # Ενημερώνουμε την περιγραφή αν άλλαξε
             new_description = request.POST.get('description')

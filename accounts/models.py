@@ -374,6 +374,24 @@ class User(AbstractUser):
     # Δικαιώματα άδειας
     can_request_leave = models.BooleanField('Δικαίωμα Αίτησης Άδειας', default=True,
         help_text='Αν είναι False, ο χρήστης δεν μπορεί να κάνει αίτηση άδειας (π.χ. SDEY managers, Περιφ. Δ/ντής)')
+
+    SUBSTITUTE_LEAVE_STATUS_CHOICES = [
+        ('ACTIVE', 'Ενεργή σύμβαση'),
+        ('PENDING_CONTRACT', 'Αναμονή νέας σύμβασης'),
+        ('ENDED_NO_REHIRE', 'Έληξε χωρίς επαναπρόσληψη'),
+    ]
+    substitute_leave_status = models.CharField(
+        'Κατάσταση Σύμβασης Αναπληρωτή',
+        max_length=20,
+        choices=SUBSTITUTE_LEAVE_STATUS_CHOICES,
+        default='ACTIVE',
+        help_text='Ισχύει για αναπληρωτές: ACTIVE επιτρέπει αιτήσεις, PENDING_CONTRACT τις μπλοκάρει',
+    )
+    substitute_reappearance_notified_at = models.DateTimeField(
+        'Τελευταία ειδοποίηση επανεμφάνισης',
+        null=True,
+        blank=True,
+    )
     
     # Κατάσταση Αδειών
     annual_leave_entitlement = models.IntegerField('Δικαιούμενες Ημέρες Κανονικής Άδειας', default=25,
@@ -554,6 +572,20 @@ class User(AbstractUser):
         # Αν φτάσαμε εδώ χωρίς parent, ψάχνουμε για PDEDE department
         return self._find_pdede_manager()
     
+    def is_substitute_contract_blocked(self):
+        """Αναπληρωτής σε αναμονή/λήξη σύμβασης — χωρίς νέες αιτήσεις."""
+        code = getattr(getattr(self, 'employee_type', None), 'code', None)
+        if not code:
+            return False
+        try:
+            from leaves.models import SubstituteContractSettings
+            target_codes = SubstituteContractSettings.get_solo().get_target_codes()
+        except Exception:
+            target_codes = ['SUBSTITUTE']
+        if code not in target_codes:
+            return False
+        return self.substitute_leave_status in ('PENDING_CONTRACT', 'ENDED_NO_REHIRE')
+
     def has_leave_request_permission(self):
         """Ελέγχει αν ο χρήστης μπορεί να αιτηθεί άδεια"""
         # ΣΔΕΥ χωρίς γονικό ΚΕΔΑΣΥ δεν μπορούν να αιτηθούν
@@ -564,6 +596,9 @@ class User(AbstractUser):
         # Αν το πεδίο can_request_leave είναι False, δεν μπορεί
         field_value = self._meta.get_field('can_request_leave').value_from_object(self)
         if not field_value:
+            return False
+
+        if self.is_substitute_contract_blocked():
             return False
 
         # Αν είναι manager του τμήματός του και δεν έχει γονικό τμήμα, δεν μπορεί

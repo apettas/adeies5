@@ -95,6 +95,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'leaves:substitute_contracts' %}">
+                            <i class="bi bi-file-earmark-person"></i> Αναπληρωτές
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'leaves:base_data_index' %}">
                             <i class="bi bi-database-gear"></i> Στοιχεία Βάσης
                         </a>
@@ -185,6 +190,15 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Κλείσιμο"></button>
                 </div>
             {% endfor %}
+        {% endif %}
+
+        {% if substitute_pending_contract %}
+        <div class="alert alert-warning border-start border-4 border-warning" role="alert">
+            <i class="bi bi-hourglass-split me-2"></i>
+            <strong>Αναμονή νέας σύμβασης.</strong>
+            Δεν μπορείτε να υποβάλετε νέα αίτηση άδειας μέχρι το Τμήμα Αδειών να καταχωρήσει τη σύμβασή σας.
+            Το ιστορικό αιτήσεων παραμένει διαθέσιμο.
+        </div>
         {% endif %}
 
         {% block content %}{% endblock %}

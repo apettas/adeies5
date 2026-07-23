@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Συμβάσεις Αναπληρωτών{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h2 class="mb-1"><i class="bi bi-file-earmark-person"></i> Συμβάσεις Αναπληρωτών</h2>
+                <p class="text-muted mb-0">Λήξη / αναμονή / νέα σύμβαση · προεπιλογή λήξης {{ default_end_date|date:"d/m/Y" }}</p>
+            </div>
+            <a href="{% url 'leaves:handler_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Επιστροφή
+            </a>
+        </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'ending' %}active{% endif %}" href="?tab=ending">
+                    Προς λήξη / ενεργοί <span class="badge bg-secondary">{{ ending_list|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'pending' %}active{% endif %}" href="?tab=pending">
+                    Σε αναμονή <span class="badge bg-warning text-dark">{{ pending_list|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'reappeared' %}active{% endif %}" href="?tab=reappeared">
+                    Επανεμφανίστηκαν <span class="badge bg-info text-dark">{{ reappeared_list|length }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'history' %}active{% endif %}" href="?tab=history">Ιστορικό</a>
+            </li>
+            {% if is_admin %}
+            <li class="nav-item">
+                <a class="nav-link {% if tab == 'settings' %}active{% endif %}" href="?tab=settings">Ρυθμίσεις</a>
+            </li>
+            {% endif %}
+        </ul>
+
+        {% if tab == 'ending' %}
+        <form method="post" action="{% url 'leaves:substitute_contracts_bulk_end' %}">
+            {% csrf_token %}
+            <div class="card mb-3">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span>Ενεργοί αναπληρωτές — μαζική λήξη</span>
+                    <button type="submit" class="btn btn-sm btn-danger"
+                            onclick="return confirm('Επιβεβαίωση μαζικής λήξης για τους επιλεγμένους;');">
+                        <i class="bi bi-x-octagon"></i> Λήξη επιλεγμένων
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Ημερομηνία λήξης</label>
+                            <input type="date" name="end_date" class="form-control"
+                                   value="{{ default_end_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Σχόλιο (υποχρεωτικό) <span class="text-danger">*</span></label>
+                            <input type="text" name="notes" class="form-control" required
+                                   placeholder="π.χ. Μαζική λήξη συμβάσεων 30/6">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th></th>
+                                    <th>Ονοματεπώνυμο</th>
+                                    <th>Τμήμα</th>
+                                    <th>Σύμβαση</th>
+                                    <th class="text-end">Υπόλοιπο</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in ending_list %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="form-check-input" name="user_ids"
+                                               value="{{ row.user.pk }}">
+                                    </td>
+                                    <td>{{ row.user.last_name }} {{ row.user.first_name }}</td>
+                                    <td><small>{{ row.user.department.name|default:"—" }}</small></td>
+                                    <td>
+                                        {% if row.contract %}
+                                        <small>{{ row.contract.contract_start|date:"d/m/Y" }} – {{ row.contract.contract_end|date:"d/m/Y" }}</small>
+                                        {% else %}
+                                        <span class="text-muted">Χωρίς καταχωρημένη σύμβαση</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{{ row.user.current_regular_leave_balance }}</td>
+                                    <td class="text-nowrap">
+                                        <a class="btn btn-sm btn-outline-danger" href="{% url 'leaves:substitute_contract_end' row.user.pk %}">Λήξη</a>
+                                        <a class="btn btn-sm btn-outline-primary" href="{% url 'leaves:substitute_contract_new' row.user.pk %}">Νέα</a>
+                                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'leaves:balance_ledger' row.user.pk %}">Καρτέλα</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-muted">Δεν υπάρχουν ενεργοί αναπληρωτές.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        {% elif tab == 'pending' or tab == 'reappeared' %}
+        <div class="card">
+            <div class="card-header">
+                {% if tab == 'reappeared' %}Επανεμφανίστηκαν (login σε αναμονή){% else %}Σε αναμονή νέας σύμβασης{% endif %}
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ονοματεπώνυμο</th>
+                            <th>Τμήμα</th>
+                            <th>Κατάσταση</th>
+                            <th>Ειδοποίηση επανεμφάνισης</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if tab == 'reappeared' %}
+                            {% for u in reappeared_list %}
+                            <tr>
+                                <td>{{ u.last_name }} {{ u.first_name }}</td>
+                                <td><small>{{ u.department.name|default:"—" }}</small></td>
+                                <td><span class="badge bg-warning text-dark">{{ u.get_substitute_leave_status_display }}</span></td>
+                                <td><small>{{ u.substitute_reappearance_notified_at|date:"d/m/Y H:i"|default:"—" }}</small></td>
+                                <td>
+                                    <a class="btn btn-sm btn-primary" href="{% url 'leaves:substitute_contract_new' u.pk %}">Νέα σύμβαση</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-muted">Κενό.</td></tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for u in pending_list %}
+                            <tr>
+                                <td>{{ u.last_name }} {{ u.first_name }}</td>
+                                <td><small>{{ u.department.name|default:"—" }}</small></td>
+                                <td><span class="badge bg-warning text-dark">{{ u.get_substitute_leave_status_display }}</span></td>
+                                <td><small>{{ u.substitute_reappearance_notified_at|date:"d/m/Y H:i"|default:"—" }}</small></td>
+                                <td>
+                                    <a class="btn btn-sm btn-primary" href="{% url 'leaves:substitute_contract_new' u.pk %}">Νέα σύμβαση</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-muted">Κενό.</td></tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% elif tab == 'history' %}
+        <div class="card">
+            <div class="card-body table-responsive">
+                <table class="table table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Υπάλληλος</th>
+                            <th>Διάστημα</th>
+                            <th>Δικαίωμα</th>
+                            <th>Αρχικό</th>
+                            <th>Κατάσταση</th>
+                            <th>Από</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in history_list %}
+                        <tr>
+                            <td>{{ c.user.last_name }} {{ c.user.first_name }}</td>
+                            <td>{{ c.contract_start|date:"d/m/Y" }} – {{ c.contract_end|date:"d/m/Y" }}</td>
+                            <td>{{ c.entitled_days }}</td>
+                            <td>{{ c.opening_balance }}</td>
+                            <td>{{ c.get_status_display }}</td>
+                            <td><small>{{ c.created_by.get_full_name|default:"—" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-muted">Χωρίς ιστορικό.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% elif tab == 'settings' and is_admin %}
+        <form method="post" action="{% url 'leaves:substitute_contracts_settings' %}" class="card">
+            {% csrf_token %}
+            <div class="card-header">Ρυθμίσεις</div>
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Μήνας λήξης</label>
+                    <input type="number" min="1" max="12" class="form-control" name="default_end_month"
+                           value="{{ settings.default_end_month }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ημέρα λήξης</label>
+                    <input type="number" min="1" max="31" class="form-control" name="default_end_day"
+                           value="{{ settings.default_end_day }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Κωδικοί τύπων</label>
+                    <input type="text" class="form-control" name="target_type_codes"
+                           value="{{ settings.target_type_codes }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Πολιτική αρχικού υπολοίπου</label>
+                    <select class="form-select" name="opening_balance_policy">
+                        <option value="entitlement" {% if settings.opening_balance_policy == 'entitlement' %}selected{% endif %}>Ίσο με δικαιούμενες</option>
+                        <option value="zero" {% if settings.opening_balance_policy == 'zero' %}selected{% endif %}>Μηδέν</option>
+                        <option value="manual_only" {% if settings.opening_balance_policy == 'manual_only' %}selected{% endif %}>Μόνο χειροκίνητα</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Μήνυμα στη λήξη</label>
+                    <textarea class="form-control" name="end_user_message" rows="3">{{ settings.end_user_message }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Μήνυμα στη νέα σύμβαση</label>
+                    <textarea class="form-control" name="activate_user_message" rows="3">{{ settings.activate_user_message }}</textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Αποθήκευση</button>
+                </div>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

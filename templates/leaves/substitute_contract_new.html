@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Νέα σύμβαση - {{ target_user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-file-earmark-plus"></i> Νέα σύμβαση αναπληρωτή</h2>
+            <a href="{% url 'leaves:substitute_contracts' %}" class="btn btn-outline-secondary">Επιστροφή</a>
+        </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5>{{ target_user.get_full_name }}</h5>
+                <p class="mb-0 text-muted">{{ target_user.department.name|default:"—" }} · {{ target_user.email }}</p>
+                <p class="mt-2 mb-0">Κατάσταση: <strong>{{ target_user.get_substitute_leave_status_display }}</strong></p>
+            </div>
+        </div>
+        <form method="post" class="card">
+            {% csrf_token %}
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Έναρξη <span class="text-danger">*</span></label>
+                    <input type="date" name="contract_start" class="form-control" required
+                           value="{{ suggested_start|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Λήξη <span class="text-danger">*</span></label>
+                    <input type="date" name="contract_end" class="form-control" required
+                           value="{{ suggested_end|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Δικαιούμενες ημέρες <span class="text-danger">*</span></label>
+                    <input type="number" min="0" name="entitled_days" class="form-control" required
+                           value="{{ suggested_entitlement }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Αρχικό υπόλοιπο</label>
+                    <input type="number" min="0" name="opening_balance" class="form-control"
+                           value="{{ suggested_opening }}">
+                    <small class="text-muted">Προεπιλογή πολιτικής: {{ settings.get_opening_balance_policy_display }}</small>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Σχόλιο <span class="text-danger">*</span></label>
+                    <textarea name="notes" class="form-control" rows="3" required
+                              placeholder="π.χ. Νέα πρόσληψη σχολικού έτους …"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Καταχώρηση &amp; ενεργοποίηση</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

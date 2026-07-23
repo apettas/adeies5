@@ -409,6 +409,12 @@ class LeaveRequest(models.Model):
     def submit(self):
         """Υποβολή αίτησης"""
         if self.status == 'DRAFT':
+            if not self.user.has_leave_request_permission():
+                raise ValueError(
+                    'Δεν επιτρέπεται υποβολή αίτησης. '
+                    'Εάν είστε αναπληρωτής, εκκρεμεί καταχώρηση νέας σύμβασης.'
+                )
+
             if self.leave_type.is_sick_leave_yd:
                 used = LeaveRequest.objects.filter(
                     user=self.user,
@@ -1234,6 +1240,8 @@ class RegularLeaveBalanceEntry(models.Model):
         ('ENTITLEMENT_CHANGE', 'Αλλαγή Δικαιούμενων Ημερών'),
         ('ANNUAL_GRANT', 'Ετήσια Χορήγηση Δικαιώματος'),
         ('CARRYOVER_EXPIRE', 'Λήξη Παλαιού Υπολοίπου'),
+        ('CONTRACT_END_ZERO', 'Μηδενισμός Λήξης Σύμβασης'),
+        ('CONTRACT_GRANT', 'Χορήγηση Νέας Σύμβασης'),
     ]
 
     employee = models.ForeignKey(User, on_delete=models.CASCADE,
@@ -1397,6 +1405,104 @@ class BalanceRenewalUserStatus(models.Model):
 
     def __str__(self):
         return f'{self.user} @ {self.season.closing_year}'
+
+
+class SubstituteContractSettings(models.Model):
+    """Ρυθμίσεις ροής συμβάσεων αναπληρωτών (singleton)."""
+    OPENING_BALANCE_CHOICES = [
+        ('entitlement', 'Ίσο με δικαιούμενες'),
+        ('zero', 'Μηδέν'),
+        ('manual_only', 'Μόνο χειροκίνητα'),
+    ]
+    default_end_month = models.PositiveSmallIntegerField('Μήνας προεπιλογής λήξης', default=6)
+    default_end_day = models.PositiveSmallIntegerField('Ημέρα προεπιλογής λήξης', default=30)
+    target_type_codes = models.CharField(
+        'Κωδικοί τύπων υπαλλήλων',
+        max_length=255,
+        default='SUBSTITUTE',
+        help_text='Διαχωρισμός με κόμμα, π.χ. SUBSTITUTE',
+    )
+    opening_balance_policy = models.CharField(
+        'Πολιτική αρχικού υπολοίπου',
+        max_length=20,
+        choices=OPENING_BALANCE_CHOICES,
+        default='entitlement',
+    )
+    end_user_message = models.TextField(
+        'Μήνυμα χρήστη στη λήξη',
+        default=(
+            'Η σύμβασή σας έληξε και το υπόλοιπο κανονικών αδειών μηδενίστηκε. '
+            'Για νέα περίοδο απασχόλησης θα ενημερωθείτε αφού το Τμήμα Αδειών '
+            'καταχωρήσει τη νέα σύμβαση.'
+        ),
+    )
+    activate_user_message = models.TextField(
+        'Μήνυμα χρήστη στη νέα σύμβαση',
+        default=(
+            'Καταχωρήθηκε η νέα σας σύμβαση. Μπορείτε πλέον να υποβάλετε αιτήσεις άδειας.'
+        ),
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name='Ενημερώθηκε από',
+    )
+
+    class Meta:
+        verbose_name = 'Ρυθμίσεις Συμβάσεων Αναπληρωτών'
+        verbose_name_plural = 'Ρυθμίσεις Συμβάσεων Αναπληρωτών'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return 'Ρυθμίσεις συμβάσεων αναπληρωτών'
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def get_target_codes(self):
+        return [c.strip() for c in (self.target_type_codes or '').split(',') if c.strip()]
+
+
+class SubstituteContract(models.Model):
+    """Περίοδος σύμβασης αναπληρωτή."""
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Ενεργή'),
+        ('ENDED', 'Έληξε'),
+        ('SUPERSEDED', 'Αντικαταστάθηκε'),
+    ]
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='substitute_contracts', verbose_name='Υπάλληλος',
+    )
+    contract_start = models.DateField('Έναρξη σύμβασης')
+    contract_end = models.DateField('Λήξη σύμβασης')
+    entitled_days = models.PositiveIntegerField('Δικαιούμενες ημέρες', default=0)
+    opening_balance = models.PositiveIntegerField('Αρχικό υπόλοιπο', default=0)
+    status = models.CharField('Κατάσταση', max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    notes = models.TextField('Σημειώσεις', blank=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_substitute_contracts', verbose_name='Δημιουργήθηκε από',
+    )
+    ended_at = models.DateTimeField('Ημερομηνία κλεισίματος', null=True, blank=True)
+    ended_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ended_substitute_contracts', verbose_name='Έληξε από',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Σύμβαση Αναπληρωτή'
+        verbose_name_plural = 'Συμβάσεις Αναπληρωτών'
+        ordering = ['-contract_start', '-created_at']
+
+    def __str__(self):
+        return f'{self.user} {self.contract_start}–{self.contract_end} ({self.status})'
 
 
 class YearlySickLeaveTotal(models.Model):
