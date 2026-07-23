@@ -8,6 +8,7 @@ from .models import (
     YCCommitteeAcknowledgment,
     DocumentUploadAcknowledgment,
     ApplicantDocumentsSubmissionAcknowledgment,
+    ProtocolEmailFailureAcknowledgment,
     YearlySickLeaveTotal
 )
 
@@ -296,6 +297,14 @@ class DocumentUploadAcknowledgmentAdmin(admin.ModelAdmin):
 
 @admin.register(ApplicantDocumentsSubmissionAcknowledgment)
 class ApplicantDocumentsSubmissionAcknowledgmentAdmin(admin.ModelAdmin):
+    list_display = ('handler', 'leave_request', 'acknowledged_at')
+    list_filter = ('acknowledged_at',)
+    search_fields = ('handler__email', 'leave_request__id')
+    readonly_fields = ('acknowledged_at',)
+
+
+@admin.register(ProtocolEmailFailureAcknowledgment)
+class ProtocolEmailFailureAcknowledgmentAdmin(admin.ModelAdmin):
     list_display = ('handler', 'leave_request', 'acknowledged_at')
     list_filter = ('acknowledged_at',)
     search_fields = ('handler__email', 'leave_request__id')

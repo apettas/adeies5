@@ -150,6 +150,42 @@
 </div>
 {% endif %}
 
+<!-- Alert για αποτυχία αυτόματης αποστολής email πρωτοκόλλου -->
+{% if protocol_email_failure_alert_count > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning border-start border-warning border-5">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-envelope-exclamation fs-3 me-3"></i>
+                <div>
+                    <h5 class="alert-heading"><i class="bi bi-envelope-x"></i> Αποτυχία Email Πρωτοκόλλου</h5>
+                    <p>Δεν στάλθηκε αυτόματα το email πρωτοκόλλου για τις παρακάτω αιτήσεις:</p>
+                    <ul class="mb-0">
+                        {% for lr in protocol_email_failure_alerts %}
+                        <li>
+                            <strong>#{{ lr.pk }} — {{ lr.user.get_full_name }}</strong>
+                            ({{ lr.leave_type.name }})
+                            — {{ lr.protocol_email_failed_at|date:"d/m/Y H:i" }}
+                            <a href="{% url 'leaves:leave_request_detail' lr.pk %}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-eye"></i> Προβολή
+                            </a>
+                            <a href="{% url 'leaves:send_to_protocol' lr.pk %}" class="btn btn-sm btn-outline-secondary ms-1">
+                                <i class="bi bi-send"></i> Αποστολή
+                            </a>
+                            <a href="{% url 'leaves:acknowledge_protocol_email_failure' lr.pk %}" class="btn btn-sm btn-outline-success ms-1">
+                                <i class="bi bi-check-circle"></i> Έλαβα Γνώση
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <small class="text-muted mt-2 d-block">Το alert κρύβεται για εσάς αφού πατήσετε «Έλαβα Γνώση».</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Alert για ανέβασμα δικαιολογητικών από αιτούντα -->
 {% if document_upload_alert_count > 0 %}
 <div class="row mb-4">

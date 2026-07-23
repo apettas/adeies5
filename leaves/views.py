@@ -936,6 +936,12 @@ class HandlerDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFilt
         from accounts.utils.pending_registration_alerts import get_pending_registration_alerts
         context['pending_registration_alerts'] = get_pending_registration_alerts(self.request.user)
         context['pending_registration_alert_count'] = len(context['pending_registration_alerts'])
+
+        from leaves.utils.protocol_email_alerts import get_pending_protocol_email_failure_alerts
+        context['protocol_email_failure_alerts'] = get_pending_protocol_email_failure_alerts(
+            self.request.user
+        )
+        context['protocol_email_failure_alert_count'] = len(context['protocol_email_failure_alerts'])
         
         # Add today's date for protocol forms
         context['today'] = timezone.now().date()
@@ -1920,6 +1926,10 @@ def submit_final_request(request):
 
             try:
                 from leaves.utils.pdf_merger import save_merged_pdf
+                from leaves.utils.protocol_email_alerts import (
+                    clear_protocol_email_failure,
+                    mark_protocol_email_failed,
+                )
                 from pdede_leaves.email_utils import send_merged_pdf_email
 
                 pdf_content, _, _ = save_merged_pdf(leave_request)
@@ -1932,27 +1942,22 @@ def submit_final_request(request):
                     recipient=protocol_recipient,
                 )
                 if email_sent:
+                    clear_protocol_email_failure(leave_request)
                     messages.success(
                         request,
                         f'Η αίτηση υποβλήθηκε και το ενοποιημένο PDF στάλθηκε στο {protocol_recipient}.',
                     )
                 else:
+                    mark_protocol_email_failed(leave_request)
                     messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
-                    messages.warning(
-                        request,
-                        'Η αποστολή του ενοποιημένου PDF στο πρωτόκολλο απέτυχε. '
-                        'Μπορείτε να το ξαναστείλετε από την προβολή αίτησης.',
-                    )
             except Exception as email_error:
                 import logging
                 logging.getLogger(__name__).error(
                     f"Auto protocol email failed for leave request {leave_request.id}: {email_error}"
                 )
+                from leaves.utils.protocol_email_alerts import mark_protocol_email_failed
+                mark_protocol_email_failed(leave_request)
                 messages.success(request, 'Η αίτηση άδειας υποβλήθηκε επιτυχώς!')
-                messages.warning(
-                    request,
-                    'Η αίτηση αποθηκεύτηκε, αλλά απέτυχε η αυτόματη αποστολή PDF στο πρωτόκολλο.',
-                )
 
             return redirect('leaves:leave_request_detail', leave_request.id)
             
@@ -2485,6 +2490,27 @@ def provide_documents(request, pk):
     
     # GET: Εμφάνιση σελίδας επιβεβαίωσης παροχής δικαιολογητικών
     return render(request, 'leaves/provide_documents_confirm.html', {'leave_request': leave_request})
+
+
+@login_required
+def acknowledge_protocol_email_failure(request, pk):
+    """Δήλωση γνώσης για αποτυχία αυτόματης αποστολής email πρωτοκόλλου."""
+    from leaves.models import ProtocolEmailFailureAcknowledgment
+
+    if not request.user.is_leave_handler:
+        raise PermissionDenied("Δεν έχετε δικαίωμα.")
+
+    leave_request = get_object_or_404(LeaveRequest, pk=pk)
+    if not leave_request.protocol_email_failed_at:
+        messages.error(request, 'Δεν υπάρχει εκκρεμής αποτυχία email για αυτή την αίτηση.')
+        return redirect('leaves:handler_dashboard')
+
+    ProtocolEmailFailureAcknowledgment.objects.get_or_create(
+        leave_request=leave_request,
+        handler=request.user,
+    )
+    messages.success(request, 'Η γνώση καταχωρήθηκε.')
+    return redirect('leaves:handler_dashboard')
 
 
 @login_required
@@ -3061,6 +3087,8 @@ def send_to_protocol_view(request, pk):
             success = send_merged_pdf_email(leave_request, pdf_content, recipient=context['protocol_email'], custom_subject=custom_email_subject)
             
             if success:
+                from leaves.utils.protocol_email_alerts import clear_protocol_email_failure
+                clear_protocol_email_failure(leave_request)
                 messages.success(request, 'Το email στάλθηκε επιτυχώς!')
                 context['sent_success'] = True
             else:

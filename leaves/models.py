@@ -283,6 +283,12 @@ class LeaveRequest(models.Model):
         null=True,
         blank=True,
     )
+    protocol_email_failed_at = models.DateTimeField(
+        'Αποτυχία Αυτόματης Αποστολής Email Πρωτοκόλλου',
+        null=True,
+        blank=True,
+        help_text='Συμπληρώνεται όταν αποτύχει η αυτόματη αποστολή PDF στο πρωτόκολλο κατά την υποβολή',
+    )
     
     # Ανάκληση και κλείδωμα
     parent_leave = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
@@ -1594,3 +1600,29 @@ class ApplicantDocumentsSubmissionAcknowledgment(models.Model):
 
     def __str__(self):
         return f"{self.handler} → ολοκλήρωση αίτησης #{self.leave_request_id}"
+
+
+class ProtocolEmailFailureAcknowledgment(models.Model):
+    """Καταγραφή ότι ο χειριστής έλαβε γνώση για αποτυχία email πρωτοκόλλου."""
+    leave_request = models.ForeignKey(
+        LeaveRequest,
+        on_delete=models.CASCADE,
+        related_name='protocol_email_failure_acknowledgments',
+        verbose_name='Αίτηση Άδειας',
+    )
+    handler = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='protocol_email_failure_acknowledgments',
+        verbose_name='Χειριστής',
+    )
+    acknowledged_at = models.DateTimeField('Ημερομηνία Γνώσης', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Γνώση Αποτυχίας Email Πρωτοκόλλου'
+        verbose_name_plural = 'Γνώσεις Αποτυχίας Email Πρωτοκόλλου'
+        unique_together = ['leave_request', 'handler']
+        ordering = ['-acknowledged_at']
+
+    def __str__(self):
+        return f"{self.handler} → email fail #{self.leave_request_id}"
