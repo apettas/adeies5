@@ -3,7 +3,7 @@ import re
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from accounts.role_constants import (
@@ -541,10 +541,15 @@ class User(AbstractUser):
         return self._find_manager_in_hierarchy(self.department)
     
     def _find_pdede_manager(self):
-        """Βρίσκει τον manager του PDEDE department όταν δεν υπάρχει parent."""
-        pdede = Department.objects.filter(
-            department_type__code='PDEDE_MAIN'
-        ).first()
+        """
+        Βρίσκει τον manager του ΠΔΕΔΕ όταν δεν υπάρχει parent.
+        Υποστηρίζει και PDEDE_MAIN (tests) και PDEDE (production).
+        """
+        pdede = (
+            Department.objects.filter(department_type__code='PDEDE_MAIN').first()
+            or Department.objects.filter(department_type__code='PDEDE').first()
+            or Department.objects.filter(code='PDEDE').first()
+        )
         if pdede:
             if pdede.manager and pdede.manager != self:
                 return pdede.manager
@@ -885,8 +890,37 @@ class RegistrationApprovalEmailTemplate(models.Model):
         return 'Πρότυπο email ενεργοποίησης λογαριασμού'
 
 
+@receiver(pre_save, sender=Department)
+def track_previous_department_manager(sender, instance, **kwargs):
+    """Κρατά τον προηγούμενο FK manager για αφαίρεση ρόλου μετά το save."""
+    if not instance.pk:
+        instance._previous_manager_id = None
+        return
+    previous_id = (
+        Department.objects.filter(pk=instance.pk)
+        .values_list('manager_id', flat=True)
+        .first()
+    )
+    instance._previous_manager_id = previous_id
+
+
 @receiver(post_save, sender=Department)
 def sync_manager_role_on_department_save(sender, instance, **kwargs):
-    """Όταν ορίζεται Department.manager, εξασφαλίζουμε ρόλο MANAGER στον χρήστη."""
+    """
+    Συγχρονισμός ρόλου MANAGER με Department.manager FK.
+    - Νέος manager → προσθήκη ρόλου
+    - Αντικατάσταση manager → αφαίρεση ρόλου από τον παλιό (αν δεν είναι FK αλλού)
+    - Εκκαθάριση FK (None) → δεν αφαιρούμε ρόλο (επιτρέπει role-only fallback)
+    """
     if instance.manager_id:
         instance.manager.add_role(ROLE_MANAGER)
+
+    previous_id = getattr(instance, '_previous_manager_id', None)
+    if (
+        previous_id
+        and instance.manager_id
+        and previous_id != instance.manager_id
+    ):
+        previous = User.objects.filter(pk=previous_id).first()
+        if previous and not Department.objects.filter(manager=previous).exists():
+            previous.remove_role(ROLE_MANAGER)

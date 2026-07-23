@@ -653,8 +653,8 @@ class LeaveRequest(models.Model):
             )
             yearly_total.total_days += self.total_days
             yearly_total.save()
-            self.user.sick_days_current_year = yearly_total.total_days
-            self.user.save(update_fields=['sick_days_current_year'])
+            from leaves.utils.sick_leave_totals import refresh_user_sick_leave_totals
+            refresh_user_sick_leave_totals(self.user)
 
     def _apply_revocation_on_completion(self, created_by=None):
         """Ολοκλήρωση αίτησης ανάκλησης: ledger + ενημέρωση αρχικής άδειας."""

@@ -423,17 +423,8 @@ def complete_leave_request_final(request, pk):
             # Ενημέρωση total_sick_leave_last_5_years (5ετία) – το sick_days_current_year
             # ήδη ενημερώνεται μέσα στο finalize_with_exact_copy() → _update_leave_balance_on_completion()
             if leave_request.leave_type.is_sick_leave_total:
-                from leaves.models import YearlySickLeaveTotal
-                from django.db.models import Sum
-                current_year = timezone.now().year
-                user = leave_request.user
-                user.refresh_from_db(fields=['sick_days_current_year'])
-                five_years_ago = current_year - 5
-                last_5 = YearlySickLeaveTotal.objects.filter(
-                    employee=user, year__gte=five_years_ago, year__lte=current_year
-                ).aggregate(total=Sum('total_days'))['total'] or 0
-                user.total_sick_leave_last_5_years = last_5
-                user.save(update_fields=['total_sick_leave_last_5_years'])
+                from leaves.utils.sick_leave_totals import refresh_user_sick_leave_totals
+                refresh_user_sick_leave_totals(leave_request.user)
             
             messages.success(request, 'Η αίτηση ολοκληρώθηκε επιτυχώς!')
         else:

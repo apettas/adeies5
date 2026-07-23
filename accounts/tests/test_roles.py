@@ -81,3 +81,50 @@ class ManagerAuthorityTests(TestDataMixin, TestCase):
         self.child_department.save()
         employee.refresh_from_db()
         self.assertTrue(employee.has_role(ROLE_MANAGER))
+
+    def test_replacing_manager_revokes_old_manager_role(self):
+        old = self.dept_manager
+        self.assertTrue(old.has_role(ROLE_MANAGER))
+
+        new = User.objects.create_user(
+            email='replacement_mgr@test.com',
+            first_name='Rep',
+            last_name='Manager',
+            department=self.child_department,
+            registration_status='APPROVED',
+            is_active=True,
+        )
+        self.child_department.manager = new
+        self.child_department.save()
+
+        old.refresh_from_db()
+        new.refresh_from_db()
+        self.assertTrue(new.has_role(ROLE_MANAGER))
+        self.assertFalse(old.has_role(ROLE_MANAGER))
+
+    def test_old_manager_keeps_role_if_still_fk_elsewhere(self):
+        old = self.dept_manager
+        # old is also FK manager of another department
+        other = Department.objects.create(
+            name='Other Dept',
+            code='OTHER_KEEP_MGR',
+            department_type=self.child_department.department_type,
+            parent_department=self.autotelous_dn,
+            manager=old,
+        )
+        self.assertTrue(old.has_role(ROLE_MANAGER))
+
+        new = User.objects.create_user(
+            email='replacement2@test.com',
+            first_name='Rep2',
+            last_name='Manager',
+            department=self.child_department,
+            registration_status='APPROVED',
+            is_active=True,
+        )
+        self.child_department.manager = new
+        self.child_department.save()
+
+        old.refresh_from_db()
+        self.assertTrue(old.has_role(ROLE_MANAGER))
+        self.assertEqual(other.manager_id, old.id)

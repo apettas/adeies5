@@ -806,6 +806,27 @@ class KnownIssueRegressionTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase
         self.employee.refresh_from_db()
         self.assertEqual(yearly.total_days, req.total_days)
         self.assertEqual(self.employee.sick_days_current_year, req.total_days)
+        self.assertEqual(self.employee.total_sick_leave_last_5_years, req.total_days)
+
+    def test_sick_5yr_cache_includes_prior_years_excludes_year_6(self):
+        cy = timezone.now().year
+        YearlySickLeaveTotal.objects.create(employee=self.employee, year=cy - 6, total_days=50)
+        YearlySickLeaveTotal.objects.create(employee=self.employee, year=cy - 1, total_days=4)
+
+        req = create_submitted_leave_request(
+            self.employee, self.sick_total_type, 'sick window', START, END,
+        )
+        req.status = 'IN_REVIEW'
+        req.submitted_at = timezone.now()
+        req.save()
+        self.assertTrue(req.complete_by_handler(self.leave_handler))
+
+        self.employee.refresh_from_db()
+        # year-6 (50) excluded; year-1 (4) + current (5) = 9
+        self.assertEqual(self.employee.total_sick_leave_last_5_years, 4 + req.total_days)
+        self.assertTrue(
+            YearlySickLeaveTotal.objects.filter(employee=self.employee, year=cy - 6).exists()
+        )
 
 
 class WorkflowVariantRoutingTests(KedasyWorkflowMixin, WorkflowLeaveTypesMixin, TestCase):

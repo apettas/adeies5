@@ -52,6 +52,42 @@ class UserHierarchicalTests(TestDataMixin, TestCase):
         approving_manager = self.delegkos.get_approving_manager()
         
         self.assertIsNone(approving_manager)
+
+    def test_find_pdede_manager_accepts_production_pdede_type_code(self):
+        """Production χρησιμοποιεί DepartmentType.code=PDEDE (όχι μόνο PDEDE_MAIN)."""
+        from accounts.models import DepartmentType
+
+        # Μετατροπή τύπου όπως στο production
+        prod_type, _ = DepartmentType.objects.get_or_create(
+            code='PDEDE',
+            defaults={'name': 'ΠΔΕΔΕ Production'},
+        )
+        self.pdede.department_type = prod_type
+        self.pdede.save(update_fields=['department_type'])
+
+        # Root manager χωρίς parent → fallback στο PDEDE manager
+        root_emp = User.objects.create_user(
+            email='root_mgr_child@test.com',
+            first_name='Root',
+            last_name='Child',
+            department=self.pdede,
+            registration_status='APPROVED',
+            is_active=True,
+        )
+        # Δεν είναι ο FK manager · εγκρίνει ο delegkos
+        self.assertEqual(root_emp.get_approving_manager(), self.delegkos)
+
+        # Προϊστάμενος τμήματος χωρίς parent (orphan root) → PDEDE
+        orphan_dept = Department.objects.create(
+            name='Orphan Root',
+            code='ORPHAN_ROOT',
+            department_type=self.autotelous_dept_type,
+            parent_department=None,
+            manager=self.dept_manager,
+        )
+        self.dept_manager.department = orphan_dept
+        self.dept_manager.save(update_fields=['department'])
+        self.assertEqual(self.dept_manager.get_approving_manager(), self.delegkos)
         
     def test_get_subordinates_employee_has_no_subordinates(self):
         """

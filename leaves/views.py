@@ -3401,11 +3401,10 @@ def update_yearly_sick_leave_totals(request, pk):
                 defaults={'total_days': days},
             )
 
-        current_days = parsed_days.get(current_year, 0)
-        last_5_sum = sum(parsed_days.values())
-        employee.sick_days_current_year = current_days
-        employee.total_sick_leave_last_5_years = last_5_sum
-        employee.save(update_fields=['sick_days_current_year', 'total_sick_leave_last_5_years'])
+        from leaves.utils.sick_leave_totals import refresh_user_sick_leave_totals
+        refresh_user_sick_leave_totals(employee, current_year=current_year)
+        employee.refresh_from_db()
+        last_5_sum = employee.total_sick_leave_last_5_years
 
         notes_parts = [f'{year}: {days}' for year, days in sorted(parsed_days.items())]
         LeaveActionLog.objects.create(
