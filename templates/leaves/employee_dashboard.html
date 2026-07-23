@@ -21,6 +21,71 @@
     </div>
 </div>
 
+<!-- Υπόλοιπο & Αναρρωτικές — στην αρχή του dashboard -->
+{% if show_regular_leave_balance and current_regular_balance is not None %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Υπόλοιπο Κανονικών Αδειών</h5>
+                <a href="{% url 'leaves:balance_ledger' user.pk %}" class="btn btn-sm btn-light">
+                    <i class="bi bi-clock-history"></i> Ιστορικό Κινήσεων
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-6">
+                        <h2 class="text-primary">{{ current_regular_balance }}</h2>
+                        <small class="text-muted">Τρέχον Υπόλοιπο</small>
+                    </div>
+                    <div class="col-md-6">
+                        <h2 class="text-info">{{ carryover_days }}</h2>
+                        <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if show_sick_leave_cards %}
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card border-warning h-100">
+            <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-heart-pulse"></i> Αναρρωτικές με Υπεύθυνη Δήλωση τρέχοντος έτους</h6>
+                <span class="badge bg-warning text-dark">{{ sick_leave_yd_used }} / {{ sick_leave_yd_limit }}</span>
+            </div>
+            <div class="card-body text-center">
+                <h3 class="{% if sick_leave_yd_used >= sick_leave_yd_limit %}text-danger{% else %}text-warning{% endif %}">{{ sick_leave_yd_used }}</h3>
+                <small class="text-muted">χρησιμοποιήθηκαν φέτος</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card {% if sick_exceeds_threshold %}border-danger{% else %}border-secondary{% endif %} h-100">
+            <div class="card-header {% if sick_exceeds_threshold %}bg-danger text-white{% else %}bg-secondary bg-opacity-10{% endif %}">
+                <h6 class="mb-0"><i class="bi bi-activity"></i> Σύνολο Αναρρωτικών τρέχοντος έτους</h6>
+            </div>
+            <div class="card-body">
+                {% if sick_exceeds_threshold and not sick_alert_acknowledged %}
+                <div class="alert alert-danger mb-0 py-2">
+                    <strong>{{ sick_total_days }} ημέρες</strong> — υπέρβαση ορίου 8 ημερών.
+                    <a href="{% url 'leaves:acknowledge_yc_alert' user.pk %}" class="btn btn-sm btn-outline-danger ms-2">Έλαβα Γνώση</a>
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <h3 class="{% if sick_exceeds_threshold %}text-danger{% else %}text-secondary{% endif %}">{{ sick_total_days }}</h3>
+                    <small class="text-muted">/ 8 ημέρες όριο για Υγειονομική επιτροπή</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Ειδοποίηση για αιτήσεις που χρειάζονται δικαιολογητικά -->
 {% if pending_documents_requests > 0 %}
 <div class="row mb-4">
@@ -217,75 +282,12 @@
     </div>
 </div>
 
-<!-- Υπόλοιπο & Αναρρωτικές (μετά τη λίστα αιτήσεων) -->
-{% if current_regular_balance is not None %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-primary">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Υπόλοιπο Κανονικών Αδειών</h5>
-                <a href="{% url 'leaves:balance_ledger' user.pk %}" class="btn btn-sm btn-light">
-                    <i class="bi bi-clock-history"></i> Ιστορικό Κινήσεων
-                </a>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-6">
-                        <h2 class="text-primary">{{ current_regular_balance }}</h2>
-                        <small class="text-muted">Τρέχον Υπόλοιπο</small>
-                    </div>
-                    <div class="col-md-6">
-                        <h2 class="text-info">{{ carryover_days }}</h2>
-                        <small class="text-muted">Υπόλοιπο Προηγ. Έτους</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<div class="row mb-4">
-    <div class="col-md-6 mb-3">
-        <div class="card border-warning h-100">
-            <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-heart-pulse"></i> Αναρρωτικές με ΥΔ</h6>
-                <span class="badge bg-warning text-dark">{{ sick_leave_yd_used }} / {{ sick_leave_yd_limit }}</span>
-            </div>
-            <div class="card-body text-center">
-                <h3 class="{% if sick_leave_yd_used >= sick_leave_yd_limit %}text-danger{% else %}text-warning{% endif %}">{{ sick_leave_yd_used }}</h3>
-                <small class="text-muted">χρησιμοποιήθηκαν φέτος</small>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6 mb-3">
-        <div class="card {% if sick_exceeds_threshold %}border-danger{% else %}border-secondary{% endif %} h-100">
-            <div class="card-header {% if sick_exceeds_threshold %}bg-danger text-white{% else %}bg-secondary bg-opacity-10{% endif %}">
-                <h6 class="mb-0"><i class="bi bi-activity"></i> Σύνολο Αναρρωτικών Έτους</h6>
-            </div>
-            <div class="card-body">
-                {% if sick_exceeds_threshold and not sick_alert_acknowledged %}
-                <div class="alert alert-danger mb-0 py-2">
-                    <strong>{{ sick_total_days }} ημέρες</strong> — υπέρβαση ορίου 8 ημερών.
-                    <a href="{% url 'leaves:acknowledge_yc_alert' user.pk %}" class="btn btn-sm btn-outline-danger ms-2">Έλαβα Γνώση</a>
-                </div>
-                {% else %}
-                <div class="text-center">
-                    <h3 class="{% if sick_exceeds_threshold %}text-danger{% else %}text-secondary{% endif %}">{{ sick_total_days }}</h3>
-                    <small class="text-muted">/ 8 ημέρες όριο</small>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if recent_balance_entries %}
-<div class="row mb-4">
+{% if show_regular_leave_balance and recent_balance_entries %}
+<div class="row mb-4 mt-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Πρόσφατες Κινήσεις Υπολοίπου</h5>
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Πρόσφατες Κινήσεις Υπολοίπου Κανονικών αδειών</h5>
                 <a href="{% url 'leaves:balance_ledger' user.pk %}" class="btn btn-sm btn-outline-primary">Όλες</a>
             </div>
             <div class="card-body p-0">

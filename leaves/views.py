@@ -93,6 +93,15 @@ class EmployeeDashboardView(LoginRequiredMixin, RoleDashboardMixin, DashboardFil
         context['sick_exceeds_threshold'] = user_exceeds_sick_threshold(user)
         context['sick_alert_acknowledged'] = user_has_acknowledged_own_sick_alert(user)
         
+        # Ορατότητα καρτών βάσει τύπου υπαλλήλου
+        emp_type = getattr(user, 'employee_type', None)
+        context['show_regular_leave_balance'] = bool(
+            emp_type and emp_type.code == 'ADMINISTRATIVE'
+        )
+        context['show_sick_leave_cards'] = bool(
+            emp_type and emp_type.is_permanent_dy
+        )
+        
         # Στατιστικά
         all_requests = LeaveRequest.objects.filter(user=self.request.user)
         pending_documents_qs = all_requests.filter(status='WAITING_FOR_DOCUMENTS')

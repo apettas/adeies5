@@ -18,6 +18,21 @@ from leaves.utils.sick_leave_alerts import (
 class SickLeaveAlertTests(TestDataMixin, TestCase):
     def setUp(self):
         super().setUp()
+        from accounts.models import EmployeeType
+        self.permanent_dy_type, _ = EmployeeType.objects.get_or_create(
+            code='EDUCATIONAL',
+            defaults={
+                'name': 'Εκπαιδευτικοί',
+                'description': 'Μόνιμο εκπαιδευτικό προσωπικό',
+                'is_permanent_dy': True,
+            },
+        )
+        if not self.permanent_dy_type.is_permanent_dy:
+            self.permanent_dy_type.is_permanent_dy = True
+            self.permanent_dy_type.save(update_fields=['is_permanent_dy'])
+        self.employee.employee_type = self.permanent_dy_type
+        self.employee.save(update_fields=['employee_type'])
+
         self.sick_total_type = LeaveType.objects.create(
             name='Αναρρωτική σύνολο',
             code='TEST_SICK_TOTAL',
