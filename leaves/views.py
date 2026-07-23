@@ -2754,7 +2754,7 @@ def receive_from_yc_committee(request, pk):
 
 @login_required
 def attendance_sheet(request):
-    """Παρουσιολόγιο — PDF με όλους τους υπαλλήλους Αυτοτελούς Διεύθυνσης"""
+    """Παρουσιολόγιο — PDF/Excel με όλους τους υπαλλήλους Αυτοτελούς Διεύθυνσης"""
     if not request.user.is_leave_handler:
         raise PermissionDenied("Μόνο χειριστές αδειών.")
     from accounts.models import Department, User
@@ -2764,24 +2764,26 @@ def attendance_sheet(request):
 
     if request.method == 'POST':
         date_str = request.POST.get('date', '')
+        export_format = request.POST.get('export', 'pdf')
         if not date_str:
             messages.error(request, 'Επιλέξτε ημερομηνία.')
-            return render(request, 'leaves/attendance_sheet.html', {'employees': employees, 'today': timezone.now().date()})
+            return render(request, 'leaves/attendance_sheet.html', {
+                'employees': employees,
+                'today': timezone.now().date(),
+            })
         from datetime import datetime
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        from django.template.loader import render_to_string
-        from weasyprint import HTML
 
-        import io
-        from collections import defaultdict
         rows = []
         for emp in employees:
             leave_types_on_date = []
             for lr in LeaveRequest.objects.filter(
                 user=emp,
                 submitted_at__year=selected_date.year,
-                status__in=['SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
-                          'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED']
+                status__in=[
+                    'SUBMITTED', 'PENDING_PROTOCOL', 'IN_REVIEW', 'WAITING_FOR_DOCUMENTS',
+                    'DECISION_PREPARATION', 'PENDING_YC_COMMITTEE', 'PENDING_SIGNATURES', 'COMPLETED',
+                ],
             ).prefetch_related('periods'):
                 for p in lr.periods.all():
                     if p.start_date <= selected_date <= p.end_date:
@@ -2791,6 +2793,15 @@ def attendance_sheet(request):
                 'emp': emp,
                 'leave_type': ' | '.join(leave_types_on_date) if leave_types_on_date else None,
             })
+
+        if export_format == 'excel':
+            return _attendance_excel_response(rows, selected_date)
+
+        from django.template.loader import render_to_string
+        from weasyprint import HTML
+        import io
+        from django.http import HttpResponse
+
         html_str = render_to_string('leaves/attendance_pdf_template.html', {
             'rows': rows,
             'selected_date': selected_date,
@@ -2799,15 +2810,85 @@ def attendance_sheet(request):
         HTML(string=html_str).write_pdf(buf)
         pdf = buf.getvalue()
         buf.close()
-        from django.http import HttpResponse
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="parousiologio_{selected_date.strftime("%Y%m%d")}.pdf"'
+        response['Content-Disposition'] = (
+            f'attachment; filename="parousiologio_{selected_date.strftime("%Y%m%d")}.pdf"'
+        )
         return response
 
     return render(request, 'leaves/attendance_sheet.html', {
         'employees': employees,
         'today': timezone.now().date(),
     })
+
+
+def _attendance_excel_response(rows, selected_date):
+    """Εξαγωγή παρουσιολογίου σε Excel (.xlsx)."""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, Side
+    from django.http import HttpResponse
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Παρουσιολόγιο'
+    ws['A1'] = 'ΠΑΡΟΥΣΙΟΛΟΓΙΟ'
+    ws['A1'].font = Font(bold=True, size=14)
+    ws.merge_cells('A1:G1')
+    ws['A2'] = selected_date.strftime('%d/%m/%Y')
+    ws['A2'].font = Font(size=11, color='555555')
+    ws.merge_cells('A2:G2')
+
+    headers = ['Α/Α', 'Ονοματεπώνυμο', 'Άδεια', 'Άφιξη', 'Υπογραφή', 'Αναχώρηση', 'Υπογραφή']
+    header_font = Font(bold=True)
+    thin = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin'),
+    )
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=4, column=col, value=header)
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = thin
+
+    for idx, row in enumerate(rows, start=1):
+        values = [
+            idx,
+            f"{row['emp'].last_name} {row['emp'].first_name}",
+            row['leave_type'] or '',
+            '',
+            '',
+            '',
+            '',
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = ws.cell(row=4 + idx, column=col, value=value)
+            cell.border = thin
+            if col in (1, 3, 4, 5, 6, 7):
+                cell.alignment = Alignment(horizontal='center')
+
+    ws.column_dimensions['A'].width = 6
+    ws.column_dimensions['B'].width = 32
+    ws.column_dimensions['C'].width = 22
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 14
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 14
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    content = buf.getvalue()
+    buf.close()
+    response = HttpResponse(
+        content,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = (
+        f'attachment; filename="parousiologio_{selected_date.strftime("%Y%m%d")}.xlsx"'
+    )
+    return response
 
 
 @login_required
