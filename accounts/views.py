@@ -481,3 +481,56 @@ def update_user_department(request):
             return JsonResponse({'success': False, 'error': 'Χρήστης ή τμήμα δεν βρέθηκε'})
     
     return JsonResponse({'success': False, 'error': 'Μη έγκυρο αίτημα'})
+
+
+@login_required
+def accept_gdpr_consent(request):
+    """Αποθήκευση συγκατάθεσης GDPR (required consent + do_not_show_again)."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Μη έγκυρο αίτημα'}, status=405)
+
+    from django.utils import timezone
+    from .gdpr_consent import (
+        GDPR_CONSENT_TEXT,
+        GDPR_CONSENT_VERSION,
+        user_needs_gdpr_consent,
+    )
+    from .models import GDPRConsent
+
+    if not request.user.can_access_system():
+        return JsonResponse({'success': False, 'error': 'Δεν έχετε πρόσβαση στο σύστημα.'}, status=403)
+
+    consent_ok = request.POST.get('consent') in ('on', 'true', '1', 'yes')
+    do_not_show = request.POST.get('do_not_show_again') in ('on', 'true', '1', 'yes')
+
+    if not consent_ok:
+        return JsonResponse({
+            'success': False,
+            'error': 'Πρέπει να αποδεχτείτε τη συγκατάθεση επεξεργασίας προσωπικών δεδομένων.',
+        }, status=400)
+    if not do_not_show:
+        return JsonResponse({
+            'success': False,
+            'error': 'Πρέπει να επιβεβαιώσετε ότι η συγκατάθεση θα καταγραφεί και δεν θα εμφανιστεί ξανά.',
+        }, status=400)
+
+    if not user_needs_gdpr_consent(request.user):
+        return JsonResponse({'success': True, 'already_accepted': True})
+
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
+    user_agent = (request.META.get('HTTP_USER_AGENT') or '')[:512]
+
+    GDPRConsent.objects.create(
+        employee=request.user,
+        consent_text=GDPR_CONSENT_TEXT,
+        ip_address=ip or None,
+        user_agent=user_agent,
+        version=GDPR_CONSENT_VERSION,
+        do_not_show_again=True,
+    )
+    request.user.gdpr_consent_accepted_at = timezone.now()
+    request.user.gdpr_consent_version = GDPR_CONSENT_VERSION
+    request.user.save(update_fields=['gdpr_consent_accepted_at', 'gdpr_consent_version'])
+
+    return JsonResponse({'success': True})
+

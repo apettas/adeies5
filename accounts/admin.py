@@ -5,7 +5,7 @@ from django.utils import timezone
 from .models import (
     User, Department, DepartmentType, Role, Specialty,
     Headquarters, Prefecture,
-    EmployeeType, PendingRegistrationAcknowledgment,
+    EmployeeType, PendingRegistrationAcknowledgment, GDPRConsent,
 )
 
 
@@ -128,11 +128,12 @@ class CustomUserAdmin(UserAdmin):
         ('Κατάσταση Αδειών', {'fields': ('annual_leave_entitlement', 'current_regular_leave_balance', 'sick_leave_with_declaration', 'sick_days_current_year', 'total_sick_leave_last_5_years')}),
         ('Δικαιώματα Άδειας', {'fields': ('can_request_leave',)}),
         ('Κατάσταση Εγγραφής', {'fields': ('registration_status', 'registration_date', 'approved_by', 'approval_date', 'approval_notes')}),
+        ('Συγκατάθεση GDPR', {'fields': ('gdpr_consent_accepted_at', 'gdpr_consent_version')}),
         ('Δικαιώματα', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Σημαντικές Ημερομηνίες', {'fields': ('last_login', 'date_joined')}),
     )
     
-    readonly_fields = ('registration_date', 'approval_date')
+    readonly_fields = ('registration_date', 'approval_date', 'gdpr_consent_accepted_at', 'gdpr_consent_version')
     
     add_fieldsets = (
         (None, {
@@ -169,3 +170,21 @@ class PendingRegistrationAcknowledgmentAdmin(admin.ModelAdmin):
     list_filter = ('acknowledged_at',)
     search_fields = ('handler__email', 'pending_user__email', 'pending_user__last_name')
     readonly_fields = ('acknowledged_at',)
+
+
+@admin.register(GDPRConsent)
+class GDPRConsentAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'version', 'consented_at', 'do_not_show_again', 'ip_address')
+    list_filter = ('version', 'do_not_show_again', 'consented_at')
+    search_fields = ('employee__email', 'employee__last_name', 'employee__first_name')
+    readonly_fields = (
+        'employee', 'consent_text', 'consented_at', 'ip_address',
+        'user_agent', 'version', 'do_not_show_again',
+    )
+    ordering = ('-consented_at',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

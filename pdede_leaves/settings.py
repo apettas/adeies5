@@ -77,6 +77,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'leaves.context_processors.role_switcher',
                 'pdede_leaves.context_processors.csp_nonce',
+                'pdede_leaves.context_processors.gdpr_consent',
             ],
         },
     },

@@ -240,6 +240,8 @@
     <script src="{% static 'js/alkinoos-datepicker.js' %}?v={{ theme_static_version }}"></script>
     <script src="{% static 'js/alkinoos-dropdowns.js' %}?v={{ theme_static_version }}"></script>
 
+    {% include 'includes/gdpr_consent_modal.html' %}
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

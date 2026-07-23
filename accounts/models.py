@@ -387,6 +387,19 @@ class User(AbstractUser):
     total_sick_leave_last_5_years = models.IntegerField('Σύνολο Αναρρωτικών Αδειών Τελευταίας Πενταετίας',
                                                       default=0, blank=True, null=True,
                                                       help_text='Συνολικές αναρρωτικές άδειες των τελευταίων 5 ετών')
+
+    # Συγκατάθεση GDPR (cache για γρήγορο έλεγχο · πλήρες ιστορικό στο GDPRConsent)
+    gdpr_consent_accepted_at = models.DateTimeField(
+        'Ημερομηνία Συγκατάθεσης GDPR',
+        null=True,
+        blank=True,
+        help_text='Πότε αποδέχτηκε την τρέχουσα συγκατάθεση επεξεργασίας δεδομένων',
+    )
+    gdpr_consent_version = models.PositiveIntegerField(
+        'Έκδοση Συγκατάθεσης GDPR',
+        default=0,
+        help_text='Έκδοση κειμένου GDPR που έχει αποδεχτεί ο χρήστης',
+    )
     
     # Django fields - χρησιμοποιούμε email ως username για SSO
     username = None  # Αφαιρούμε το username field εντελώς
@@ -407,6 +420,11 @@ class User(AbstractUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def needs_gdpr_consent(self):
+        """Ελέγχει αν πρέπει να εμφανιστεί το popup συγκατάθεσης GDPR."""
+        from .gdpr_consent import user_needs_gdpr_consent
+        return user_needs_gdpr_consent(self)
 
     def _role_codes(self):
         """Σύνολο κωδικών ρόλων — χρησιμοποιεί prefetch όταν υπάρχει."""
@@ -693,6 +711,41 @@ class User(AbstractUser):
     def can_access_system(self):
         """Ελέγχει αν ο χρήστης μπορεί να έχει πρόσβαση στο σύστημα"""
         return self.is_superuser or (self.is_approved and self.is_active)
+
+
+class GDPRConsent(models.Model):
+    """
+    Append-only καταγραφή συγκατάθεσης GDPR (Accountability — Άρθρα 5 & 7).
+    Δεν επεξεργαζόμαστε εγγραφές· νέες εκδόσεις κειμένου δημιουργούν νέα εγγραφή.
+    """
+    employee = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='gdpr_consents',
+        verbose_name='Υπάλληλος',
+    )
+    consent_text = models.TextField('Κείμενο Συγκατάθεσης')
+    consented_at = models.DateTimeField('Ημερομηνία Συγκατάθεσης', auto_now_add=True)
+    ip_address = models.GenericIPAddressField('IP Διεύθυνση', blank=True, null=True)
+    user_agent = models.CharField('User Agent', max_length=512, blank=True)
+    version = models.PositiveIntegerField(
+        'Έκδοση Κειμένου',
+        default=1,
+        help_text='Έκδοση του κειμένου GDPR που αποδέχτηκε',
+    )
+    do_not_show_again = models.BooleanField(
+        'Να μην εμφανιστεί ξανά',
+        default=True,
+        help_text='Ο χρήστης επιβεβαίωσε ότι η συγκατάθεση καταγράφηκε και δεν θα εμφανιστεί ξανά',
+    )
+
+    class Meta:
+        verbose_name = 'Συγκατάθεση GDPR'
+        verbose_name_plural = 'Συγκαταθέσεις GDPR'
+        ordering = ['-consented_at']
+
+    def __str__(self):
+        return f'{self.employee} — v{self.version} ({self.consented_at:%d/%m/%Y %H:%M})'
 
 
 class EmployeeType(models.Model):
