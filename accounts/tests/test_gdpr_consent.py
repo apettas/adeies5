@@ -46,21 +46,23 @@ class GDPRConsentTests(TestDataMixin, TestCase):
     def test_accept_requires_both_checkboxes(self):
         self.client.force_login(self.employee)
         url = reverse('accounts:accept_gdpr_consent')
-        response = self.client.post(url, {'consent': 'true'})
+        headers = {'HTTP_X_REQUESTED_WITH': 'XMLHttpRequest'}
+        response = self.client.post(url, {'consent': 'true'}, **headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(GDPRConsent.objects.filter(employee=self.employee).count(), 0)
 
-        response = self.client.post(url, {'do_not_show_again': 'true'})
+        response = self.client.post(url, {'do_not_show_again': 'true'}, **headers)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(GDPRConsent.objects.filter(employee=self.employee).count(), 0)
 
     def test_accept_stores_consent_and_hides_modal(self):
         self.client.force_login(self.employee)
         url = reverse('accounts:accept_gdpr_consent')
-        response = self.client.post(url, {
-            'consent': 'true',
-            'do_not_show_again': 'true',
-        })
+        response = self.client.post(
+            url,
+            {'consent': 'true', 'do_not_show_again': 'true'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['success'])
 
@@ -73,6 +75,21 @@ class GDPRConsentTests(TestDataMixin, TestCase):
         self.assertEqual(consent.consent_text, GDPR_CONSENT_TEXT)
         self.assertTrue(consent.do_not_show_again)
 
+        page = self.client.get(reverse('leaves:employee_dashboard'))
+        self.assertNotContains(page, 'gdprConsentModal')
+
+    def test_accept_via_form_post_redirects(self):
+        """Κανονικό form POST (χωρίς AJAX) — αποφυγή fetch/CSP issues στο browser."""
+        self.client.force_login(self.employee)
+        url = reverse('accounts:accept_gdpr_consent')
+        response = self.client.post(
+            url,
+            {'consent': 'true', 'do_not_show_again': 'true'},
+            HTTP_REFERER=reverse('leaves:employee_dashboard'),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.employee.refresh_from_db()
+        self.assertIsNotNone(self.employee.gdpr_consent_accepted_at)
         page = self.client.get(reverse('leaves:employee_dashboard'))
         self.assertNotContains(page, 'gdprConsentModal')
 

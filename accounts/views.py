@@ -486,10 +486,10 @@ def update_user_department(request):
 @login_required
 def accept_gdpr_consent(request):
     """Αποθήκευση συγκατάθεσης GDPR (required consent + do_not_show_again)."""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'Μη έγκυρο αίτημα'}, status=405)
-
+    from django.contrib import messages
+    from django.shortcuts import redirect
     from django.utils import timezone
+
     from .gdpr_consent import (
         GDPR_CONSENT_TEXT,
         GDPR_CONSENT_VERSION,
@@ -497,25 +497,43 @@ def accept_gdpr_consent(request):
     )
     from .models import GDPRConsent
 
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+    def _fail(message, status=400):
+        if wants_json:
+            return JsonResponse({'success': False, 'error': message}, status=status)
+        messages.error(request, message)
+        return redirect(request.META.get('HTTP_REFERER') or 'leaves:dashboard_redirect')
+
+    def _ok(payload=None):
+        if wants_json:
+            data = {'success': True}
+            if payload:
+                data.update(payload)
+            return JsonResponse(data)
+        return redirect(request.META.get('HTTP_REFERER') or 'leaves:dashboard_redirect')
+
+    if request.method != 'POST':
+        return _fail('Μη έγκυρο αίτημα', status=405)
+
     if not request.user.can_access_system():
-        return JsonResponse({'success': False, 'error': 'Δεν έχετε πρόσβαση στο σύστημα.'}, status=403)
+        return _fail('Δεν έχετε πρόσβαση στο σύστημα.', status=403)
 
     consent_ok = request.POST.get('consent') in ('on', 'true', '1', 'yes')
     do_not_show = request.POST.get('do_not_show_again') in ('on', 'true', '1', 'yes')
 
     if not consent_ok:
-        return JsonResponse({
-            'success': False,
-            'error': 'Πρέπει να αποδεχτείτε τη συγκατάθεση επεξεργασίας προσωπικών δεδομένων.',
-        }, status=400)
+        return _fail('Πρέπει να αποδεχτείτε τη συγκατάθεση επεξεργασίας προσωπικών δεδομένων.')
     if not do_not_show:
-        return JsonResponse({
-            'success': False,
-            'error': 'Πρέπει να επιβεβαιώσετε ότι η συγκατάθεση θα καταγραφεί και δεν θα εμφανιστεί ξανά.',
-        }, status=400)
+        return _fail(
+            'Πρέπει να επιβεβαιώσετε ότι η συγκατάθεση θα καταγραφεί και δεν θα εμφανιστεί ξανά.'
+        )
 
     if not user_needs_gdpr_consent(request.user):
-        return JsonResponse({'success': True, 'already_accepted': True})
+        return _ok({'already_accepted': True})
 
     ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
     user_agent = (request.META.get('HTTP_USER_AGENT') or '')[:512]
@@ -532,7 +550,7 @@ def accept_gdpr_consent(request):
     request.user.gdpr_consent_version = GDPR_CONSENT_VERSION
     request.user.save(update_fields=['gdpr_consent_accepted_at', 'gdpr_consent_version'])
 
-    return JsonResponse({'success': True})
+    return _ok()
 
 
 def privacy_policy_view(request):
