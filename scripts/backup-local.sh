@@ -56,8 +56,13 @@ fi
 
 if [[ ! -d "${BACKUP_ROOT}" ]]; then
   log "Δημιουργία ${BACKUP_ROOT}..."
-  sudo mkdir -p "${BACKUP_ROOT}"
-  sudo chown "$(id -un)":"$(id -gn)" "${BACKUP_ROOT}"
+  if mkdir -p "${BACKUP_ROOT}" 2>/dev/null; then
+    :
+  elif command -v sudo >/dev/null 2>&1 && sudo -n mkdir -p "${BACKUP_ROOT}" 2>/dev/null; then
+    sudo -n chown "$(id -un)":"$(id -gn)" "${BACKUP_ROOT}" 2>/dev/null || true
+  else
+    die "Δεν υπάρχει ${BACKUP_ROOT} και δεν μπορεί να δημιουργηθεί χωρίς sudo. Τρέξτε μία φορά: sudo mkdir -p ${BACKUP_ROOT} && sudo chown $(id -un):$(id -gn) ${BACKUP_ROOT}"
+  fi
 fi
 
 DISK_USE_PCT="$(df -P "${BACKUP_ROOT}" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"

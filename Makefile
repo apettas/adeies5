@@ -33,6 +33,7 @@ help:
 	@echo "  prod-migrate   - Run production database migrations"
 	@echo "  prod-backup    - Backup database (SQL only, ./backups)"
 	@echo "  prod-backup-full - Full local backup (DB + media + config)"
+	@echo "  prod-backup-offsite - Full backup + SFTP Synology (+ email on failure)"
 	@echo "  disk-report    - Email disk usage report to ALERT_EMAIL"
 	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
@@ -106,6 +107,9 @@ prod-backup:
 
 prod-backup-full:
 	@bash scripts/backup-local.sh
+
+prod-backup-offsite:
+	@bash scripts/backup-offsite.sh
 
 disk-report:
 	@bash scripts/disk-report.sh
