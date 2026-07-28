@@ -1,12 +1,11 @@
 [DEFAULT]
-# Αποστολή email με whois + log lines
 destemail = apettas@gmail.com
-sender = fail2ban@pdede-leaves
-sendername = Fail2Ban PDEDE Leaves
-action = %(action_mwl)s
+sender = andpettas@sch.gr
+sendername = Adeies Fail2Ban
+# Ελληνικό mail με οδηγίες (monitoring/fail2ban/action.d/pdede-mail.conf)
+action = pdede-mail[name=%(__name__)s, dest="%(destemail)s", sender="%(sender)s", sendername="%(sendername)s"]
 
-# Whitelist — Cloudflare δεν χρειάζεται αν nginx γράφει πραγματική IP (CF-Connecting-IP)
-# ignoreip = 127.0.0.1/8 ::1
+ignoreip = 127.0.0.1/8 ::1 10.32.0.0/16
 
 bantime  = 1h
 findtime = 10m

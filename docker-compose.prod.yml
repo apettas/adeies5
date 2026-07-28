@@ -149,8 +149,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./monitoring/netdata/health_alarm_notify.conf:/etc/netdata/health_alarm_notify.conf:ro
       - ./monitoring/netdata/msmtprc:/etc/msmtprc:ro
+      - ./monitoring/netdata/health.d/disk_space_pdede.conf:/etc/netdata/health.d/disk_space_pdede.conf:ro
+      - ./monitoring/netdata/health.d/ram_pdede.conf:/etc/netdata/health.d/ram_pdede.conf:ro
+      - ./monitoring/netdata/health.d/cpu_pdede.conf:/etc/netdata/health.d/cpu_pdede.conf:ro
     environment:
       - NETDATA_CLAIM_TOKEN=${NETDATA_CLAIM_TOKEN:-}
+      - NETDATA_CLAIM_ROOMS=${NETDATA_CLAIM_ROOMS:-}
       - NETDATA_CLAIM_URL=${NETDATA_CLAIM_URL:-https://app.netdata.cloud}
       - DOCKER_HOST=/var/run/docker.sock
     ports:
