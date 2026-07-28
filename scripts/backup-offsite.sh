@@ -13,16 +13,22 @@
 #   ALERT_EMAIL=apettas@gmail.com
 #
 # Προαιρετικά:
-#   LOCAL_RETENTION_DAYS=3     # τοπικά (ίδιος δίσκος VM)
-#   OFFSITE_RETENTION_DAYS=30  # στο Synology
+#   LOCAL_RETENTION_DAYS=3     # τοπικά (ίδιος δίσκος VM) — απλό ημερολογιακό
 #   BACKUP_ROOT=/var/backups/adeies5
+#
+# Synology GFS retention (grandfather-father-son) — ένωση κανόνων:
+#   OFFSITE_KEEP_DAYS=7        # όλες οι ημερήσιες των τελευταίων 7 ημερών
+#   OFFSITE_KEEP_WEEKS=4       # 1 backup/εβδομάδα για τις τελευταίες 4 εβδομάδες
+#   OFFSITE_KEEP_MONTHS=12     # 1 backup/μήνα για τους τελευταίους 12 μήνες
+#   OFFSITE_KEEP_YEARS=10      # 1 backup/έτος για τα τελευταία 10 χρόνια
 #
 # Χρήση:
 #   ./scripts/backup-offsite.sh
 #   make prod-backup-offsite
 #
-# Cron (καθημερινά 02:30):
-#   30 2 * * * /home/andre/adeies5/scripts/backup-offsite.sh >> /var/log/adeies5-backup-offsite.log 2>&1
+# Cron (καθημερινά 11:45 και 20:50):
+#   45 11 * * * /home/andre/adeies5/scripts/backup-offsite.sh >> /var/log/adeies5-backup-offsite.log 2>&1
+#   50 20 * * * /home/andre/adeies5/scripts/backup-offsite.sh >> /var/log/adeies5-backup-offsite.log 2>&1
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -44,7 +50,11 @@ fi
 
 BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/adeies5}"
 LOCAL_RETENTION_DAYS="${LOCAL_RETENTION_DAYS:-3}"
-OFFSITE_RETENTION_DAYS="${OFFSITE_RETENTION_DAYS:-30}"
+# GFS στο Synology (βλ. σχόλια κεφαλίδας / backup-retention-gfs.py)
+OFFSITE_KEEP_DAYS="${OFFSITE_KEEP_DAYS:-7}"
+OFFSITE_KEEP_WEEKS="${OFFSITE_KEEP_WEEKS:-4}"
+OFFSITE_KEEP_MONTHS="${OFFSITE_KEEP_MONTHS:-12}"
+OFFSITE_KEEP_YEARS="${OFFSITE_KEEP_YEARS:-10}"
 SFTP_HOST="${SFTP_HOST:-nikolas}"
 SFTP_PORT="${SFTP_PORT:-22}"
 SFTP_USER="${SFTP_USER:-andreas}"
@@ -200,43 +210,42 @@ if ! run_sftp "${BATCH}" > "${TMP_DIR}/sftp_upload.log" 2>&1; then
 fi
 log "Upload OK"
 
-# Remote retention βάσει ημερομηνίας στο όνομα αρχείου (adeies5_YYYYMMDD_HHMMSS.tar)
-if (( OFFSITE_RETENTION_DAYS > 0 )); then
-  log "Remote retention: διαγραφή παλαιότερων από ${OFFSITE_RETENTION_DAYS} ημέρες..."
-  LIST_BATCH="${TMP_DIR}/sftp_ls.batch"
-  {
-    echo "cd ${SFTP_REMOTE_DIR}"
-    echo "ls"
-    echo "bye"
-  } > "${LIST_BATCH}"
+# Remote GFS retention βάσει ονόματος adeies5_YYYYMMDD_HHMMSS.tar
+# Κρατά: 7 ημερήσια + 4 εβδομαδιαία + 12 μηνιαία + 10 ετήσια (ένωση).
+log "Remote GFS retention: days=${OFFSITE_KEEP_DAYS} weeks=${OFFSITE_KEEP_WEEKS} months=${OFFSITE_KEEP_MONTHS} years=${OFFSITE_KEEP_YEARS}"
+LIST_BATCH="${TMP_DIR}/sftp_ls.batch"
+{
+  echo "cd ${SFTP_REMOTE_DIR}"
+  echo "ls"
+  echo "bye"
+} > "${LIST_BATCH}"
 
-  REMOTE_LIST="$(run_sftp "${LIST_BATCH}" 2>/dev/null | awk '{print $NF}' | grep -E '^adeies5_20[0-9]{6}_[0-9]{6}\.tar$' || true)"
-  CUTOFF="$(date -d "-${OFFSITE_RETENTION_DAYS} days" +%Y%m%d 2>/dev/null \
-    || date -v-"${OFFSITE_RETENTION_DAYS}"d +%Y%m%d)"
+REMOTE_LIST="$(run_sftp "${LIST_BATCH}" 2>/dev/null | awk '{print $NF}' | grep -E '^adeies5_[0-9]{8}_[0-9]{6}\.tar$' || true)"
+TO_DELETE="$(
+  printf '%s\n' "${REMOTE_LIST}" | python3 "${ROOT_DIR}/scripts/backup-retention-gfs.py" \
+    --days "${OFFSITE_KEEP_DAYS}" \
+    --weeks "${OFFSITE_KEEP_WEEKS}" \
+    --months "${OFFSITE_KEEP_MONTHS}" \
+    --years "${OFFSITE_KEEP_YEARS}"
+)"
 
-  RM_BATCH="${TMP_DIR}/sftp_rm.batch"
-  : > "${RM_BATCH}"
-  echo "cd ${SFTP_REMOTE_DIR}" >> "${RM_BATCH}"
-  DELETED=0
-  while IFS= read -r fname; do
-    [[ -z "${fname}" ]] && continue
-    # adeies5_YYYYMMDD_HHMMSS.tar → YYYYMMDD
-    fdate="$(echo "${fname}" | sed -n 's/^adeies5_\([0-9]\{8\}\)_.*/\1/p')"
-    [[ -z "${fdate}" ]] && continue
-    if [[ "${fdate}" < "${CUTOFF}" ]]; then
-      echo "rm ${fname}" >> "${RM_BATCH}"
-      DELETED=$((DELETED + 1))
-    fi
-  done <<< "${REMOTE_LIST}"
-  echo "bye" >> "${RM_BATCH}"
+RM_BATCH="${TMP_DIR}/sftp_rm.batch"
+: > "${RM_BATCH}"
+echo "cd ${SFTP_REMOTE_DIR}" >> "${RM_BATCH}"
+DELETED=0
+while IFS= read -r fname; do
+  [[ -z "${fname}" ]] && continue
+  echo "rm ${fname}" >> "${RM_BATCH}"
+  DELETED=$((DELETED + 1))
+done <<< "${TO_DELETE}"
+echo "bye" >> "${RM_BATCH}"
 
-  if (( DELETED > 0 )); then
-    run_sftp "${RM_BATCH}" > "${TMP_DIR}/sftp_rm.log" 2>&1 \
-      || log "ΠΡΟΕΙΔΟΠΟΙΗΣΗ: remote retention απέτυχε μερικώς (δείτε log)"
-    log "Διαγράφηκαν ${DELETED} παλιά remote backups"
-  else
-    log "Κανένα παλιό remote backup προς διαγραφή"
-  fi
+if (( DELETED > 0 )); then
+  run_sftp "${RM_BATCH}" > "${TMP_DIR}/sftp_rm.log" 2>&1 \
+    || log "ΠΡΟΕΙΔΟΠΟΙΗΣΗ: remote retention απέτυχε μερικώς (δείτε log)"
+  log "Διαγράφηκαν ${DELETED} remote backups εκτός GFS πολιτικής"
+else
+  log "Κανένα remote backup προς διαγραφή (όλα εντός GFS)"
 fi
 
 log "Ολοκληρώθηκε επιτυχώς — ${ARCHIVE_NAME} (${ARCHIVE_MB}MB) στο ${SFTP_REMOTE_DIR}"

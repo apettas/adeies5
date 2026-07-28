@@ -34,6 +34,7 @@ help:
 	@echo "  prod-backup    - Backup database (SQL only, ./backups)"
 	@echo "  prod-backup-full - Full local backup (DB + media + config)"
 	@echo "  prod-backup-offsite - Full backup + SFTP Synology (+ email on failure)"
+	@echo "  prod-backup-hourly - Hourly DB-only backup → Synology Hourly_Backup"
 	@echo "  disk-report    - Email disk usage report to ALERT_EMAIL"
 	@echo "  monitoring-setup - Configure Netdata email + fail2ban on host VM"
 
@@ -110,6 +111,9 @@ prod-backup-full:
 
 prod-backup-offsite:
 	@bash scripts/backup-offsite.sh
+
+prod-backup-hourly:
+	@bash scripts/backup-hourly-offsite.sh
 
 disk-report:
 	@bash scripts/disk-report.sh
