@@ -23,7 +23,7 @@ from .substitute_contract_views import (
     substitute_contracts_settings_save,
 )
 from .base_data_views import BaseDataIndexView, BaseDataTableView, GetRecordDataView
-from .report_views import ReportsIndexView, department_managers_report
+from .report_views import ReportsIndexView, department_managers_report, sch_export_report
 from accounts.handler_registration_views import (
     PendingUserRegistrationsListView,
     PendingUserRegistrationReviewView,
@@ -156,6 +156,7 @@ urlpatterns = [
     # Reports
     path('reports/', ReportsIndexView.as_view(), name='reports_index'),
     path('reports/department-managers/', department_managers_report, name='report_department_managers'),
+    path('reports/sch-export/', sch_export_report, name='report_sch_export'),
     
     # Balance Ledger
     path('balance-ledger/<int:user_id>/', balance_ledger_view, name='balance_ledger'),

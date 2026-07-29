@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Εξαγωγή για SCH{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'leaves:reports_index' %}">Αναφορές</a></li>
+            <li class="breadcrumb-item active">Εξαγωγή για SCH</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-cloud-upload"></i> Εξαγωγή για SCH</h2>
+            <p class="text-muted mb-0">
+                Ολοκληρωμένες αδείες ΠΔΕΔΕ (εξαιρούνται ΚΕΔΑΣΥ, ΚΕΠΕΑ, ΣΔΕΥ).
+            </p>
+        </div>
+        <a href="{% url 'leaves:reports_index' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Αναφορές
+        </a>
+    </div>
+
+    {# Φόρμα επιλογής περιόδου #}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white fw-semibold">
+            <i class="bi bi-calendar-range me-1"></i> Επιλογή Περιόδου
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="date_from" class="form-label fw-semibold">Από</label>
+                    <input type="date" id="date_from" name="date_from"
+                           class="form-control" value="{{ date_from }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="date_to" class="form-label fw-semibold">Έως</label>
+                    <input type="date" id="date_to" name="date_to"
+                           class="form-control" value="{{ date_to }}" required>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-search me-1"></i> Αναζήτηση
+                    </button>
+                    {% if rows %}
+                    <a href="?date_from={{ date_from }}&date_to={{ date_to }}&export=xlsx"
+                       class="btn btn-success flex-grow-1">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# Σφάλματα #}
+    {% if errors %}
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        {% for err in errors %}{{ err }}{% if not forloop.last %} · {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+
+    {# Αποτελέσματα #}
+    {% if date_from and date_to and not errors %}
+        {% if rows %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted">
+                Βρέθηκαν <strong>{{ total_count }}</strong> εγγραφές
+                ({{ date_from }} – {{ date_to }})
+            </span>
+            <a href="?date_from={{ date_from }}&date_to={{ date_to }}&export=xlsx"
+               class="btn btn-sm btn-success">
+                <i class="bi bi-file-earmark-excel me-1"></i> Εξαγωγή Excel
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Αρ. Μητρώου SCH</th>
+                        <th>Ονοματεπώνυμο</th>
+                        <th>Τύπος Άδειας</th>
+                        <th>Ημ/νία Έναρξης</th>
+                        <th class="text-center">Εγκριθείσες Ημέρες</th>
+                        <th>Αρ. Πρωτοκόλλου Εισερχομένων</th>
+                        <th>Ημ/νία Πρωτοκόλλου Εισερχομένων</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="text-nowrap">
+                            {% if row.employee_number %}
+                                <code>{{ row.employee_number }}</code>
+                            {% else %}
+                                <span class="text-danger small"><i class="bi bi-exclamation-circle"></i> κενό</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.full_name }}</td>
+                        <td>{{ row.leave_type }}</td>
+                        <td class="text-nowrap">
+                            {% if row.start_date %}{{ row.start_date|date:"d/m/Y" }}{% else %}—{% endif %}
+                        </td>
+                        <td class="text-center fw-semibold">{{ row.total_days }}</td>
+                        <td>
+                            {% if row.pdede_protocol_number %}
+                                {{ row.pdede_protocol_number }}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-nowrap">
+                            {% if row.pdede_protocol_date %}{{ row.pdede_protocol_date|date:"d/m/Y" }}{% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>
+            Δεν βρέθηκαν ολοκληρωμένες αδείες ΠΔΕΔΕ για την περίοδο
+            <strong>{{ date_from }} – {{ date_to }}</strong>.
+        </div>
+        {% endif %}
+    {% endif %}
+
+</div>
+{% endblock %}
