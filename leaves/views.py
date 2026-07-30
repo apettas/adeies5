@@ -1720,7 +1720,6 @@ def submit_final_request(request):
         from .crypto_utils import SecureFileHandler
         from django.conf import settings
         import os
-        from weasyprint import HTML
         from django.template.loader import render_to_string
         from notifications.utils import create_notification
         from django.contrib import messages
@@ -1735,6 +1734,7 @@ def submit_final_request(request):
             return redirect('leaves:create_leave_request')
         
         try:
+            from weasyprint import HTML
             # Βρίσκουμε την αίτηση που δημιουργήθηκε ως DRAFT
             leave_request = LeaveRequest.objects.get(id=leave_request_id, user=request.user, status='DRAFT')
 

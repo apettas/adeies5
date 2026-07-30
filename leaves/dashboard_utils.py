@@ -200,13 +200,15 @@ def _handler_actions(leave_request, actions):
         ])
     elif status == 'DECISION_PREPARATION':
         _append_view(actions)
-        actions.append(('edit_decision', 'ΕΠΕΞΕΡΓΑΣΙΑ ΑΠΟΦΑΣΗΣ', 'leaves:prepare_decision_preview'))
+        if leave_request.can_create_decision():
+            actions.append(('edit_decision', 'ΕΠΕΞΕΡΓΑΣΙΑ ΑΠΟΦΑΣΗΣ', 'leaves:prepare_decision_preview'))
         if leave_request.has_decision_pdf():
             actions.append(('send_signatures', 'ΠΡΟΣ ΥΠΟΓΡΑΦΕΣ', 'leaves:send_to_signatures'))
         actions.append(('reject', 'ΑΠΟΡΡΙΨΗ', None))
     elif status == 'PENDING_SIGNATURES':
         _append_view(actions)
-        actions.append(('edit_decision', 'ΑΠΟΦΑΣΗ', 'leaves:prepare_decision_preview'))
+        if leave_request.can_create_decision():
+            actions.append(('edit_decision', 'ΑΠΟΦΑΣΗ', 'leaves:prepare_decision_preview'))
         if leave_request.can_upload_exact_copy():
             actions.append(('upload_final', 'UPLOAD ΤΕΛΙΚΗΣ', None))
         if leave_request.can_complete_request():

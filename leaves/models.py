@@ -954,7 +954,12 @@ class LeaveRequest(models.Model):
         return self.has_exact_copy_pdf() and self.status in ['IN_REVIEW', 'PENDING_SIGNATURES']
     
     def can_create_decision(self):
-        """Ελέγχει αν μπορεί να δημιουργηθεί απόφαση"""
+        """Ελέγχει αν μπορεί να δημιουργηθεί/επεξεργαστεί απόφαση.
+
+        Μετά την οριστικοποίηση (αποθήκευση PDF) η επεξεργασία δεν επιτρέπεται.
+        """
+        if self.has_decision_pdf():
+            return False
         return self.status in ['IN_REVIEW', 'DECISION_PREPARATION', 'PENDING_SIGNATURES']
 
     def notify_sick_leave_threshold_exceeded(self):

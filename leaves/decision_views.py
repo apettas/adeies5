@@ -35,9 +35,15 @@ def prepare_decision_preview(request, leave_request_id):
     
     leave_request = get_object_or_404(LeaveRequest, id=leave_request_id)
     
-    # Έλεγχος αν μπορεί να δημιουργηθεί απόφαση
+    # Έλεγχος αν μπορεί να δημιουργηθεί/επεξεργαστεί απόφαση
     if not leave_request.can_create_decision():
-        messages.error(request, 'Δεν μπορεί να δημιουργηθεί απόφαση για αυτή την αίτηση.')
+        if leave_request.has_decision_pdf():
+            messages.error(
+                request,
+                'Η απόφαση έχει οριστικοποιηθεί. Δεν επιτρέπεται περαιτέρω επεξεργασία.',
+            )
+        else:
+            messages.error(request, 'Δεν μπορεί να δημιουργηθεί απόφαση για αυτή την αίτηση.')
         return redirect('leaves:detail', pk=leave_request.id)
     
     if leave_request.status == 'IN_REVIEW':
@@ -138,9 +144,15 @@ def generate_final_decision_pdf(request):
     leave_request_id = request.POST.get('leave_request_id')
     leave_request = get_object_or_404(LeaveRequest, id=leave_request_id)
     
-    # Έλεγχος αν μπορεί να δημιουργηθεί απόφαση
+    # Έλεγχος αν μπορεί να δημιουργηθεί απόφαση (όχι μετά την οριστικοποίηση PDF)
     if not leave_request.can_create_decision():
-        messages.error(request, 'Δεν μπορεί να δημιουργηθεί απόφαση για αυτή την αίτηση.')
+        if leave_request.has_decision_pdf():
+            messages.error(
+                request,
+                'Η απόφαση έχει οριστικοποιηθεί. Δεν επιτρέπεται περαιτέρω επεξεργασία.',
+            )
+        else:
+            messages.error(request, 'Δεν μπορεί να δημιουργηθεί απόφαση για αυτή την αίτηση.')
         return redirect('leaves:detail', pk=leave_request.id)
     
     try:

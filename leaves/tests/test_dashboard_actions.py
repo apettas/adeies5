@@ -63,7 +63,8 @@ class DashboardActionsTests(TestDataMixin, TestCase):
         req.decision_pdf_encryption_key = 'abc'
         req.save()
         codes = self._codes(req, self.leave_handler)
-        self.assertIn('edit_decision', codes)
+        # Μετά την οριστικοποίηση PDF δεν επιτρέπεται επεξεργασία απόφασης
+        self.assertNotIn('edit_decision', codes)
         self.assertIn('upload_final', codes)
         self.assertNotIn('complete', codes)
 
@@ -72,6 +73,18 @@ class DashboardActionsTests(TestDataMixin, TestCase):
         req.save()
         codes = self._codes(req, self.leave_handler)
         self.assertIn('complete', codes)
+
+    def test_handler_no_edit_decision_after_pdf_finalized(self):
+        req = self._create_request('DECISION_PREPARATION')
+        self.assertIn('edit_decision', self._codes(req, self.leave_handler))
+
+        req.decision_pdf_path = 'media/test/decision.pdf'
+        req.decision_pdf_encryption_key = 'abc'
+        req.save()
+        codes = self._codes(req, self.leave_handler)
+        self.assertNotIn('edit_decision', codes)
+        self.assertIn('send_signatures', codes)
+        self.assertFalse(req.can_create_decision())
 
     def test_handler_pending_yc_committee_no_shortcut_complete(self):
         req = self._create_request('PENDING_YC_COMMITTEE')
