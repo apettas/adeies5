@@ -855,12 +855,24 @@ class LeaveRequest(models.Model):
         return self.status == "WAITING_FOR_DOCUMENTS"
 
     def can_user_upload_attachment(self, user):
-        """Έλεγχος δικαιώματος μεταφόρτωσης συνημμένου στην αίτηση."""
+        """Έλεγχος δικαιώματος μεταφόρτωσης συνημμένου στην αίτηση.
+
+        Χειριστής: πάντα.
+        Αιτών: μέχρι πριν το IN_REVIEW (υποβολή/πρωτόκολλο) και όταν
+        ζητηθούν δικαιολογητικά (WAITING_FOR_DOCUMENTS).
+        """
         if not user.is_authenticated:
             return False
         if user.is_leave_handler:
             return True
-        return self.user_id == user.pk and self.status == 'WAITING_FOR_DOCUMENTS'
+        if self.user_id != user.pk:
+            return False
+        return self.status in [
+            'SUBMITTED',
+            'PENDING_KEDASY_PROTOCOL',
+            'PENDING_PROTOCOL',
+            'WAITING_FOR_DOCUMENTS',
+        ]
 
     @property
     def can_request_documents(self):

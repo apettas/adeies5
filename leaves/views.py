@@ -1527,6 +1527,7 @@ class LeaveRequestDetailView(LoginRequiredMixin, DetailView):
             action for action in all_actions if action[0] != 'view'
         ]
         context['can_submit_applicant_documents'] = leave_request.can_submit_applicant_documents(user)
+        context['can_upload_attachment'] = leave_request.can_user_upload_attachment(user)
         context['handler_can_reject'] = user.is_leave_handler and any(
             action[0] == 'reject' for action in all_actions
         )
@@ -3156,7 +3157,7 @@ def withdraw_completed_leave(request, pk):
 
 @login_required
 def handler_upload_attachment(request, pk):
-    """Μεταφόρτωση συνημμένου — χειριστής ή αιτών (σε αναμονή δικαιολογητικών)."""
+    """Μεταφόρτωση συνημμένου — χειριστής ή αιτών (πριν το IN_REVIEW / σε αναμονή δικ/κών)."""
     from django.conf import settings
     from django.utils import timezone
     import os

@@ -142,24 +142,26 @@ def _owner_actions(leave_request, user, actions):
             ('submit', 'ΥΠΟΒΟΛΗ', None),
             ('delete', 'ΔΙΑΓΡΑΦΗ', 'leaves:delete_leave_request'),
         ])
-    elif leave_request.can_be_withdrawn:
-        _append_view(actions)
-        actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ ΑΙΤΗΣΗΣ', 'leaves:withdraw_leave_request'))
     elif status == 'COMPLETED':
         _append_view(actions)
         if leave_request.can_request_leave_revocation(user):
             actions.append(
                 ('revoke_leave', 'ΑΝΑΚΛΗΣΗ ΑΔΕΙΑΣ', 'leaves:create_leave_revocation'),
             )
-    elif status == 'WAITING_FOR_DOCUMENTS':
+    else:
+        # Προβολή + προαιρετικά επισύναψη / ολοκλήρωση δικ/κών / ανάκληση αίτησης
+        # (το can_be_withdrawn δεν πρέπει να «κρύβει» την επισύναψη)
         _append_view(actions)
-        actions.append(('upload_attachment', 'ΑΝΕΒΑΣΜΑ ΔΙΚ/ΚΩΝ', 'leaves:leave_request_detail'))
-        if leave_request.can_submit_applicant_documents(user):
+        if leave_request.can_user_upload_attachment(user):
+            actions.append(
+                ('upload_attachment', 'ΕΠΙΣΥΝΑΨΗ ΑΡΧΕΙΟΥ', 'leaves:leave_request_detail'),
+            )
+        if status == 'WAITING_FOR_DOCUMENTS' and leave_request.can_submit_applicant_documents(user):
             actions.append(
                 ('submit_documents', 'ΟΛΟΚΛΗΡΩΣΗ ΑΠΟΣΤΟΛΗΣ', 'leaves:submit_applicant_documents'),
             )
-    else:
-        _append_view(actions)
+        if leave_request.can_be_withdrawn:
+            actions.append(('cancel', 'ΑΝΑΚΛΗΣΗ ΑΙΤΗΣΗΣ', 'leaves:withdraw_leave_request'))
 
 
 def _handler_actions(leave_request, actions):

@@ -515,6 +515,26 @@ class DocumentsWorkflowTests(TestDataMixin, WorkflowLeaveTypesMixin, TestCase):
         from leaves.dashboard_utils import get_available_actions
         codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
         self.assertIn('upload_attachment', codes)
+        # Η ανάκληση αίτησης δεν πρέπει να κρύβει την επισύναψη
+        self.assertIn('cancel', codes)
+
+    def test_applicant_can_upload_attachment_before_in_review(self):
+        req = create_submitted_leave_request(
+            self.employee, self.regular_type, 'early upload', START, END,
+        )
+        self.assertEqual(req.status, 'SUBMITTED')
+        self.assertTrue(req.can_user_upload_attachment(self.employee))
+
+        from leaves.dashboard_utils import get_available_actions
+        codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
+        self.assertIn('upload_attachment', codes)
+        self.assertIn('cancel', codes)
+
+        req.status = 'IN_REVIEW'
+        req.save()
+        self.assertFalse(req.can_user_upload_attachment(self.employee))
+        codes = [code for code, _label, _url in get_available_actions(req, self.employee)]
+        self.assertNotIn('upload_attachment', codes)
 
     def test_decision_after_documents_provided_despite_sick_threshold(self):
         """Μετά παροχή δικαιολογητικών, η αίτηση προχωρά σε απόφαση — όχι ξανά σε ΥΕ."""

@@ -102,11 +102,32 @@ class DashboardActionsTests(TestDataMixin, TestCase):
 
     def test_owner_withdraw_only_when_allowed(self):
         req = self._create_request('SUBMITTED')
-        self.assertIn('cancel', self._codes(req, self.employee))
+        codes = self._codes(req, self.employee)
+        self.assertIn('cancel', codes)
+        self.assertIn('upload_attachment', codes)
 
         req.status = 'PENDING_PROTOCOL'
         req.save()
-        self.assertNotIn('cancel', self._codes(req, self.employee))
+        codes = self._codes(req, self.employee)
+        self.assertNotIn('cancel', codes)
+        self.assertIn('upload_attachment', codes)
+
+    def test_owner_can_upload_until_in_review(self):
+        req = self._create_request('SUBMITTED')
+        self.assertTrue(req.can_user_upload_attachment(self.employee))
+        self.assertIn('upload_attachment', self._codes(req, self.employee))
+
+        for status in ('PENDING_KEDASY_PROTOCOL', 'PENDING_PROTOCOL', 'WAITING_FOR_DOCUMENTS'):
+            req.status = status
+            req.save()
+            self.assertTrue(req.can_user_upload_attachment(self.employee), status)
+            self.assertIn('upload_attachment', self._codes(req, self.employee), status)
+
+        req.status = 'IN_REVIEW'
+        req.save()
+        self.assertFalse(req.can_user_upload_attachment(self.employee))
+        self.assertNotIn('upload_attachment', self._codes(req, self.employee))
+        self.assertIn('cancel', self._codes(req, self.employee))
 
     def test_completed_handler_only_view(self):
         req = self._create_request('COMPLETED')
