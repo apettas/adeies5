@@ -138,6 +138,14 @@
                                 <span id="total-days"></span>
                             </div>
 
+                            <!-- Weekend notice for regular leave -->
+                            <div id="weekend-days-warning" class="alert alert-warning mt-2" style="display: none;" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <strong>Προσοχή!</strong>
+                                Αν η άδεια είναι κανονική θα μετρήσουν και τα Σαββατοκύριακα!
+                                Αν θέλετε να μην μετρήσουν, πρέπει να ορίσετε πρόσθετα ξεχωριστά διαστήματα με εργάσιμες ημέρες.
+                            </div>
+
                             <!-- Days Mismatch Warning -->
                             <div id="days-mismatch-warning" class="alert alert-danger mt-3" style="display: none;">
                                 <i class="bi bi-exclamation-triangle"></i>
@@ -379,8 +387,31 @@
     updateDaysSummary();
   }
 
+  function parseLocalDate(iso) {
+    // YYYY-MM-DD ως τοπική ημερομηνία (αποφεύγει timezone shift σε UTC)
+    var parts = (iso || '').split('-');
+    if (parts.length !== 3) return null;
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function countWeekendDays(startIso, endIso) {
+    var start = parseLocalDate(startIso);
+    var end = parseLocalDate(endIso);
+    if (!start || !end || start > end) return 0;
+    var count = 0;
+    var current = new Date(start.getTime());
+    while (current <= end) {
+      var day = current.getDay();
+      if (day === 0 || day === 6) count += 1;
+      current.setDate(current.getDate() + 1);
+    }
+    return count;
+  }
+
   function updateDaysSummary() {
     var total = 0;
+    var totalWeekendDays = 0;
     var lines = [];
     periodCards().forEach(function (card, index) {
       var daysField = qs('.period-days', card);
@@ -389,6 +420,9 @@
       var days = daysField && daysField.value ? parseInt(daysField.value, 10) : NaN;
       if (!isNaN(days)) {
         total += days;
+        if (start && start.value && end && end.value) {
+          totalWeekendDays += countWeekendDays(start.value, end.value);
+        }
         lines.push('Διάστημα ' + (index + 1) + ': ' + (start && start.value ? start.value : '?') +
                    ' – ' + (end && end.value ? end.value : '?') + ', Ημέρες: ' + days);
       }
@@ -398,8 +432,12 @@
     var declaredInput = qs('#id_days');
     if (!box || !span) return;
     if (lines.length) {
-      span.innerHTML = '<strong>' + lines.join('<br>') +
+      var html = '<strong>' + lines.join('<br>') +
         '<br>Συνολικές Ημέρες Άδειας: ' + total + '</strong>';
+      if (totalWeekendDays > 0) {
+        html += '<br>(εκ των οποίων οι ' + totalWeekendDays + ' είναι μέσα σε Σαββατοκύριακο)';
+      }
+      span.innerHTML = html;
       box.style.display = '';
       // Συγχρονισμός πεδίου ημερών ώστε να μην αποτυγχάνει η υποβολή
       if (declaredInput && document.activeElement !== declaredInput) {
@@ -407,6 +445,11 @@
       }
     } else {
       box.style.display = 'none';
+    }
+
+    var weekendWarn = qs('#weekend-days-warning');
+    if (weekendWarn) {
+      weekendWarn.style.display = (lines.length && totalWeekendDays > 0) ? '' : 'none';
     }
 
     var warn = qs('#days-mismatch-warning');
