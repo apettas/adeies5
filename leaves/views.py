@@ -140,12 +140,17 @@ class CreateLeaveRequestView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         import json
+        from leaves.utils.period_overlap import serialize_user_leave_periods_for_overlap
         instructions = {}
         for lt in LeaveType.objects.filter(is_active=True).exclude(instructions=''):
             instructions[str(lt.id)] = lt.instructions
         context['leave_type_instructions_json'] = json.dumps(instructions, ensure_ascii=False)
         context['revocation_type_ids_json'] = json.dumps(
             list(LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True))
+        )
+        context['existing_leave_periods_json'] = json.dumps(
+            serialize_user_leave_periods_for_overlap(self.request.user),
+            ensure_ascii=False,
         )
         return context
 
@@ -358,12 +363,17 @@ class CreateAtypicalLeaveView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['is_atypical'] = True
         import json
+        from leaves.utils.period_overlap import serialize_user_leave_periods_for_overlap
         instructions = {}
         for lt in LeaveType.objects.filter(is_active=True, is_simple=True).exclude(instructions=''):
             instructions[str(lt.id)] = lt.instructions
         context['leave_type_instructions_json'] = json.dumps(instructions, ensure_ascii=False)
         context['revocation_type_ids_json'] = json.dumps(
             list(LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True))
+        )
+        context['existing_leave_periods_json'] = json.dumps(
+            serialize_user_leave_periods_for_overlap(self.request.user),
+            ensure_ascii=False,
         )
         return context
 
@@ -410,6 +420,9 @@ def create_leave_for_user(request, user_id):
         return redirect('leaves:substitute_contract_new', user_id=target_user.pk)
 
     from .forms import LeaveRequestForm
+    from leaves.utils.period_overlap import serialize_user_leave_periods_for_overlap
+    import json
+
     if request.method == 'POST':
         form = LeaveRequestForm(request.POST, request.FILES)
         if form.is_valid():
@@ -488,6 +501,10 @@ def create_leave_for_user(request, user_id):
         'handler_creating': True,
         'revocation_type_ids': list(
             LeaveType.objects.filter(is_revocation=True, is_active=True).values_list('id', flat=True)
+        ),
+        'existing_leave_periods_json': json.dumps(
+            serialize_user_leave_periods_for_overlap(target_user),
+            ensure_ascii=False,
         ),
     })
 

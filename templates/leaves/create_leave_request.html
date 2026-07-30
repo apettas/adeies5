@@ -133,6 +133,14 @@
                                 </div>
                             </div>
                             
+                            <!-- Επικάλυψη με υπάρχουσες αιτήσεις -->
+                            <div id="existing-period-overlap-warning" class="alert alert-warning mt-3" style="display: none;" role="alert">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                                    <div id="existing-period-overlap-message"></div>
+                                </div>
+                            </div>
+
                             <!-- Total Days Display -->
                             <div id="days-calculation" class="alert alert-info mt-3" style="display: none;">
                                 <span id="total-days"></span>
@@ -344,6 +352,75 @@
   function periodsField() { return qs('#id_periods_data'); }
   function periodCards() { return qsa('#periods-container .period-card'); }
 
+  var existingLeavePeriods = [];
+  try {
+    existingLeavePeriods = {{ existing_leave_periods_json|default:"[]"|safe }};
+  } catch (e) {
+    existingLeavePeriods = [];
+  }
+
+  function formatDateGr(iso) {
+    var parts = (iso || '').split('-');
+    if (parts.length !== 3) return iso || '';
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+  }
+
+  function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+    return aStart <= bEnd && aEnd >= bStart;
+  }
+
+  function updateExistingOverlapWarning() {
+    var box = qs('#existing-period-overlap-warning');
+    var msg = qs('#existing-period-overlap-message');
+    if (!box || !msg) return;
+
+    var conflictById = {};
+    periodCards().forEach(function (card) {
+      var startEl = qs('.period-start-date', card);
+      var endEl = qs('.period-end-date', card);
+      if (!startEl || !endEl || !startEl.value || !endEl.value) return;
+      if (startEl.value > endEl.value) return;
+
+      (existingLeavePeriods || []).forEach(function (lr) {
+        (lr.periods || []).forEach(function (ep) {
+          if (!rangesOverlap(startEl.value, endEl.value, ep.start, ep.end)) return;
+          if (!conflictById[lr.id]) {
+            conflictById[lr.id] = {
+              id: lr.id,
+              leave_type: lr.leave_type || '',
+              status: lr.status || '',
+              periods: {},
+            };
+          }
+          conflictById[lr.id].periods[ep.start + '|' + ep.end] = ep;
+        });
+      });
+    });
+
+    var conflicts = Object.keys(conflictById).map(function (id) {
+      return conflictById[id];
+    });
+
+    if (!conflicts.length) {
+      box.style.display = 'none';
+      msg.innerHTML = '';
+      return;
+    }
+
+    var lines = conflicts.map(function (lr) {
+      var periodParts = Object.keys(lr.periods).map(function (key) {
+        var ep = lr.periods[key];
+        return formatDateGr(ep.start) + ' – ' + formatDateGr(ep.end);
+      });
+      return 'Το χρονικό διάστημα συμπίπτει με την αίτηση <strong>#' + lr.id +
+        '</strong> (τύπος: <strong>' + (lr.leave_type || '—') +
+        '</strong>), διαστήματα: <strong>' + periodParts.join(', ') + '</strong>.';
+    });
+
+    msg.innerHTML = '<strong>Προσοχή!</strong><br>' + lines.join('<br>');
+    box.style.display = '';
+  }
+
   function syncPeriodsData() {
     var periods = [];
     periodCards().forEach(function (card) {
@@ -385,6 +462,7 @@
     }
     syncPeriodsData();
     updateDaysSummary();
+    updateExistingOverlapWarning();
   }
 
   function parseLocalDate(iso) {
@@ -493,6 +571,7 @@
         renumberPeriods();
         syncPeriodsData();
         updateDaysSummary();
+        updateExistingOverlapWarning();
       });
     }
   }
@@ -655,6 +734,7 @@
     initLeaveTypeHelpers();
     syncPeriodsData();
     updateDaysSummary();
+    updateExistingOverlapWarning();
 
     // Optional Select2 if jQuery available
     if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
